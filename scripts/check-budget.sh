@@ -2,8 +2,10 @@
 # Word budget: SKILL.md and each references/*.md, per file, against baselines/budget.tsv. Every word
 # is context a session loads, so a count may hold or fall, and a rise fails.
 #
-#   scripts/check-budget.sh                         check; exit 1 on a rise or an unbudgeted file
-#   scripts/check-budget.sh --update                lower budgets to today's counts; never raises
+#   scripts/check-budget.sh                         check; exit 1 on a rise, an unbudgeted file, or a
+#                                                   budgeted file that's gone
+#   scripts/check-budget.sh --update                lower budgets to today's counts and drop a deleted
+#                                                   file's budget; never raises
 #   scripts/check-budget.sh --update --allow-raise  set budgets to today's counts, rises included
 #
 # --allow-raise is the operator's alone: a worker never raises a budget to get green.
@@ -60,7 +62,11 @@ if [ -f "$BASELINE" ]; then
   while IFS=$'\t' read -r f _; do
     case "$f" in ''|'#'*) continue ;; esac
     [ -f "$f" ] && continue
-    if [ "$update" = 1 ]; then echo "- $f: gone, budget dropped"; else echo "- $f: gone — drop its budget with scripts/check-budget.sh --update"; fi
+    # Not a pass: a budgeted file that can't be found is either deleted (say so with --update) or
+    # moved out of the files this check counts, where nothing would budget it.
+    if [ "$update" = 1 ]; then echo "- $f: gone, budget dropped"
+    else echo "✖ $f: budgeted but gone — if it was deleted, drop its budget with scripts/check-budget.sh --update" >&2
+         fails=$((fails + 1)); fi
   done < "$BASELINE"
 fi
 
@@ -74,7 +80,7 @@ if [ "$update" = 1 ]; then
 fi
 
 if [ "$fails" -gt 0 ]; then
-  printf '✖ %d file(s) over budget or unbudgeted (%s)\n' "$fails" "$BASELINE" >&2
+  printf '✖ %d file(s) over budget, unbudgeted or gone (%s)\n' "$fails" "$BASELINE" >&2
   exit 1
 fi
 printf '✓ every skill file is within its word budget (%s)\n' "$BASELINE"

@@ -12,11 +12,6 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-if ! command -v lychee >/dev/null 2>&1; then
-  echo "✖ lychee is not installed — install it (macOS: brew install lychee; else see https://github.com/lycheeverse/lychee#installation), then re-run this script" >&2
-  exit 2
-fi
-
 # A tracked file deleted but not yet staged is still listed — skip it, or lychee fails on a missing
 # input rather than on a link.
 files=()
@@ -29,5 +24,10 @@ done < <(git ls-files -z --cached --others --exclude-standard --deduplicate -- '
 if [[ ${#files[@]} -eq 0 ]]; then
   echo "✖ git listed no markdown files to check, so the lookup is broken — this repo always has some" >&2
   exit 1
+fi
+
+if ! command -v lychee >/dev/null 2>&1; then
+  echo "✖ lychee is not installed — install it (macOS: brew install lychee; else see https://github.com/lycheeverse/lychee#installation), then re-run this script" >&2
+  exit 2
 fi
 lychee --offline --no-progress -- "${files[@]}"

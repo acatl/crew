@@ -30,6 +30,8 @@ done
 
 IFS=',' read -r -a candidates <<< "$paths"
 
+g() { git -C "$wt" -c core.quotePath=false "$@"; }   # git in the worktree being listed
+
 found=0
 for wt in "$@"; do
   if ! git -C "$wt" rev-parse --git-dir >/dev/null 2>&1; then
@@ -40,10 +42,13 @@ for wt in "$@"; do
     echo "no merge-base between '$base' and $branch in $wt (does '$base' exist?)" >&2; exit 2
   fi
   # Each listing is checked: one that fails would otherwise just list nothing, and a worker whose
-  # files can't be read would come out clear.
-  if ! committed=$(git -C "$wt" diff --name-only "$mb" HEAD) \
-     || ! changed=$(git -C "$wt" diff --name-only HEAD) \
-     || ! untracked=$(git -C "$wt" ls-files --others --exclude-standard); then
+  # files can't be read would come out clear. For the same reason:
+  #   --no-renames      a moved file lists both paths, so the one it left still counts as touched;
+  #   quotePath=false   a non-ASCII name lists as itself, not as a quoted "\303\257" form that no
+  #                     candidate path could ever match (see g, above the loop).
+  if ! committed=$(g diff --no-renames --name-only "$mb" HEAD) \
+     || ! changed=$(g diff --no-renames --name-only HEAD) \
+     || ! untracked=$(g ls-files --others --exclude-standard); then
     echo "git could not list the files $branch touched in $wt" >&2; exit 2
   fi
   touched=$(printf '%s\n%s\n%s\n' "$committed" "$changed" "$untracked" | sed '/^$/d' | sort -u)

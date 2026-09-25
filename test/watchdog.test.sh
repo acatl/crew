@@ -283,6 +283,10 @@ if silent --base no-such-ref
 then ok "28c no push baseline -> does not fire"; else bad "28c no baseline" "fired: $(cat "$ROOT/out")"; fi
 if grep -q "no push baseline for #1" "$ROOT/err"
 then ok "28d and says trigger 2 is off for it"; else bad "28d no-baseline warning" "$(cat "$ROOT/err")"; fi
+sleep 1; subagents 20                            # positive control for 28c: a resolvable base counts them
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "20 sub-agents since last push" "$ROOT/out"
+then ok "28e same fixture fires once the base resolves"; else bad "28e no-baseline control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 seed_commit 7200
 
 # a push moves the baseline, so sub-agents older than it stop counting

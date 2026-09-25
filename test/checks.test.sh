@@ -77,7 +77,7 @@ fresh; edit "$BT" 's#^<!-- crew:brief v1#<!-- crew:task v1#'
 red "9  the brief marker drifts" check-invariants "$SK"
 fresh; edit "$BT" '/^<!-- crew:brief v1/d'
 red "9b a brief with no marker line is reported, not a crash" check-invariants "the brief's '<!-- crew:…' first line not found"
-if ! grep -q "unbound variable" "$ROOT/out"; then ok "9c and every later check still runs"; else bad "9c no crash" "$(cat "$ROOT/out")"; fi
+if grep -qF "✖ 1 restated value(s) drifted" "$ROOT/out"; then ok "9c and the run reaches its summary"; else bad "9c no crash" "$(cat "$ROOT/out")"; fi
 fresh; edit "$SK" 's#confirm with the `crew:brief` marker#confirm with the `crew:brf` marker#'
 red "10 a stray spelling of the marker's name" check-invariants "'crew:brf'"
 fresh; edit "$BT" 's#A `RELAY` carries#A relay carries#'
@@ -103,6 +103,21 @@ red "19 a skill script that doesn't exist" check-section-refs "<skill-dir>/scrip
 
 fresh; for f in "$SK" "$BT" "$LG"; do edit "$f" 's#CREW\.md` ›#CREW.md` -#g'; done
 red "19b no CREW.md references at all fails, never passes" check-section-refs "found no 'CREW.md › Section' references"
+fresh; grep -rl 'references/' "$S/skills/crew" | while IFS= read -r f; do edit "${f#"$S"/}" 's#references/#refs/#g'; done
+red "19c no references/ mentions at all fails, never passes" check-section-refs "found no references/<name>.md mentions"
+fresh; edit "$SK" 's#<skill-dir>/scripts/#<skill-dir>/bin/#g'
+red "19d no <skill-dir>/scripts/ calls at all fails, never passes" check-section-refs "found no <skill-dir>/scripts/ calls"
+
+# --- check-links: it needs lychee, which this job may lack, so only its own guard is tested here ---------------
+# check-links.sh finds its repo from the working directory, as a hook does, so it runs from inside a
+# repo of its own that holds no Markdown at all
+L="$ROOT/links"; mkdir -p "$L/scripts"; git -C "$L" init -q; cp "$REPO/scripts/check-links.sh" "$L/scripts/"
+(cd "$L" && scripts/check-links.sh) >"$ROOT/out" 2>&1; rc=$?
+if [ "$rc" = 1 ] && grep -qF "git listed no markdown files" "$ROOT/out"
+then ok "19e git listing no Markdown fails, never passes"; else bad "19e links guard" "rc=$rc $(cat "$ROOT/out")"; fi
+printf '# doc\n' > "$L/doc.md"                   # positive control for 19e: one file gets past the guard
+(cd "$L" && scripts/check-links.sh) >"$ROOT/out" 2>&1
+if ! grep -qF "listed no markdown" "$ROOT/out"; then ok "19f same repo with a Markdown file gets past the guard"; else bad "19f links control" "$(cat "$ROOT/out")"; fi
 
 # --- check-budget ---------------------------------------------------------------------------------------------
 fresh; printf '\nfive more words right here\n' >> "$S/$LG"
@@ -117,6 +132,10 @@ run check-budget --update
 if grep -qF "lowered" "$ROOT/out" && run check-budget; then ok "25 --update lowers, and stays green"; else bad "25 budget lower" "$(cat "$ROOT/out")"; fi
 printf 'one two three\n' >> "$S/$LG"
 red "26 the lowered budget holds the line" check-budget "$LG"
+fresh; rm "$S/$LG"
+red "26b a budgeted file that's gone fails" check-budget "$LG: budgeted but gone"
+run check-budget --update                          # positive control for 26b: --update drops it
+if grep -qF -- "- $LG: gone, budget dropped" "$ROOT/out" && run check-budget; then ok "26c --update drops a gone file's budget, then green"; else bad "26c gone file" "$(cat "$ROOT/out")"; fi
 
 # --- check-content -------------------------------------------------------------------------------------------
 fresh; printf '\nYou may skip this. It may help. You might try it. It could matter.\n' >> "$S/$SK"

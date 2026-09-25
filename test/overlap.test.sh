@@ -129,5 +129,44 @@ usage "28 a git listing that fails -> 2, not a silent clear" "could not list the
 cp "$ROOT/index.keep" "$R/.git/index"                            # positive control for 28
 hits "29 same fixture, index restored -> reports the file again" "w1${T}base.txt${T}base.txt" --base main --paths base.txt "$R"
 
+# --- a moved file counts at both paths; a non-ASCII name counts as itself --------------------------------------
+R2="$ROOT/r2"
+new_repo "$R2"
+put "$R2/api/old.txt"; put "$R2/keep/k.txt"; git -C "$R2" add api keep; git -C "$R2" commit -qm files
+git -C "$R2" switch -q -c m1
+clear "30 a fresh branch touches nothing" --base main --paths api,keep,docs,src "$R2"
+mkdir -p "$R2/lib"; git -C "$R2" mv api/old.txt lib/new.txt; git -C "$R2" commit -qm move
+hits "31 a committed move counts the path it left (control for 30)" "m1${T}api/old.txt${T}api" --base main --paths api "$R2"
+git -C "$R2" mv keep/k.txt moved.txt
+hits "32 a staged move counts the path it left" "m1${T}keep/k.txt${T}keep" --base main --paths keep "$R2"
+put "$R2/docs/naïve.md"
+hits "33 an untracked non-ASCII name matches as itself" "m1${T}docs/naïve.md${T}docs" --base main --paths docs "$R2"
+put "$R2/src/café.txt"; git -C "$R2" add src; git -C "$R2" commit -qm cafe
+hits "34 a committed non-ASCII name matches as itself" "m1${T}src/café.txt${T}src" --base main --paths src "$R2"
+
+# --- each listing's failure stops the run on its own -------------------------------------------------------------
+# The shim fails exactly the git call whose arguments match FAIL_ON (a case pattern) and passes the
+# rest to the real git, so each guard is exercised alone, not just the first one a broken repo trips.
+mkdir -p "$ROOT/shim"
+cat > "$ROOT/shim/git" <<'SHIM'
+#!/bin/sh
+case " $* " in $FAIL_ON) echo "fatal: injected failure" >&2; exit 128 ;; esac
+exec "$REAL_GIT" "$@"
+SHIM
+chmod +x "$ROOT/shim/git"
+REAL_GIT=$(command -v git)
+via_shim() { FAIL_ON=$1 REAL_GIT=$REAL_GIT PATH="$ROOT/shim:$PATH" "$OV" --base main --paths docs "$R2" >"$ROOT/out" 2>"$ROOT/err"; }
+for c in "35|the committed listing|* diff --no-renames --name-only [0-9a-f]* HEAD *" \
+         "36|the working-tree listing|* diff --no-renames --name-only HEAD *" \
+         "37|the untracked listing|* ls-files *"; do
+  n=${c%%|*}; rest=${c#*|}; what=${rest%%|*}; pat=${rest#*|}
+  via_shim "$pat"; rc=$?
+  if [ "$rc" = 2 ] && grep -q "could not list the files m1 touched" "$ROOT/err" && [ ! -s "$ROOT/out" ]
+  then ok "$n $what failing -> 2"; else bad "$n $what failing" "rc=$rc out=$(cat "$ROOT/out") err=$(cat "$ROOT/err")"; fi
+done
+via_shim "no-such-call"; rc=$?                    # positive control for 35-37: the shim passes through
+if [ "$rc" = 1 ] && has "m1${T}docs/naïve.md${T}docs"
+then ok "38 through the shim with nothing failing -> reports as usual"; else bad "38 shim control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" = 0 ]
