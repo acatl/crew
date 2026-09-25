@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# cspell:ignore dont
+reviews:
+  # Every finding, not a filtered subset: PRs here are few and each round is deliberate.
+  profile: assertive
+  auto_review:
+    # Never auto-pause on commit count; each push is a deliberate review round.
+    auto_pause_after_reviewed_commits: 0
+    # Opt a PR out with the `dont-review` label. A `!`-only list still reviews every unlabelled PR;
+    # an unprefixed entry would flip it to an allowlist. Never a way to dodge review of real code.
+    labels:
+      - "!dont-review"
+  path_instructions:
+    - path: "skills/crew/**/*.md"
+      instructions: >-
+        These files are instructions a model follows, not documentation. Flag ambiguity a model could
+        resolve two ways, a rule that contradicts another section or a references/ file, a value
+        restated here that differs from its other copies (see CLAUDE.md › Invariants that span files),
+        and any wording that would let a relayed message stand in for the operator's consent in a
+        worker session.
+    - path: "skills/crew/*.sh"
+      instructions: >-
+        Must behave the same under BSD (macOS) and GNU (Linux) userlands, never kill processes by
+        name, and never go silent on a failure: a watchdog that stops seeing a worker must say so on
+        stderr.
