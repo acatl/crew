@@ -18,8 +18,23 @@ reviews:
         restated here that differs from its other copies (see CLAUDE.md › Invariants that span files),
         and any wording that would let a relayed message stand in for the operator's consent in a
         worker session.
-    - path: "skills/crew/*.sh"
+    - path: "skills/crew/scripts/*.sh"
       instructions: >-
         Must behave the same under BSD (macOS) and GNU (Linux) userlands, never kill processes by
         name, and never go silent on a failure: a watchdog that stops seeing a worker must say so on
         stderr.
+    - path: "scripts/**/*.sh"
+      instructions: >-
+        Repo checks. A failure must name the file, the value that drifted and where. A pattern that
+        matches nothing must fail, never pass, since a blind check passes too. Must behave the same
+        under BSD (macOS) and GNU (Linux) userlands, and stay in step with
+        .github/workflows/quality.yml, which scripts/verify.sh mirrors.
+    - path: "test/*.sh"
+      instructions: >-
+        Every "silent" or "passes" assertion must be paired with a positive control on the same
+        fixture, because a blind watchdog or check is silent too. Flag an unpaired one, and any test
+        weakened to make a change pass.
+    - path: "baselines/*.tsv"
+      instructions: >-
+        Only the operator raises a word budget or lowers a content metric. Flag any such change the
+        PR description doesn't attribute to the operator.

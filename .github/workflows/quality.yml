@@ -1,0 +1,131 @@
+name: quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# Job names are stable on purpose: a branch ruleset requires checks by name, so renaming a job
+# leaves every PR waiting on a check that never reports. scripts/verify.sh runs these same
+# commands in this same order (the pre-push hook runs it): add a check to both, or to neither.
+jobs:
+  docs:
+    name: docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.12'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Markdown lint
+        run: npm run lint:md
+
+      - name: Spell check
+        run: npm run spell
+
+  links:
+    name: links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - name: Lychee (offline / internal links)
+        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2
+        with:
+          args: "--offline --no-progress './**/*.md'"
+          fail: true
+
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      # the file list lives in package.json's lint:sh, so it has one home
+      - name: Shellcheck (repo scripts, skill scripts, test suites, git hooks)
+        run: npm run lint:sh
+
+  skill:
+    name: skill
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      # Pinned by version and by the release's own sha256 (skill-validator_1.6.2_checksums.txt).
+      # scripts/check-structure.sh names this version and notes any local mismatch.
+      - name: Install skill-validator v1.6.2
+        env:
+          VERSION: 1.6.2
+          SHA256: 2e36e8d2297afed6a0eba854142a2ce94ddae60469d9a4b4ecc6cf9680787a77
+        run: |
+          archive="$RUNNER_TEMP/skill-validator.tar.gz"
+          curl -fsSL -o "$archive" \
+            "https://github.com/agent-ecosystem/skill-validator/releases/download/v${VERSION}/skill-validator_${VERSION}_linux_amd64.tar.gz"
+          echo "${SHA256}  ${archive}" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/bin" skill-validator
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Structure
+        run: scripts/check-structure.sh
+
+      - name: Content metrics (may hold or rise)
+        run: scripts/check-content.sh
+
+      - name: Word budget (may hold or fall)
+        run: scripts/check-budget.sh
+
+      - name: Restated values agree
+        run: scripts/check-invariants.sh
+
+      - name: Section and file references resolve
+        run: scripts/check-section-refs.sh
+
+      - name: Frontmatter
+        run: scripts/check-skill-frontmatter.sh
+
+      - name: The checks' own tests
+        run: test/checks.test.sh
+
+  # BSD (macOS) and GNU (Linux) userlands both: watchdog.sh probes stat(1) and date(1) for either,
+  # and each leg is the only place its branch runs.
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      # the suites commit in scratch git repos
+      - name: Git identity
+        run: git config --global user.email ci@crew.local && git config --global user.name crew-ci
+
+      - name: watchdog.sh
+        run: test/watchdog.test.sh
+
+      - name: overlap.sh
+        run: test/overlap.test.sh
