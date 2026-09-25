@@ -92,14 +92,16 @@ ov_code 0 'no overlap' 'clear'
 ov_code 1 'overlap found' 'overlap'
 ov_code 2 'usage or git error' 'usage or git error'
 
+# SKILL.md's frontmatter and body, each on one line, for the checks that read them whole
+flat() { tr '\n' ' ' | tr -s ' '; }
+fm=$(awk 'NR == 1 && $0 == "---" {f = 1; next} f && $0 == "---" {exit} f' "$SKILL/SKILL.md" | flat)
+body=$(awk 'NR == 1 && $0 == "---" {f = 1; next} f && $0 == "---" {f = 0; b = 1; next} b' "$SKILL/SKILL.md" | flat)
+
 # --- the brief marker: the brief template's first line is the source ---------------------------------
 marker=$(sed -n 's/^\(<!-- crew:[a-z]*\) .*/\1/p' "$BRIEF" | head -n 1)
 if [ -z "$marker" ]; then
   reworded "$BRIEF" "the brief's '<!-- crew:…' first line"
 else
-  flat() { tr '\n' ' ' | tr -s ' '; }
-  fm=$(awk 'NR == 1 && $0 == "---" {f = 1; next} f && $0 == "---" {exit} f' "$SKILL/SKILL.md" | flat)
-  body=$(awk 'NR == 1 && $0 == "---" {f = 1; next} f && $0 == "---" {f = 0; b = 1; next} b' "$SKILL/SKILL.md" | flat)
   marker_ok=1
   if ! grep -qF -- "starts with \`$marker\`" <<< "$fm"; then
     fail "$SKILL/SKILL.md: the frontmatter description doesn't say a worker's first message starts with \`$marker\`, the marker $BRIEF opens the brief with"; marker_ok=0

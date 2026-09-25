@@ -28,7 +28,7 @@ fresh() {
   cp -R "$REPO/skills" "$REPO/scripts" "$REPO/baselines" "$S/"
   cp "$REPO/test/watchdog.test.sh" "$S/test/"
 }
-# edit <file> <perl-free sed expression>: a BSD/GNU-portable in-place sed
+# edit <file> <sed expression>: in place through a temp file, since BSD and GNU sed -i disagree
 edit() { sed "$2" "$S/$1" > "$S/$1.new" && mv "$S/$1.new" "$S/$1"; }
 run() { local c=$1; shift; "$S/scripts/$c.sh" "$@" >"$ROOT/out" 2>&1; }
 
@@ -75,6 +75,9 @@ fresh; edit "$SK" 's#2 = usage or git error#3 = usage or git error#'
 red "8  overlap's exit code drifts in the skill" check-invariants "no '2 = usage or git error'"
 fresh; edit "$BT" 's#^<!-- crew:brief v1#<!-- crew:task v1#'
 red "9  the brief marker drifts" check-invariants "$SK"
+fresh; edit "$BT" '/^<!-- crew:brief v1/d'
+red "9b a brief with no marker line is reported, not a crash" check-invariants "the brief's '<!-- crew:…' first line not found"
+if ! grep -q "unbound variable" "$ROOT/out"; then ok "9c and every later check still runs"; else bad "9c no crash" "$(cat "$ROOT/out")"; fi
 fresh; edit "$SK" 's#confirm with the `crew:brief` marker#confirm with the `crew:brf` marker#'
 red "10 a stray spelling of the marker's name" check-invariants "'crew:brf'"
 fresh; edit "$BT" 's#A `RELAY` carries#A relay carries#'

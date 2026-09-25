@@ -39,8 +39,9 @@
 # It says so on stderr, once, whenever it goes blind on a worker: a roster row whose worktree is
 # missing or is not a git repo, a worker with no transcript directory, a worker with no push
 # baseline, a malformed ticket id, or the roster disappearing. With no readable session start it
-# counts trigger 1 from HEAD alone, and says that once too: an early alarm, never silence. Redirect stderr to a file the
-# orchestrator can read; a silently unwatched worker is the failure this script exists to prevent.
+# counts trigger 1 from HEAD alone, and says that once too: an early alarm, never silence. Redirect
+# stderr to a file the orchestrator can read; a silently unwatched worker is the failure this script
+# exists to prevent.
 #
 # Portability: stat(1) is not portable — BSD/macOS takes -f, GNU takes -c. The BSD-only form
 # produces nothing on Linux, which made the activity timestamp fall back to 0 and trigger 1 never
@@ -181,10 +182,11 @@ fi
 # --- watch --------------------------------------------------------------------------------------
 now() { date +%s; }
 warned=""
-warn_once() {  # warn_once <key-without-spaces> <message>
+warn_once() {  # warn_once <key-without-spaces> <message>...
   case " $warned " in *" $1 "*) return 0 ;; esac
   warned="$warned $1"
-  echo "$2" >&2
+  shift
+  echo "$*" >&2
 }
 
 while true; do
@@ -238,7 +240,8 @@ while true; do
       since=$commit_ts clock=""
       start=$(session_start "$proj") || start=""
       case "$start" in
-        ''|*[!0-9]*) warn_once "$ticket:start" "no session start for $ticket (no readable first record in $proj) — trigger 1 counts from HEAD's commit alone, so it can fire early" ;;
+        ''|*[!0-9]*) warn_once "$ticket:start" "no session start for $ticket (no readable first record" \
+                       "in $proj) — trigger 1 counts from HEAD's commit alone, so it can fire early" ;;
         *) if [ "$start" -gt "$commit_ts" ]; then since=$start clock=" since its session started"; fi ;;
       esac
       # The head does not change while a worker is stuck, so keying on it alone means one alert
