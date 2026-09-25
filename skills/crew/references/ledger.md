@@ -31,7 +31,7 @@ crewdir() {
 
 It fails loudly rather than returning a partial path; a silent fallback would scatter ledgers.
 
-```
+```text
 ~/.claude/crew/<slug>/
   ledger.md            live state only — bounded by work in flight
   briefs/<row>.md      each brief exactly as sent, so a resume can re-attach it

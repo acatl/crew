@@ -11,6 +11,14 @@ description: >-
   to a worker", "queue workers for", "run these tickets in sequence", "crew status", "what are my
   workers doing". Also loads in a worker whose first message starts with `<!-- crew:brief`.
 argument-hint: "<verb> <ticket-id>[ → <ticket-id>…] [mode]  |  status"
+license: MIT
+compatibility: >-
+  Needs the Claude desktop app's Code tab, whose session tools (spawn_task, send_message, get_session,
+  archive_session) the Claude Code CLI does not provide; bash and git; and a BSD or GNU stat(1), so
+  macOS or Linux.
+metadata:
+  author: Acatl Pacheco
+  version: "0.0.0" # x-release-please-version
 ---
 
 # crew — orchestrator ↔ worker sessions
@@ -201,6 +209,7 @@ Every field has a default; `go` accepts them all. Render it as live markdown:
 - **NEED-INPUT** → nudge the operator right away:
   > ⏸ **KINO-5 needs you** — <question, one line>
   > <options>
+  > <!-- markdownlint-disable-next-line MD051 -->
   > Answer here and I'll relay, or in [KINO-5 — Add export command](#<worker-sessionId>).
 
   If the worker marked it `answer: in this session only`, drop "answer here" and say why.
