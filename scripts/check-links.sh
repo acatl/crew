@@ -25,5 +25,9 @@ while IFS= read -r -d '' f; do
 # `*.md` matches at EVERY depth: a git pathspec's `*` matches `/` too, so this is CI's `**/*.md` —
 # and `**/*.md` here would DROP the repo-root files (no `/` to match).
 done < <(git ls-files -z --cached --others --exclude-standard --deduplicate -- '*.md')
-[[ ${#files[@]} -eq 0 ]] && { echo "no markdown files to check"; exit 0; }
+# No files means the lookup broke, not that every link resolves: a check that saw nothing must not pass.
+if [[ ${#files[@]} -eq 0 ]]; then
+  echo "✖ git listed no markdown files to check, so the lookup is broken — this repo always has some" >&2
+  exit 1
+fi
 lychee --offline --no-progress -- "${files[@]}"

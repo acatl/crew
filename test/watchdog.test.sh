@@ -169,16 +169,30 @@ if silent
 then ok "12 repo with no commits -> no fire, no crash"; else bad "12 empty repo" "$(cat "$ROOT/out" "$ROOT/err")"; fi
 if [ "$(grep -c "no HEAD in" "$ROOT/err" | tr -d ' ')" = 1 ]
 then ok "12b and says once that it is unwatched"; else bad "12b empty-repo warning" "$(cat "$ROOT/err")"; fi
+git -C "$ROOT/empty" config user.email t@t; git -C "$ROOT/empty" config user.name t
+commit_in "$ROOT/empty" 7200                     # positive control for 12: the same repo, now committed
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #3: active but no commit" "$ROOT/out"
+then ok "12e same repo fires once it has a stale commit"; else bad "12e empty-repo control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 
 # A roster row whose worktree is gone used to be dropped in total silence.
 reset; printf '#4\t%s\n' "$ROOT/vanished" > "$CREW/roster.tsv"
 if silent && grep -q "no worktree at .* for #4" "$ROOT/err"
 then ok "12c missing worktree is warned, not silently dropped"; else bad "12c missing worktree" "$(cat "$ROOT/err")"; fi
+git clone -q "$WT" "$ROOT/vanished"              # positive control for 12c: the worktree is back
+mkdir -p "$HOME/.claude/projects/$(slug "$ROOT/vanished")"; printf '%s\n' "$SESS" > "$HOME/.claude/projects/$(slug "$ROOT/vanished")/s.jsonl"
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #4: active but no commit" "$ROOT/out"
+then ok "12f same row fires once its worktree exists"; else bad "12f missing-worktree control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 
 # A ticket id with whitespace would break the awk dedupe and re-fire forever; reject the row.
 reset; printf 'A B\t%s\n' "$WT" > "$CREW/roster.tsv"
 if silent && grep -q "whitespace" "$ROOT/err"
 then ok "12d whitespace in a ticket id is rejected"; else bad "12d whitespace id" "$(cat "$ROOT/err")"; fi
+printf 'AB\t%s\n' "$WT" > "$CREW/roster.tsv"     # positive control for 12d: the same worktree, a valid id
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "WATCHDOG AB: active but no commit" "$ROOT/out"
+then ok "12g same worktree fires under a valid id"; else bad "12g whitespace-id control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 roster1
 
 # --- built-in defaults -------------------------------------------------------------------------------

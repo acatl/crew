@@ -17,6 +17,9 @@ while IFS= read -r f; do files+=("$f"); done < <(find "$SKILL" -type f \( -name 
 
 fails=0 refs=0
 fail() { fails=$((fails + 1)); printf '✖ %s\n' "$*" >&2; }
+# require_some <kind> <count>: every kind exists in the skill today, so none at all means the pattern
+# broke. A check that saw nothing must not pass.
+require_some() { if [ "$2" = 0 ]; then fail "$SKILL: found no $1 — the pattern or the skill changed; update scripts/check-section-refs.sh"; fi; }
 
 headings=$(awk '/^## Template/ {f = 1; next} f && /^## / {sub(/^## /, ""); print}' "$TEMPLATE")
 if [ -z "$headings" ]; then
@@ -24,11 +27,12 @@ if [ -z "$headings" ]; then
   exit 1
 fi
 
+n=0
 # `CREW.md` › <Section>: the match stops at the first character a heading can't hold, so what's left
 # must be a heading, alone or followed by a space and more words ("Integration allows it").
 while IFS=$'\t' read -r loc hit; do
   [ -n "$loc" ] || continue
-  refs=$((refs + 1))
+  refs=$((refs + 1)) n=$((n + 1))
   name=${hit#*› }
   found=0
   while IFS= read -r h; do
@@ -38,23 +42,28 @@ while IFS=$'\t' read -r loc hit; do
     fail "$loc: 'CREW.md › $name' names no section of the CREW.md template in $TEMPLATE ($(tr '\n' ',' <<< "$headings" | sed 's/,$//; s/,/, /g'))"
   fi
 done < <(scan 'CREW\.md`?[[:space:]]+›[[:space:]]+[A-Za-z][A-Za-z -]*' "${files[@]}")
+require_some "'CREW.md › Section' references" "$n"
 
 # references/<name>.md, backticked or bare or linked
+n=0
 while IFS=$'\t' read -r loc hit; do
   [ -n "$loc" ] || continue
-  refs=$((refs + 1))
+  refs=$((refs + 1)) n=$((n + 1))
   if [ ! -f "$SKILL/$hit" ]; then fail "$loc: $hit doesn't exist under $SKILL/"; fi
 done < <(scan 'references/[A-Za-z0-9._-]+\.md' "${files[@]}")
+require_some "references/<name>.md mentions" "$n"
 
 # <skill-dir>/scripts/<name>
+n=0
 while IFS=$'\t' read -r loc hit; do
   [ -n "$loc" ] || continue
-  refs=$((refs + 1))
+  refs=$((refs + 1)) n=$((n + 1))
   if [ ! -f "$SKILL/${hit#<skill-dir>/}" ]; then fail "$loc: $hit doesn't exist ($SKILL/${hit#<skill-dir>/})"; fi
 done < <(scan '<skill-dir>/scripts/[A-Za-z0-9._-]+' "${files[@]}")
+require_some "<skill-dir>/scripts/ calls" "$n"
 
 if [ "$fails" -gt 0 ]; then
-  printf '✖ %d of %d references dangle\n' "$fails" "$refs" >&2
+  printf '✖ %d problem(s) across %d references\n' "$fails" "$refs" >&2
   exit 1
 fi
 printf '✓ all %d section, reference and script references resolve\n' "$refs"

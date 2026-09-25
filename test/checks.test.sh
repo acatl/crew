@@ -101,6 +101,9 @@ red "18 a references/ file that doesn't exist" check-section-refs "references/mi
 fresh; printf '\nRun `<skill-dir>/scripts/gone.sh`.\n' >> "$S/$SK"
 red "19 a skill script that doesn't exist" check-section-refs "<skill-dir>/scripts/gone.sh"
 
+fresh; for f in "$SK" "$BT" "$LG"; do edit "$f" 's#CREW\.md` ›#CREW.md` -#g'; done
+red "19b no CREW.md references at all fails, never passes" check-section-refs "found no 'CREW.md › Section' references"
+
 # --- check-budget ---------------------------------------------------------------------------------------------
 fresh; printf '\nfive more words right here\n' >> "$S/$LG"
 red "20 a file grows past its budget" check-budget "$LG: "

@@ -39,11 +39,14 @@ for wt in "$@"; do
   if ! mb=$(git -C "$wt" merge-base "$base" HEAD 2>/dev/null); then
     echo "no merge-base between '$base' and $branch in $wt (does '$base' exist?)" >&2; exit 2
   fi
-  touched=$( {
-    git -C "$wt" diff --name-only "$mb" HEAD
-    git -C "$wt" diff --name-only HEAD
-    git -C "$wt" ls-files --others --exclude-standard
-  } | sort -u )
+  # Each listing is checked: one that fails would otherwise just list nothing, and a worker whose
+  # files can't be read would come out clear.
+  if ! committed=$(git -C "$wt" diff --name-only "$mb" HEAD) \
+     || ! changed=$(git -C "$wt" diff --name-only HEAD) \
+     || ! untracked=$(git -C "$wt" ls-files --others --exclude-standard); then
+    echo "git could not list the files $branch touched in $wt" >&2; exit 2
+  fi
+  touched=$(printf '%s\n%s\n%s\n' "$committed" "$changed" "$untracked" | sed '/^$/d' | sort -u)
   [ -n "$touched" ] || continue
   while IFS= read -r f; do
     for p in "${candidates[@]}"; do

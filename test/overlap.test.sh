@@ -104,7 +104,7 @@ hits "16 same surface with the worker that touched it -> 1, named by its branch"
   "w3${T}api/b.txt${T}api" --base main --paths api "$ROOT/wt2" "$R" "$ROOT/wt3"
 if ! grep -q "^w2${T}" "$ROOT/out"
 then ok "17 the clean worktree adds no line"; else bad "17 clean worktree" "$(cat "$ROOT/out")"; fi
-put "$ROOT/wt2/api/c.txt"
+put "$ROOT/wt2/api/c.txt"                                         # positive control for 15 and 17
 ov --base main --paths api "$ROOT/wt2" "$ROOT/wt3"; rc=$?
 if [ "$rc" = 1 ] && has "w2${T}api/c.txt${T}api" && has "w3${T}api/b.txt${T}api"
 then ok "18 overlaps in two worktrees both reported"; else bad "18 two overlaps" "rc=$rc $(cat "$ROOT/out")"; fi
@@ -121,6 +121,13 @@ usage "25 not a git worktree -> 2" "not a git worktree" --base main --paths src 
 usage "26 a base with no merge-base -> 2" "no merge-base" --base no-such-ref --paths src "$R"
 # a bad worktree anywhere in the list fails the run, even after a clean one
 usage "27 a bad worktree after a good one -> 2" "not a git worktree" --base main --paths api "$ROOT/wt2" "$ROOT/plain"
+
+# A listing that fails must stop the run, never read as "touched nothing". A corrupt index fails
+# the working-tree listings for root too, which a chmod would not.
+cp "$R/.git/index" "$ROOT/index.keep"; printf 'garbage' > "$R/.git/index"
+usage "28 a git listing that fails -> 2, not a silent clear" "could not list the files w1 touched" --base main --paths base.txt "$R"
+cp "$ROOT/index.keep" "$R/.git/index"                            # positive control for 28
+hits "29 same fixture, index restored -> reports the file again" "w1${T}base.txt${T}base.txt" --base main --paths base.txt "$R"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" = 0 ]
