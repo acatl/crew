@@ -12,5 +12,6 @@ the RISK surface (what to watch, what was deferred). One-line bodies are defects
 ## Checklist
 
 - [ ] Conventional Commit subject(s)
-- [ ] `skills/crew/watchdog.test.sh` passes; `shellcheck skills/crew/*.sh scripts/*.sh` is clean
+- [ ] `./scripts/verify.sh` passes (the pre-push hook runs it; CI runs the same checks)
 - [ ] Changed a value restated across files? Updated every copy (CLAUDE.md › Invariants that span files)
+- [ ] No baseline raised or lowered, or the PR says the maintainer accepted it (`baselines/`)
