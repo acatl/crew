@@ -17,8 +17,8 @@
 #                 write-to-temp-then-mv, never in place.
 #   reported.txt  dedupe: a relaunched watchdog re-scans from the top and would re-fire on the
 #                 same unchanged condition, so what has been reported must outlive the process.
-#   watchdog.pid  lock:   one watchdog per project. NEVER kill by name — every project runs this
-#                 same script path, so `pkill -f watchdog.sh` takes out all of them at once.
+#   watchdog.pid  lock:   one watchdog per project. NEVER kill by name — every project's watchdog
+#                 is a watchdog.sh, so `pkill -f watchdog.sh` takes out all of them at once.
 #                 Stop one with:  kill "$(cat <crew-dir>/watchdog.pid)"
 #
 # Triggers, per worker:
@@ -114,9 +114,10 @@ else
 fi
 
 # --- one watchdog per project -----------------------------------------------------------------
-# The lock must be per project, not per script name: every project runs this same path, so matching
-# the basename alone would let one project's watchdog block another's after a pid is recycled — and
-# then name a stranger's pid to kill. Match the crew dir, which is on the command line.
+# The lock must be per project, not per script name: every project's watchdog is a watchdog.sh, and
+# most share one install path, so matching the basename alone would let one project's watchdog
+# block another's after a pid is recycled — and then name a stranger's pid to kill. Match the crew
+# dir, which is on the command line.
 sleep_pid=""
 cleanup() {
   if [ -n "$sleep_pid" ]; then kill "$sleep_pid" 2>/dev/null; fi

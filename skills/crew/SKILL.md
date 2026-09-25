@@ -108,6 +108,10 @@ permission-gated. A fresh session is the only dependable clean start.
 The verb defaults to `build`. The mode is passed through untouched; no mode means the command's own
 default.
 
+**`<skill-dir>`** is this skill's own directory: the path Claude Code prints as "Base directory for this
+skill" when it loads the skill. The scripts below run from `<skill-dir>/scripts/`. Substitute that real
+path; the skill may be installed per user or per project, so never assume one.
+
 ### 0. Resume from the ledger
 
 The roster lives in your conversation, which a compaction or a `/clear` destroys. The ledger is the
@@ -141,7 +145,7 @@ a time, so check them against workers outside the sequence, not against each oth
 
 1. **Actual overlap** — what in-flight workers have already touched:
    ```bash
-   ~/.claude/skills/crew/overlap.sh --base <base> --paths <p1,p2,...> <worker-cwd>...
+   <skill-dir>/scripts/overlap.sh --base <base> --paths <p1,p2,...> <worker-cwd>...
    ```
    Worker cwds are the roster's `worktreePath`s. Exit 0 = clear, 1 = overlap (TSV lines:
    branch, file, matched path), 2 = usage or git error.
@@ -321,7 +325,7 @@ hand-growing a markdown parser 519 → 779 lines, and the orchestrator didn't lo
   not a shell `&`: the harness re-invokes you when a backgrounded command exits, and that exit is the
   entire mechanism.
   ```bash
-  ~/.claude/skills/crew/watchdog.sh --base <base> \
+  <skill-dir>/scripts/watchdog.sh --base <base> \
     [--interval <s>] [--no-commit <s>] [--subagent-step <n>] \
     ~/.claude/crew/<slug>/ 2>> ~/.claude/crew/<slug>/watchdog.log
   ```
@@ -350,8 +354,8 @@ hand-growing a markdown parser 519 → 779 lines, and the orchestrator didn't lo
   silently yields an unwatched worker. One `--base` covers the whole roster, and it is used only as
   the baseline before a worker's first push; on a mixed-base roster, pass the base most of them share.
 - **Stop it by the pid** in `~/.claude/crew/<slug>/watchdog.pid` once the last worker stops, and clear
-  its `Monitors` line. **Never `pkill -f watchdog.sh`** — every project runs this same script path, so
-  a name-based kill takes out every project's watchdog at once.
+  its `Monitors` line. **Never `pkill -f watchdog.sh`** — every project's watchdog is a `watchdog.sh`,
+  so a name-based kill takes out every project's watchdog at once.
 - **Also check on every orchestrator turn**, cheaply: `list_events` tail (limit ~40) and
   `git log -1 --format=%cr` plus `git status --porcelain | wc -l` in each running worker's
   `worktreePath`. Count review→fix iterations since its last report. The watchdog covers the stretches

@@ -2,17 +2,17 @@
 # Tests for watchdog.sh. Builds a throwaway repo, crew dir and fake transcript tree under a
 # sandboxed $HOME, so it touches nothing real. Run it after any change:
 #
-#   ~/.claude/skills/crew/watchdog.test.sh
+#   test/watchdog.test.sh
 #
-# The portability branch cannot be covered here: a machine has one stat(1) flavour, so whichever
-# branch this machine does not use ships code-reviewed, not tested.
+# A machine has one stat(1) flavour, so a local run covers only its own branch of the portability
+# probe. CI runs this suite on macOS (BSD) and Linux (GNU), which covers both.
 #
 # Reading a "stays silent" assertion: silence alone is weak evidence — a watchdog that is blind for
 # a mechanical reason is also silent. Every `silent` call below is therefore PAIRED with a positive
 # control on the same fixture: a later assertion crosses the threshold and must fire. Never add a
 # `silent` assertion without its pair.
 set -u
-WD="$(cd "$(dirname "$0")" && pwd)/watchdog.sh"
+WD="$(cd "$(dirname "$0")/.." && pwd)/skills/crew/scripts/watchdog.sh"
 ROOT=$(mktemp -d)
 pass=0; fail=0
 ok()  { pass=$((pass+1)); printf 'ok   %s\n' "$1"; }
