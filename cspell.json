@@ -1,0 +1,26 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "dictionaryDefinitions": [
+    {
+      "name": "project-words",
+      "path": "./project-words.txt",
+      "addWords": true
+    }
+  ],
+  "dictionaries": ["project-words", "softwareTerms", "filetypes", "node", "bash"],
+  "ignorePaths": [
+    "node_modules/**",
+    ".git/**",
+    ".claude/worktrees/**",
+    "package-lock.json",
+    "project-words.txt"
+  ],
+  "ignoreRegExpList": [
+    "/```[\\s\\S]*?```/",
+    "/`[^`]*`/",
+    "/\\]\\([^)]*\\)/",
+    "/https?:\\/\\/[^\\s)]+/"
+  ],
+  "allowCompoundWords": true
+}

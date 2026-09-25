@@ -1,0 +1,38 @@
+{
+  // Markdown lint config for a skills repo, shared with okf-docs and hg. The skill files are dense
+  // prose a model reads (no blank lines between a heading and its list), so the blank-line family
+  // and list-marker normalization are OFF. Real correctness rules (code-fence language, hard tabs,
+  // heading spacing, final newline, link hygiene) stay ON.
+  "config": {
+    "default": true,
+
+    // Cosmetic — fight the dense house style:
+    "MD013": false, // line length
+    "MD012": false, // multiple consecutive blank lines
+    "MD022": false, // blanks around headings
+    "MD031": false, // blanks around fenced code
+    "MD032": false, // blanks around lists
+    "MD058": false, // blanks around tables
+
+    // Dangerous to auto-normalize:
+    "MD004": false, // unordered list marker style
+    "MD038": false, // spaces inside code spans (` · ` separators)
+
+    // Stylistic noise in dense bodies:
+    "MD033": false, // inline HTML (<!-- comments -->, emoji)
+    "MD036": false, // bold line as pseudo-heading
+    "MD041": false, // first line need not be a top-level heading
+    "MD026": false, // trailing punctuation in headings
+    "MD029": false, // ordered-list numbering style
+    "MD007": { "indent": 2 },
+
+    // release-please regenerates CHANGELOG.md with one `### Features` (etc.) heading per release
+    // section: duplicate text under different H2 version parents. siblings_only scopes
+    // no-duplicate-heading to same-parent only.
+    "MD024": { "siblings_only": true }
+  },
+  "globs": ["**/*.md"],
+  // .claude/worktrees holds other checkouts of this repo (the app's worktrees). From the main
+  // checkout, the glob would otherwise lint every one of them.
+  "ignores": ["node_modules", "**/node_modules", ".git", ".claude/worktrees", "**/.claude/worktrees/**"]
+}

@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# The staged files through markdownlint, cspell and shellcheck (.lintstagedrc.mjs): seconds, not
+# the full set. Never skipped: no --no-verify (CONTRIBUTING.md).
+# --no-stash: every task is check-only, so there is nothing to revert, and lint-staged's backup
+# would otherwise go on the git stash every worktree shares.
+npx --no -- lint-staged --no-stash

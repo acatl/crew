@@ -1,2 +1,6 @@
 .DS_Store
 *.log
+
+# Node toolchain (lint, spell and hooks only; no runtime deps)
+node_modules/
+npm-debug.log*

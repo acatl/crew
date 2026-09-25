@@ -1,0 +1,6 @@
+# Project dictionary for cspell: words that are correct in this repo but absent from the base
+# dictionaries. Add a word only when cspell flags it and the spelling is right.
+
+Acatl
+cwds
+reimplementation
