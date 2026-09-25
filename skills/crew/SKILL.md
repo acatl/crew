@@ -110,7 +110,7 @@ default.
 
 **`<skill-dir>`** is this skill's own directory: the path Claude Code prints as "Base directory for this
 skill" when it loads the skill. The scripts below run from `<skill-dir>/scripts/`. Substitute that real
-path; the skill may be installed per user or per project, so never assume one.
+path: the skill is installed per user or per project, so never assume either one.
 
 ### 0. Resume from the ledger
 

@@ -2,5 +2,5 @@
 // seconds. The full set runs before a push (scripts/verify.sh).
 export default {
   '*.md': ['markdownlint-cli2 --no-globs', 'cspell --no-progress --no-summary --no-must-find-files'],
-  '*.sh': ['shellcheck'],
+  '*.sh': ['shellcheck -x'],
 };
