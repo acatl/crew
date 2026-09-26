@@ -20,8 +20,8 @@
 #   active.tsv    clock:  <ticket> <TAB> <worktree> <TAB> <since> <TAB> <seen>: when the watchdog
 #                 first saw each worker active after an idle pass, and when it last saw it active.
 #                 It outlives the process too, so a relaunch keeps a worker's clock. Keyed by ticket
-#                 AND worktree, and pruned to the roster every pass, so a worker spawned again for the
-#                 same ticket starts its own clock rather than inheriting the last one's.
+#                 AND worktree, and pruned to a non-empty roster every pass, so a worker spawned again
+#                 for the same ticket starts its own clock rather than inheriting the last one's.
 #   watchdog.pid  lock:   one watchdog per project. NEVER kill by name — every project's watchdog
 #                 is a watchdog.sh, so `pkill -f watchdog.sh` takes out all of them at once.
 #                 Stop one with:  kill "$(cat <crew-dir>/watchdog.pid)"
@@ -31,13 +31,14 @@
 #      for --no-commit, counted from HEAD's commit or from when the watchdog first saw the worker
 #      active after an idle pass, whichever is later. Counting from HEAD alone fired at spawn for a
 #      worker cut from an old base, and again for one that waited hours on the operator. An idle
-#      pass ends a stretch. So does a gap in sightings longer than --interval plus the larger of
-#      15 min and --no-commit: the watchdog wasn't running, and a stretch it didn't watch may hold
-#      idle time. A gap shorter than that (the orchestrator handling a finding, then relaunching)
-#      keeps the clock. A stretch starts when the watchdog first sees it, so a worker already
-#      active before the watchdog started is counted from then. Deduped per ticket + head + clock
-#      start + elapsed window: each stretch alerts on its own, and re-arms once per --no-commit
-#      period rather than alerting once and then going quiet forever at an unchanging head.
+#      pass ends a stretch. So does a gap in sightings longer than --interval + 15 min, one pass
+#      plus the activity window: longer than that, the watchdog wasn't watching, and the gap may
+#      hold idle time. Before it exits on a finding it records a sighting for every rostered
+#      worker, so a prompt relaunch keeps each clock. A stretch starts when the watchdog first sees
+#      it, so a worker already active before the watchdog started is counted from then. Deduped
+#      per ticket + head + elapsed window, plus the stretch's start when the stretch is the later
+#      clock, so each stretch alerts on its own; it re-arms once per --no-commit period rather
+#      than alerting once and then going quiet forever at an unchanging head.
 #   2. more than <count at the last alert> + --subagent-step sub-agent transcripts since the last
 #      push. Re-alerts only on GROWTH, never on an absolute count: pre-PR work legitimately spawns
 #      many sub-agents, and the absolute-count version fired constantly. A worker with no resolvable
@@ -176,29 +177,30 @@ warn_once() {  # warn_once <key-without-spaces> <message>...
 # active.tsv, one line per rostered worker seen active, rewritten write-to-temp-then-mv. Ticket ids
 # and paths reach awk through the environment, which it never unescapes (awk -v turns a backslash
 # in an id into an escape), and compare as strings (""), so "01" and "1" stay different ids.
-without() { K="$1" W="$2" awk -F'\t' '!($1"" == ENVIRON["K"]"" && $2"" == ENVIRON["W"]"")' "$active" 2>/dev/null; }
+# THIS_ROW is the one test every lookup and removal uses, so the key can't drift between them.
+# shellcheck disable=SC2016  # awk source: its $1 and $2 are awk fields, not shell expansions
+THIS_ROW='$1"" == ENVIRON["K"]"" && $2"" == ENVIRON["W"]""'
+row_of()  { K="$1" W="$2" awk -F'\t' "$THIS_ROW"' {print $3 "\t" $4}' "$active" 2>/dev/null; }
+without() { K="$1" W="$2" awk -F'\t' '!('"$THIS_ROW"')' "$active" 2>/dev/null; }
 save_active() {  # save_active <new content>
   if ! { if [ -n "$1" ]; then printf '%s\n' "$1"; fi > "$active.tmp" && mv "$active.tmp" "$active"; }; then
     warn_once "active" "cannot write $active — trigger 1 can't keep a worker's clock"
   fi
 }
-# A gap in sightings longer than this is time nobody watched, so it ends the stretch
-gap=$(( interval + (nocommit > ACTIVE ? nocommit : ACTIVE) ))
+# A gap in sightings longer than one pass plus the activity window is time nobody watched, and may
+# hold idle time, so it ends the stretch. Longer thresholds let unwatched waiting count as work.
+gap=$(( interval + ACTIVE ))
 # saw_active <ticket> <worktree> <now>: sets $stretch, when the worker's current active stretch began
 saw_active() {
   local since="" seen="" rest
-  IFS=$'\t' read -r since seen rest < <(K="$1" W="$2" awk -F'\t' \
-    '$1"" == ENVIRON["K"]"" && $2"" == ENVIRON["W"]"" {print $3 "\t" $4}' "$active" 2>/dev/null)
+  IFS=$'\t' read -r since seen rest < <(row_of "$1" "$2")
   case "$since:$seen" in *[!0-9:]*|:*|*:) since=$3 seen=$3 ;; esac
   if (( $3 - seen > gap )); then since=$3; fi
   save_active "$(without "$1" "$2"; printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$since" "$3")"
   stretch=$since
 }
 saw_idle() {  # saw_idle <ticket> <worktree>: an idle pass ends the worker's stretch
-  if K="$1" W="$2" awk -F'\t' '$1"" == ENVIRON["K"]"" && $2"" == ENVIRON["W"]"" {found = 1} END {exit !found}' \
-       "$active" 2>/dev/null; then
-    save_active "$(without "$1" "$2")"
-  fi
+  if [ -n "$(row_of "$1" "$2")" ]; then save_active "$(without "$1" "$2")"; fi
 }
 prune_active() {  # prune_active <roster snapshot>: drop the rows of workers no longer on it
   local kept
@@ -210,16 +212,21 @@ prune_active() {  # prune_active <roster snapshot>: drop the rows of workers no 
 }
 
 while true; do
+  readable=0
   if [ -f "$roster" ]; then
-    snapshot=$(cat "$roster" 2>/dev/null)
+    if snapshot=$(cat "$roster" 2>/dev/null); then readable=1
+    else warn_once "rosterread" "cannot read $roster — this pass watches nothing"; snapshot=""; fi
   else
     # Transient: the orchestrator stops a watchdog by its pidfile, not by removing the roster.
     # Exiting here would wake the orchestrator with nothing to say.
     warn_once "roster" "roster gone, idling: $roster"
     snapshot=""
   fi
-  # Only a roster that exists says who left; a missing one is transient, and keeps every clock.
-  if [ -f "$roster" ]; then prune_active "$snapshot"; fi
+  # Only a roster read whole says who left. A missing, unreadable or empty one keeps every clock:
+  # an empty roster means the orchestrator is about to stop this watchdog, and the rows it would
+  # prune go at the next non-empty pass.
+  if [ "$readable" = 1 ] && [ -n "$snapshot" ]; then prune_active "$snapshot"; fi
+  alert=""
 
   # Snapshot per pass rather than holding the fd open across the git calls: a non-atomic rewrite
   # can then tear at most one pass, and a trailing line with no newline is still read.
@@ -259,22 +266,28 @@ while true; do
     commit_ts=$(git -C "$wt" log -1 --format=%ct 2>/dev/null || echo 0)
     case "$commit_ts" in ''|*[!0-9]*) commit_ts=0 ;; esac
 
+    # One finding per run. Once there is one, the rest of the roster is only sighted, so every
+    # clock is fresh when the orchestrator relaunches.
+    [ -z "$alert" ] || continue
+
     # trigger 1: still working, but nothing committed in a long time. The clock starts at HEAD's
     # commit or at the start of the worker's active stretch, whichever is later (see the header).
     if [ "$commit_ts" -gt 0 ] && (( t - last_act < ACTIVE )); then
       since=$commit_ts clock=""
       if [ "$stretch" -gt "$commit_ts" ]; then since=$stretch clock=" since it went active"; fi
       # The head does not change while a worker is stuck, so keying on it alone means one alert
-      # ever. The window number re-arms it once per --no-commit period, and the clock's start
-      # separates one active stretch from the next at the same head.
+      # ever. The window number re-arms it once per --no-commit period, and a stretch clock's start
+      # separates one stretch from the next at the same head. HEAD's clock keeps the older key, so
+      # an existing reported.txt still suppresses what it suppressed.
       win=$(( (t - since) / nocommit ))
-      key="$ticket nocommit $rev $since"
+      key="$ticket nocommit $rev"
+      if [ "$since" != "$commit_ts" ]; then key="$key s$since"; fi
       [ "$win" -gt 1 ] && key="$key w$win"
       if (( t - since > nocommit )) && ! grep -qxF -- "$key" "$reported" 2>/dev/null; then
         printf '%s\n' "$key" >> "$reported"
         if ! dirty=$(git -C "$wt" status --porcelain 2>/dev/null | wc -l | tr -d ' '); then dirty="?"; fi
-        echo "WATCHDOG $ticket: active but no commit for $(( (t - since) / 60 )) min$clock (head $rev, $dirty dirty files) — check its tail"
-        exit 0
+        alert="WATCHDOG $ticket: active but no commit for $(( (t - since) / 60 )) min$clock (head $rev, $dirty dirty files) — check its tail"
+        continue
       fi
     fi
 
@@ -303,10 +316,14 @@ while true; do
     if (( subs > floor )); then
       printf '%s subs %s %s\n' "$ticket" "$push_ts" "$subs" >> "$reported"
       if [ "$last" -gt 0 ]; then seen="was $last at last alert"; else seen="first alert"; fi
-      echo "WATCHDOG $ticket: $subs sub-agents since last push ($seen, threshold +$step) at head $rev — check for a review loop"
-      exit 0
+      alert="WATCHDOG $ticket: $subs sub-agents since last push ($seen, threshold +$step) at head $rev — check for a review loop"
     fi
   done <<< "$snapshot"
+
+  if [ -n "$alert" ]; then
+    echo "$alert"
+    exit 0
+  fi
 
   sleep "$interval" & sleep_pid=$!
   wait "$sleep_pid" 2>/dev/null

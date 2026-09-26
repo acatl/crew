@@ -61,7 +61,8 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
     `~/.claude/projects/<slug>`, never their contents. The no-commit clock starts at HEAD's commit or
     at the start of the worker's current active stretch, whichever is later. A stretch starts when
     the watchdog first sees the worker active after an idle pass, or after a gap in sightings longer
-    than `--interval` plus the larger of 15 min and `--no-commit`.
+    than `--interval` + 15 min. Before exiting on a finding it sights the whole roster, so a prompt
+    relaunch keeps every clock.
 - **`scripts/overlap.sh` is the parallel-safety check** (orchestrator step 3). It lists files
   in-flight workers have touched that fall under a candidate surface.
 - **Outside the skill:** `test/` holds the suites, so they don't ship with the skill. `scripts/` holds

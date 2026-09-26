@@ -154,6 +154,9 @@ ov --base main --paths docs "$R2"; rc=$?
 if [ "$rc" = 1 ] && has "m1${T}docs/ta\\tb.md${T}docs" && has "m1${T}docs/nl\\nb.md${T}docs" \
    && [ "$(awk -F'\t' 'NF != 3' "$ROOT/out" | wc -l | tr -d ' ')" = 0 ]
 then ok "34c a tab or newline in a name is escaped, one line per overlap"; else bad "34c tsv escaping" "rc=$rc $(cat "$ROOT/out")"; fi
+ov --base main --paths "docs/ta	b.md" "$R2"; rc=$?   # an exact match: the matched path is the same name
+if [ "$rc" = 1 ] && has "m1${T}docs/ta\\tb.md${T}docs/ta\\tb.md" && [ "$(awk -F'\t' 'NF != 3' "$ROOT/out" | wc -l | tr -d ' ')" = 0 ]
+then ok "34d the matched path is escaped too"; else bad "34d matched-path escaping" "rc=$rc $(cat "$ROOT/out")"; fi
 rm -f "$R2/docs/ta	b.md" "$R2/docs/nl
 b.md"
 

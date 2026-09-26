@@ -29,7 +29,7 @@ for f in "${skills[@]}"; do
   # "author:" line inside the folded description, or some other nested key, stand in for them.
   # They are metadata's own children, at its first child's indent; a key nested deeper doesn't count.
   metadata="$(awk '/^metadata:[[:space:]]*$/ {m = 1; next} m && /^[^[:space:]]/ {exit} m' <<<"$fm")"
-  indent="$(awk 'NF {match($0, /^[[:space:]]*/); print RLENGTH; exit}' <<<"$metadata")"
+  indent="$(awk 'NF && $1 !~ /^#/ {match($0, /^[[:space:]]*/); print RLENGTH; exit}' <<<"$metadata")"
   child="^[[:space:]]{${indent:-0}}"
   grep -qE "${child}author:[[:space:]]*[^[:space:]]" <<<"$metadata" || miss+=("author")
   grep -qE "${child}version:[[:space:]]*[^[:space:]]" <<<"$metadata" || miss+=("version")

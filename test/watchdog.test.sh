@@ -322,7 +322,7 @@ if silent
 then ok "33 empty roster -> keeps sleeping"; else bad "33 empty roster" "exited: $(cat "$ROOT/err")"; fi
 if [ ! -s "$ROOT/err" ]
 then ok "34 an empty roster is not an error"; else bad "34 empty roster stderr" "$(cat "$ROOT/err")"; fi
-roster1; watched                                 # the empty roster's passes pruned every clock
+roster1                                          # an empty roster prunes no clock
 run; rc=$?                                       # positive control for 33/34
 if [ "$rc" = 0 ]
 then ok "35 same fixture fires once the roster has a row"; else bad "35 empty-roster control" "rc=$rc"; fi
@@ -436,12 +436,50 @@ if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 0 min since i
 then ok "53 same fixture fires once the new worker is past --no-commit"; else bad "53 re-spawn control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 roster1
 
-# The orchestrator handling a finding and relaunching is not an idle gap: a sighting within
-# --no-commit of the last one keeps the clock.
-reset; n=$(date +%s); printf '#1\t%s\t%s\t%s\n' "$WT" $((n - 3000)) $((n - 1500)) > "$CREW/active.tsv"
+# A sighting within one pass plus the activity window keeps the clock; unwatched time past that
+# restarts it, even when it is shorter than --no-commit, since it may have been spent waiting.
+reset; n=$(date +%s); printf '#1\t%s\t%s\t%s\n' "$WT" $((n - 3000)) $((n - 600)) > "$CREW/active.tsv"
 run --no-commit 2000; rc=$?
 if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 50 min since it went active" "$ROOT/out"
-then ok "54 a relaunch within --no-commit keeps the worker's clock"; else bad "54 slow relaunch" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+then ok "54 a sighting within --interval + 15 min keeps the clock"; else bad "54 recent sighting" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+reset; n=$(date +%s); printf '#1\t%s\t%s\t%s\n' "$WT" $((n - 3000)) $((n - 1500)) > "$CREW/active.tsv"
+if silent --no-commit 2000
+then ok "54b 25 unwatched minutes restart the clock, though under --no-commit"; else bad "54b unwatched gap" "fired: $(cat "$ROOT/out")"; fi
+run --no-commit 2; rc=$?                         # positive control for 54b
+if [ "$rc" = 0 ] && grep -q "since it went active" "$ROOT/out"
+then ok "54c same fixture fires once it has been watched past --no-commit"; else bad "54c gap control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
+# One finding per run, but every rostered worker is sighted before the exit, so a stuck worker listed
+# after the one that fired keeps its clock across the relaunch.
+reset; : > "$PROJ2/sess.jsonl"; n=$(date +%s)
+printf '#1\t%s\t%s\t%s\n#2\t%s\t%s\t%s\n' "$WT" $((n - 86400)) $((n - 100)) "$WT2" $((n - 86400)) $((n - 100)) > "$CREW/active.tsv"
+printf '#1\t%s\n#2\t%s\n' "$WT" "$WT2" > "$CREW/roster.tsv"
+run; rc=$?
+seen2=$(awk -F'\t' '$1 == "#2" {print $4}' "$CREW/active.tsv"); case "$seen2" in ''|*[!0-9]*) seen2=0 ;; esac
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1" "$ROOT/out" && [ "$seen2" -ge "$n" ]
+then ok "54d an alert still records a sighting for the rest of the roster"; else bad "54d sight before exit" "rc=$rc seen2=$seen2 n=$n $(cat "$ROOT/out")"; fi
+roster1
+
+# HEAD's clock keeps the older dedupe key, so a reported.txt written before the stretch clock existed
+# still suppresses what it suppressed.
+reset; seed_commit 90
+printf '#1 nocommit %s\n' "$(git -C "$WT" rev-parse --short HEAD)" > "$CREW/reported.txt"
+if silent
+then ok "54e an existing key suppresses the same HEAD-clock alert"; else bad "54e legacy key" "fired: $(cat "$ROOT/out")"; fi
+: > "$CREW/reported.txt"
+run; rc=$?                                       # positive control for 54e
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 1 min (head" "$ROOT/out"
+then ok "54f same fixture fires once the key is gone"; else bad "54f legacy-key control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+seed_commit 7200
+
+# A worker dropped from the roster loses its row, so the next one in the same worktree starts fresh.
+reset; printf '#2\t%s\n' "$WT2" > "$CREW/roster.tsv"; : > "$PROJ2/sess.jsonl"
+run; roster1                                     # a pass without #1 prunes its row
+if silent
+then ok "54g a re-dispatch into the same worktree starts its own clock"; else bad "54g same-worktree re-dispatch" "fired: $(cat "$ROOT/out")"; fi
+run --no-commit 2; rc=$?                         # positive control for 54g
+if [ "$rc" = 0 ] && grep -q "since it went active" "$ROOT/out"
+then ok "54h same fixture fires once it is past --no-commit"; else bad "54h re-dispatch control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 
 # A ticket id with a backslash keeps its clock (awk -v would unescape it and never find the row).
 reset; printf 'T\\q\t%s\n' "$WT" > "$CREW/roster.tsv"
@@ -449,7 +487,18 @@ run --no-commit 2; rc=$?
 if [ "$rc" = 0 ] && grep -qF 'WATCHDOG T\q: active but no commit' "$ROOT/out" \
    && [ "$(grep -cF 'T\q	' "$CREW/active.tsv" | tr -d ' ')" = 1 ]
 then ok "55 a ticket id with a backslash keeps one row and its clock"; else bad "55 backslash id" "rc=$rc $(cat "$ROOT/out" "$ROOT/err") rows: $(cat "$CREW/active.tsv")"; fi
-roster1
+# and trigger 2 finds its last alert for such an id, so a relaunch doesn't re-fire the same count
+reset; silence_t1; sleep 1; subagents 4
+run; rc=$?
+if [ "$rc" = 0 ] && grep -qF 'WATCHDOG T\q: 4 sub-agents since last push (first alert' "$ROOT/out"
+then ok "56 trigger 2 fires for a backslash id"; else bad "56 backslash trigger 2" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+if silent
+then ok "57 and its relaunch at the same count stays silent"; else bad "57 backslash dedupe" "fired: $(cat "$ROOT/out")"; fi
+subagents 8
+run; rc=$?                                       # positive control for 57
+if [ "$rc" = 0 ] && grep -qF 'was 4 at last alert' "$ROOT/out"
+then ok "58 growth past its floor fires again"; else bad "58 backslash growth" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+subagents 0; seed_commit 7200; roster1
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" = 0 ]

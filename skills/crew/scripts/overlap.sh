@@ -11,7 +11,7 @@
 # (a trailing "/" on the path is optional). Paths are relative to the repo root.
 #
 # Output: one TSV line per overlap: <branch> <TAB> <file> <TAB> <matched-path>. A backslash, tab or
-#         newline in <file> prints as \\, \t or \n, so every overlap stays one line of three fields.
+#         newline in a path prints as \\, \t or \n, so every overlap stays one line of three fields.
 # Exit:   0 no overlap · 1 overlap found · 2 usage or git error
 set -u
 
@@ -67,7 +67,7 @@ for wt in "$@"; do
       p="${p%/}"
       [ -n "$p" ] || continue
       case "$f" in
-        "$p"|"$p"/*) printf '%s\t%s\t%s\n' "$branch" "$(tsv "$f")" "$p"; found=1 ;;
+        "$p"|"$p"/*) printf '%s\t%s\t%s\n' "$branch" "$(tsv "$f")" "$(tsv "$p")"; found=1 ;;
       esac
     done
   done < "$tmp/touched"

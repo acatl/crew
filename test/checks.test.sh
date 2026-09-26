@@ -161,6 +161,9 @@ red "32 an author: line in the description doesn't stand in for metadata.author"
 fresh; edit "$SK" 's/^  author: Acatl Pacheco$/  links:\
     author: nested one level too deep/'
 red "33 an author: nested under another metadata key doesn't count" check-skill-frontmatter "missing frontmatter: author"
+fresh; edit "$SK" 's/^metadata:$/metadata:\
+    # a comment, indented deeper than the keys/'
+green "34 a comment opening metadata doesn't set the child indent" check-skill-frontmatter
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" = 0 ]
