@@ -26,6 +26,16 @@ step() {
   "$@"
 }
 
+# CI pins its tool versions (quality.yml › env); a different local version can disagree with CI.
+pinned() { sed -n "s/^  $1: *//p" .github/workflows/quality.yml; }
+for tool in shellcheck lychee; do
+  want=$(pinned "$(printf '%s' "$tool" | tr '[:lower:]' '[:upper:]')_VERSION")
+  have=$("$tool" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+  if [ -n "$want" ] && [ "$have" != "$want" ]; then
+    echo "verify: $tool ${have:-not found} here, CI pins $want; results may differ from CI" >&2
+  fi
+done
+
 # job: docs
 step npm run lint:md
 step npm run spell

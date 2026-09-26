@@ -12,6 +12,14 @@ concurrency:
 permissions:
   contents: read
 
+# The tool versions CI pins, sha256-checked against each release's published digest. Local runs use
+# whatever is installed; scripts/verify.sh reads these and notes a mismatch.
+env:
+  SHELLCHECK_VERSION: 0.11.0
+  SHELLCHECK_SHA256: 8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
+  LYCHEE_VERSION: 0.24.2
+  LYCHEE_SHA256: 1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a
+
 # Job names are stable on purpose: a branch ruleset requires checks by name, so renaming a job
 # leaves every PR waiting on a check that never reports. scripts/verify.sh runs these same
 # commands in this same order (the pre-push hook runs it): add a check to both, or to neither.
@@ -38,6 +46,8 @@ jobs:
       - name: Spell check
         run: npm run spell
 
+  # The same script verify.sh runs, so both check git's list of Markdown files. A glob of
+  # './**/*.md' skipped .github/, since lychee doesn't walk hidden directories without --hidden.
   links:
     name: links
     runs-on: ubuntu-latest
@@ -45,11 +55,20 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
-      - name: Lychee (offline / internal links)
-        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2
-        with:
-          args: "--offline --no-progress './**/*.md'"
-          fail: true
+
+      - name: Install lychee
+        run: |
+          archive="$RUNNER_TEMP/lychee.tar.gz"
+          curl -fsSL -o "$archive" \
+            "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/lychee-x86_64-unknown-linux-gnu.tar.gz"
+          echo "${LYCHEE_SHA256}  ${archive}" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/lychee" "$RUNNER_TEMP/bin"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/lychee"
+          find "$RUNNER_TEMP/lychee" -type f -name lychee -exec install -m 755 {} "$RUNNER_TEMP/bin/" \;
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Internal links (offline)
+        run: scripts/check-links.sh
 
   shellcheck:
     name: shellcheck
@@ -58,9 +77,21 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
+      # The runner's own shellcheck is older and flags what the pinned version accepts.
+      - name: Install shellcheck
+        run: |
+          archive="$RUNNER_TEMP/shellcheck.tar.xz"
+          curl -fsSL -o "$archive" \
+            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+          echo "${SHELLCHECK_SHA256}  ${archive}" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xJf "$archive" -C "$RUNNER_TEMP" "shellcheck-v${SHELLCHECK_VERSION}/shellcheck"
+          install -m 755 "$RUNNER_TEMP/shellcheck-v${SHELLCHECK_VERSION}/shellcheck" "$RUNNER_TEMP/bin/"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
       # the file list lives in package.json's lint:sh, so it has one home
       - name: Shellcheck (repo scripts, skill scripts, test suites, git hooks)
-        run: npm run lint:sh
+        run: shellcheck --version && npm run lint:sh
 
   skill:
     name: skill

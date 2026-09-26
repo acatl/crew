@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Every relative markdown link resolves — checked by Lychee itself, the tool CI runs.
 #
-# CI runs Lychee (`quality` workflow, `links` job, fail: true) over `**/*.md`. This is a thin
-# wrapper with CI's exact args, so local and CI agree by construction: no second markdown parser to
-# drift from Lychee's (hg tried a hand-rolled one, and it disagreed with Lychee both ways).
+# CI's `links` job runs this same script, with the lychee version it pins, so local and CI agree by
+# construction: no second markdown parser to drift from Lychee's (hg tried a hand-rolled one, and it
+# disagreed with Lychee both ways), and no second file list.
 #
 # The file list is git's view of the tree — tracked files plus untracked ones not ignored, so a new
 # doc is checked before it is staged — not a glob: a glob from the repo root also walks

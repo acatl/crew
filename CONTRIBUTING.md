@@ -45,7 +45,8 @@ npm ci                     # Node >= 22.12
 ```
 
 `scripts/verify.sh` needs four more tools on the PATH: `lychee`, `shellcheck`, `jq`, and
-`skill-validator` v1.6.2 (the version CI pins). On macOS:
+`skill-validator`. CI pins shellcheck 0.11.0, lychee 0.24.2 and skill-validator 1.6.2
+(`.github/workflows/quality.yml`), and `verify.sh` notes when yours differ. On macOS:
 
 ```bash
 brew install lychee shellcheck jq agent-ecosystem/tap/skill-validator
