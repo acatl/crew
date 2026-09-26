@@ -164,7 +164,7 @@ and stop. Never merge anything to clear the path.
 
 ### 4. Pre-spawn card — always
 
-Every field has a default; `go` accepts them all. Render it as live markdown:
+Every field has a default; `go` accepts them all. Render it as live Markdown:
 
 > **Spawn KINO-5 → worker** · `/hg-build KINO-5 yolo`
 >
@@ -318,7 +318,7 @@ also spawned non-crew chips, confirm with the `crew:brief` marker in the worker'
 
 Idle notices only fire when a worker stops. A worker stuck in a fix/review loop never stops, so no
 notice ever arrives. Origin (hg, 2026-09-22): a unit worker ran ~15 isolated-review rounds over hours,
-hand-growing a markdown parser 519 → 779 lines, and the orchestrator didn't look for the whole stretch.
+hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't look for the whole stretch.
 
 - **While any worker is `running`, a watchdog process runs.** Write `roster.tsv` **first** — a missing
   crew dir or roster is an immediate exit 2 — then launch it with the Bash tool's `run_in_background`,
@@ -361,10 +361,10 @@ hand-growing a markdown parser 519 → 779 lines, and the orchestrator didn't lo
   `worktreePath`. Count review→fix iterations since its last report. The watchdog covers the stretches
   between your turns; this covers the turn you are in.
 - **Surface to the operator** — don't wait for the worker to ask — when any *Worker* step 7 (loop
-  budget) trigger shows, whether the watchdog or your own turn found it. The watchdog covers two of
-  them, one by proxy (sub-agent growth stands in for review iterations); the rest are yours: review
-  iterations past the brief's limit, a fix-created finding, an edge-case chase, a reimplementation
-  of a spec, or a commit gap past the brief's no-commit threshold. Say what it spends on, the trend,
+  budget) trigger shows, whether the watchdog or your own turn found it. The watchdog covers two
+  between your turns: review iterations past the brief's limit (by proxy: sub-agent growth) and a
+  commit gap past the brief's no-commit threshold; the other three are yours alone: a fix-created
+  finding, an edge-case chase, a reimplementation of a spec. Say what it spends on, the trend,
   and the recommended stop (usually: fix what the last review found, commit, close out; or swap to a
   library). Redirecting the worker then needs the operator's words, relayed.
 

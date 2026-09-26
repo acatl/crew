@@ -182,6 +182,23 @@ else
   if [ "$kinds_ok" = 1 ]; then held=$((held + 1)); fi
 fi
 
+# --- the loop limit reaches a worker through its brief ---------------------------------------------------
+# Workers never read CREW.md. The orchestrator resolves CREW.md › Counters into the brief's
+# {ITERATIONS}, and SKILL.md reads the limit from the brief, so SKILL.md never cites Counters itself.
+limit_ok=1
+while IFS=$'\t' read -r loc hit; do
+  [ -n "$loc" ] || continue
+  fail "$loc: SKILL.md cites '$hit', but workers never read CREW.md; the limit reaches them as the brief's {ITERATIONS}"
+  limit_ok=0
+done < <(scan 'CREW\.md`?[[:space:]]+›[[:space:]]+Counters' "$SKILL/SKILL.md")
+if [ -z "$(scan "$(ws 'Loop budget [^:]*: at most [{]ITERATIONS[}] review→fix iterations')" "$BRIEF")" ]; then
+  fail "$BRIEF: the brief's Loop budget line no longer says 'at most {ITERATIONS} review→fix iterations'"; limit_ok=0
+fi
+if [ -z "$(scan "[|] \`[{]ITERATIONS[}]\` [|] \`CREW\\.md\` › Counters" "$BRIEF")" ]; then
+  fail "$BRIEF: no placeholder row sourcing {ITERATIONS} from \`CREW.md\` › Counters"; limit_ok=0
+fi
+if [ "$limit_ok" = 1 ]; then held=$((held + 1)); fi
+
 # --- the two slug rules, different on purpose ----------------------------------------------------------
 # Transcript dirs mirror Claude Code's own naming (/ and . become -), and the test copies it. Crew
 # dirs replace only /. They must not be unified.

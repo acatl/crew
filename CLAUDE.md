@@ -107,6 +107,10 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   by the roster rebuild's grep. Keep it byte-exact. *Checked* against the brief template's first line.
 - **`CREW.md` › Section references** in the skill name `## ` headings of the template in
   `crew-md.md`. *Checked*, as is every `references/<name>.md` the skill mentions.
+- **The loop limit reaches a worker through its brief.** Workers never read `CREW.md`: the
+  orchestrator resolves `CREW.md` › Counters into the brief's `{ITERATIONS}`, and SKILL.md reads the
+  limit from the brief. *Checked*: SKILL.md never cites Counters, and the brief's Loop budget line
+  carries `{ITERATIONS}`.
 
 ## Conventions
 

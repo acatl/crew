@@ -8,8 +8,9 @@
 #   test/checks.test.sh
 #
 # A check that passes proves nothing on its own: a check blind for a mechanical reason passes too.
-# So every check is first run green on an untouched copy, and every case after that must turn it
-# red AND name the file that drifted.
+# So every check is first run green on an untouched copy, and a drift case must turn it red AND name
+# the file that drifted. A case that changes a fixture is paired on that same fixture: a green case
+# with one that fires, a red one with one that passes.
 set -u
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 ROOT=$(mktemp -d)
@@ -82,6 +83,10 @@ fresh; edit "$SK" 's#confirm with the `crew:brief` marker#confirm with the `crew
 red "10 a stray spelling of the marker's name" check-invariants "'crew:brf'"
 fresh; edit "$BT" 's#A `RELAY` carries#A relay carries#'
 red "11 the fallback drops a message kind" check-invariants "doesn't name \`RELAY\`"
+fresh; edit "$SK" 's#absent one, \*\*two\*\*#absent one (`CREW.md` › Counters), **two**#'
+red "13b SKILL.md citing CREW.md › Counters for the limit" check-invariants "SKILL.md cites 'CREW.md\` › Counters'"
+fresh; edit "$BT" 's#at most {ITERATIONS} review#at most two review#'
+red "13c the brief hard-coding the limit again" check-invariants "no longer says 'at most {ITERATIONS}"
 fresh; edit "$SK" "s#the worker's four reports#the worker's five reports#"
 red "12 the description miscounts the reports" check-invariants "$SK"
 fresh; edit "$SK" 's#besides the four kinds#besides the three kinds#'
@@ -136,7 +141,7 @@ fresh; rm -r "$S/skills/crew/references"
 red "26a no reference files at all fails before checking" check-budget "no *.md found — the lookup broke"
 red "26d and --update doesn't drop their budgets" check-budget "no *.md found — the lookup broke" --update
 if grep -qF "references/" "$S/baselines/budget.tsv"; then ok "26e the reference budgets are still there"; else bad "26e budgets kept" "$(cat "$S/baselines/budget.tsv")"; fi
-cp -R "$REPO/skills/crew/references" "$S/skills/crew/"   # positive control for 26a-26e: the same fixture, restored
+cp -R "$REPO/skills/crew/references" "$S/skills/crew/"   # control for 26a, 26d, 26e: the same fixture, restored
 green "26f with the references back, the kept budgets pass" check-budget
 fresh; rm "$S/$LG"
 red "26b a budgeted file that's gone fails" check-budget "$LG: budgeted but gone"
@@ -157,12 +162,16 @@ if grep -qF "PR 3 removes this exemption" "$ROOT/out"; then ok "30 the exemption
 # --- check-skill-frontmatter ----------------------------------------------------------------------------------
 fresh; edit "$SK" '/^license: MIT$/d'
 red "31 a missing license" check-skill-frontmatter "missing frontmatter: license"
-fresh; green "31b the untouched frontmatter passes, the control for 32 and 33" check-skill-frontmatter
-edit "$SK" '/^  author: Acatl Pacheco$/d'; edit "$SK" 's/^description: >-$/description: >-\
-  author: a line in the description, not in metadata/'
+fresh; edit "$SK" 's/^description: >-$/description: >-\
+  author: a line in the description, and metadata mentioned/'
+green "31b a description with its own author: line passes while metadata has one" check-skill-frontmatter
+edit "$SK" '/^  author: Acatl Pacheco$/d'          # the same fixture, metadata's author removed
 red "32 an author: line in the description doesn't stand in for metadata.author" check-skill-frontmatter "missing frontmatter: author"
-fresh; edit "$SK" 's/^  author: Acatl Pacheco$/  links:\
+fresh; edit "$SK" 's/^  author: Acatl Pacheco$/  author: Acatl Pacheco\
+  links:\
     author: nested one level too deep/'
+green "32b a nested author: beside the real one passes" check-skill-frontmatter
+edit "$SK" '/^  author: Acatl Pacheco$/d'          # the same fixture, the real one removed
 red "33 an author: nested under another metadata key doesn't count" check-skill-frontmatter "missing frontmatter: author"
 fresh; edit "$SK" 's/^metadata:$/metadata:\
     # a comment, indented deeper than the keys/'
