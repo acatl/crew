@@ -132,6 +132,10 @@ run check-budget --update
 if grep -qF "lowered" "$ROOT/out" && run check-budget; then ok "25 --update lowers, and stays green"; else bad "25 budget lower" "$(cat "$ROOT/out")"; fi
 printf 'one two three\n' >> "$S/$LG"
 red "26 the lowered budget holds the line" check-budget "$LG"
+fresh; rm -r "$S/skills/crew/references"
+red "26a no reference files at all fails before checking" check-budget "no *.md found — the lookup broke"
+red "26d and --update doesn't drop their budgets" check-budget "no *.md found — the lookup broke" --update
+if grep -qF "references/" "$S/baselines/budget.tsv"; then ok "26e the reference budgets are still there"; else bad "26e budgets kept" "$(cat "$S/baselines/budget.tsv")"; fi
 fresh; rm "$S/$LG"
 red "26b a budgeted file that's gone fails" check-budget "$LG: budgeted but gone"
 run check-budget --update                          # positive control for 26b: --update drops it
@@ -151,6 +155,9 @@ if grep -qF "PR 3 removes this exemption" "$ROOT/out"; then ok "30 the exemption
 # --- check-skill-frontmatter ----------------------------------------------------------------------------------
 fresh; edit "$SK" '/^license: MIT$/d'
 red "31 a missing license" check-skill-frontmatter "missing frontmatter: license"
+fresh; edit "$SK" '/^  author: Acatl Pacheco$/d'; edit "$SK" 's/^description: >-$/description: >-\
+  author: a line in the description, not in metadata/'
+red "32 an author: line in the description doesn't stand in for metadata.author" check-skill-frontmatter "missing frontmatter: author"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" = 0 ]

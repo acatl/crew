@@ -36,6 +36,12 @@ budget_of() { if [ -f "$BASELINE" ]; then awk -F'\t' -v f="$1" '!/^#/ && $1 == f
 
 files=(skills/crew/SKILL.md)
 while IFS= read -r f; do files+=("$f"); done < <(find skills/crew/references -name '*.md' -type f | LC_ALL=C sort)
+# The skill always has reference files, so none means the lookup broke. Stop before either mode:
+# --update would otherwise drop every reference budget as "gone".
+if [ "${#files[@]}" -lt 2 ]; then
+  echo "✖ skills/crew/references: no *.md found — the lookup broke; update scripts/check-budget.sh" >&2
+  exit 1
+fi
 
 fails=0 next=""
 for f in "${files[@]}"; do

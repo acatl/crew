@@ -144,6 +144,9 @@ hits "33 an untracked non-ASCII name matches as itself" "m1${T}docs/naïve.md${T
 put "$R2/src/café.txt"; git -C "$R2" add src; git -C "$R2" commit -qm cafe
 hits "34 a committed non-ASCII name matches as itself" "m1${T}src/café.txt${T}src" --base main --paths src "$R2"
 
+put "$R2/src/q\"uo\\te.txt"
+hits "34b a name git would C-quote (a quote, a backslash) matches as itself" "m1${T}src/q\"uo\\te.txt${T}src" --base main --paths src "$R2"
+
 # --- each listing's failure stops the run on its own -------------------------------------------------------------
 # The shim fails exactly the git call whose arguments match FAIL_ON (a case pattern) and passes the
 # rest to the real git, so each guard is exercised alone, not just the first one a broken repo trips.
@@ -156,8 +159,8 @@ SHIM
 chmod +x "$ROOT/shim/git"
 REAL_GIT=$(command -v git)
 via_shim() { FAIL_ON=$1 REAL_GIT=$REAL_GIT PATH="$ROOT/shim:$PATH" "$OV" --base main --paths docs "$R2" >"$ROOT/out" 2>"$ROOT/err"; }
-for c in "35|the committed listing|* diff --no-renames --name-only [0-9a-f]* HEAD *" \
-         "36|the working-tree listing|* diff --no-renames --name-only HEAD *" \
+for c in "35|the committed listing|* diff --no-renames --name-only -z [0-9a-f]* HEAD *" \
+         "36|the working-tree listing|* diff --no-renames --name-only -z HEAD *" \
          "37|the untracked listing|* ls-files *"; do
   n=${c%%|*}; rest=${c#*|}; what=${rest%%|*}; pat=${rest#*|}
   via_shim "$pat"; rc=$?
