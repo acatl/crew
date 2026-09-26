@@ -27,9 +27,12 @@ for f in "${skills[@]}"; do
   grep -qE '^license:[[:space:]]*[^[:space:]]'   <<<"$fm" || miss+=("license")
   # author and version live under the top-level metadata: key. Matching them anywhere would let an
   # "author:" line inside the folded description, or some other nested key, stand in for them.
+  # They are metadata's own children, at its first child's indent; a key nested deeper doesn't count.
   metadata="$(awk '/^metadata:[[:space:]]*$/ {m = 1; next} m && /^[^[:space:]]/ {exit} m' <<<"$fm")"
-  grep -qE '^[[:space:]]+author:[[:space:]]*[^[:space:]]' <<<"$metadata" || miss+=("author")
-  grep -qE '^[[:space:]]+version:[[:space:]]*[^[:space:]]' <<<"$metadata" || miss+=("version")
+  indent="$(awk 'NF {match($0, /^[[:space:]]*/); print RLENGTH; exit}' <<<"$metadata")"
+  child="^[[:space:]]{${indent:-0}}"
+  grep -qE "${child}author:[[:space:]]*[^[:space:]]" <<<"$metadata" || miss+=("author")
+  grep -qE "${child}version:[[:space:]]*[^[:space:]]" <<<"$metadata" || miss+=("version")
 
   if [ ${#miss[@]} -gt 0 ]; then
     echo "✗ $f — missing frontmatter: ${miss[*]}" >&2

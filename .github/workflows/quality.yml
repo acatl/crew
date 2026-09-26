@@ -137,7 +137,7 @@ jobs:
       - name: The checks' own tests
         run: test/checks.test.sh
 
-  # BSD (macOS) and GNU (Linux) userlands both: watchdog.sh probes stat(1) and date(1) for either,
+  # BSD (macOS) and GNU (Linux) userlands both: watchdog.sh probes stat(1) for either,
   # and each leg is the only place its branch runs.
   test:
     name: test (${{ matrix.os }})

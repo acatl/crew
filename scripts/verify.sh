@@ -30,7 +30,8 @@ step() {
 pinned() { sed -n "s/^  $1: *//p" .github/workflows/quality.yml; }
 for tool in shellcheck lychee; do
   want=$(pinned "$(printf '%s' "$tool" | tr '[:lower:]' '[:upper:]')_VERSION")
-  have=$("$tool" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+  # || true: a missing tool must reach the note below and its own step's message, not end the run here
+  have=$("$tool" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)
   if [ -n "$want" ] && [ "$have" != "$want" ]; then
     echo "verify: $tool ${have:-not found} here, CI pins $want; results may differ from CI" >&2
   fi

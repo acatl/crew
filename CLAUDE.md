@@ -55,13 +55,13 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
   `run_in_background`, and its exit is what wakes the orchestrator: it prints one `WATCHDOG …` line on
   the first trigger and exits 0.
   - Input: `roster.tsv`, re-read on every pass. State that outlives the process: `reported.txt`
-    (dedupe) and `active.tsv` (each worker's clock). Lock: `watchdog.pid`, matched by the crew-dir
-    path, never the script name.
+    (dedupe) and `active.tsv` (each worker's clock, keyed by ticket and worktree, pruned to the
+    roster). Lock: `watchdog.pid`, matched by the crew-dir path, never the script name.
   - Worker activity is read from the modification times in Claude Code's transcript dirs,
     `~/.claude/projects/<slug>`, never their contents. The no-commit clock starts at HEAD's commit or
     at the start of the worker's current active stretch, whichever is later. A stretch starts when
     the watchdog first sees the worker active after an idle pass, or after a gap in sightings longer
-    than one pass allows.
+    than `--interval` plus the larger of 15 min and `--no-commit`.
 - **`scripts/overlap.sh` is the parallel-safety check** (orchestrator step 3). It lists files
   in-flight workers have touched that fall under a candidate surface.
 - **Outside the skill:** `test/` holds the suites, so they don't ship with the skill. `scripts/` holds

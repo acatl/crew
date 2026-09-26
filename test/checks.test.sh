@@ -158,6 +158,9 @@ red "31 a missing license" check-skill-frontmatter "missing frontmatter: license
 fresh; edit "$SK" '/^  author: Acatl Pacheco$/d'; edit "$SK" 's/^description: >-$/description: >-\
   author: a line in the description, not in metadata/'
 red "32 an author: line in the description doesn't stand in for metadata.author" check-skill-frontmatter "missing frontmatter: author"
+fresh; edit "$SK" 's/^  author: Acatl Pacheco$/  links:\
+    author: nested one level too deep/'
+red "33 an author: nested under another metadata key doesn't count" check-skill-frontmatter "missing frontmatter: author"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" = 0 ]

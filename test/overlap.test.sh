@@ -144,8 +144,18 @@ hits "33 an untracked non-ASCII name matches as itself" "m1${T}docs/naïve.md${T
 put "$R2/src/café.txt"; git -C "$R2" add src; git -C "$R2" commit -qm cafe
 hits "34 a committed non-ASCII name matches as itself" "m1${T}src/café.txt${T}src" --base main --paths src "$R2"
 
-put "$R2/src/q\"uo\\te.txt"
-hits "34b a name git would C-quote (a quote, a backslash) matches as itself" "m1${T}src/q\"uo\\te.txt${T}src" --base main --paths src "$R2"
+put "$R2/src/q\"uo\\te.txt"                      # printed with its backslash escaped (\\)
+hits "34b a name git would C-quote (a quote, a backslash) matches as itself" "m1${T}src/q\"uo\\\\te.txt${T}src" --base main --paths src "$R2"
+
+# A name with a tab or a newline is escaped in the output, so each overlap stays one three-field line.
+put "$R2/docs/ta	b.md"; put "$R2/docs/nl
+b.md"
+ov --base main --paths docs "$R2"; rc=$?
+if [ "$rc" = 1 ] && has "m1${T}docs/ta\\tb.md${T}docs" && has "m1${T}docs/nl\\nb.md${T}docs" \
+   && [ "$(awk -F'\t' 'NF != 3' "$ROOT/out" | wc -l | tr -d ' ')" = 0 ]
+then ok "34c a tab or newline in a name is escaped, one line per overlap"; else bad "34c tsv escaping" "rc=$rc $(cat "$ROOT/out")"; fi
+rm -f "$R2/docs/ta	b.md" "$R2/docs/nl
+b.md"
 
 # --- each listing's failure stops the run on its own -------------------------------------------------------------
 # The shim fails exactly the git call whose arguments match FAIL_ON (a case pattern) and passes the
@@ -167,7 +177,12 @@ for c in "35|the committed listing|* diff --no-renames --name-only -z [0-9a-f]* 
   if [ "$rc" = 2 ] && grep -q "could not list the files m1 touched" "$ROOT/err" && [ ! -s "$ROOT/out" ]
   then ok "$n $what failing -> 2"; else bad "$n $what failing" "rc=$rc out=$(cat "$ROOT/out") err=$(cat "$ROOT/err")"; fi
 done
-via_shim "no-such-call"; rc=$?                    # positive control for 35-37: the shim passes through
+# the merge of the three listings is checked too: a sort that fails must not read as "touched nothing"
+mkdir -p "$ROOT/badsort"; printf '#!/bin/sh\nexit 1\n' > "$ROOT/badsort/sort"; chmod +x "$ROOT/badsort/sort"
+PATH="$ROOT/badsort:$PATH" "$OV" --base main --paths docs "$R2" >"$ROOT/out" 2>"$ROOT/err"; rc=$?
+if [ "$rc" = 2 ] && grep -q "could not merge the files m1 touched" "$ROOT/err" && [ ! -s "$ROOT/out" ]
+then ok "37b the merge failing -> 2"; else bad "37b merge failing" "rc=$rc out=$(cat "$ROOT/out") err=$(cat "$ROOT/err")"; fi
+via_shim "no-such-call"; rc=$?                    # positive control for 35-37b: the shim passes through
 if [ "$rc" = 1 ] && has "m1${T}docs/naïve.md${T}docs"
 then ok "38 through the shim with nothing failing -> reports as usual"; else bad "38 shim control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 

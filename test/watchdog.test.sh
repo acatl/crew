@@ -56,11 +56,14 @@ subagents()  { local i; rm -f "$PROJ"/sess/subagents/*.jsonl
                for ((i=1;i<=$1;i++)); do : > "$PROJ/sess/subagents/a$i.jsonl"; done; }
 roster1()    { printf '#1\t%s\n' "$WT" > "$CREW/roster.tsv"; }
 reset()      { rm -f "$CREW/reported.txt" "$CREW/watchdog.pid"; touch "$CREW/reported.txt"; watched; }
-# watched: the watchdog has watched every worker id this suite uses active for a day, unbroken, so
-# HEAD's clock rules and a trigger-1 case means what it did before the active clock existed.
-watched()    { local k n; n=$(date +%s); : > "$CREW/active.tsv"
-               for k in '#1' '#2' '#3' '#4' '#9' AB; do
-                 printf '%s\t%s\t%s\n' "$k" $((n - 86400)) "$n" >> "$CREW/active.tsv"; done; }
+# watched: the watchdog has watched every worker this suite uses active for a day, unbroken, so
+# HEAD's clock rules and a trigger-1 case means what it did before the active clock existed. Rows
+# are keyed by ticket and worktree, and a pass prunes those off the roster, so a case that changes
+# the roster calls this again.
+watched()    { local n; n=$(date +%s)
+               printf '%s\t%s\t%s\t%s\n' '#1' "$WT" $((n - 86400)) "$n" '#2' "$WT2" $((n - 86400)) "$n" \
+                 '#3' "$ROOT/empty" $((n - 86400)) "$n" '#4' "$ROOT/vanished" $((n - 86400)) "$n" \
+                 '#9' "$WT2" $((n - 86400)) "$n" 'AB' "$WT" $((n - 86400)) "$n" > "$CREW/active.tsv"; }
 # Trigger 1 needs an OLD head; a fresh commit makes it structurally impossible. Preferred over
 # pre-seeding a reported.txt key, which coupled the suite to that key's exact format.
 silence_t1() { commit_in "$WT" 0; }
@@ -187,7 +190,7 @@ then ok "12f same row fires once its worktree exists"; else bad "12f missing-wor
 reset; printf 'A B\t%s\n' "$WT" > "$CREW/roster.tsv"
 if silent && grep -q "whitespace" "$ROOT/err"
 then ok "12d whitespace in a ticket id is rejected"; else bad "12d whitespace id" "$(cat "$ROOT/err")"; fi
-printf 'AB\t%s\n' "$WT" > "$CREW/roster.tsv"     # positive control for 12d: the same worktree, a valid id
+watched; printf 'AB\t%s\n' "$WT" > "$CREW/roster.tsv"   # positive control for 12d: same worktree, valid id
 run; rc=$?
 if [ "$rc" = 0 ] && grep -q "WATCHDOG AB: active but no commit" "$ROOT/out"
 then ok "12g same worktree fires under a valid id"; else bad "12g whitespace-id control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
@@ -319,7 +322,7 @@ if silent
 then ok "33 empty roster -> keeps sleeping"; else bad "33 empty roster" "exited: $(cat "$ROOT/err")"; fi
 if [ ! -s "$ROOT/err" ]
 then ok "34 an empty roster is not an error"; else bad "34 empty roster stderr" "$(cat "$ROOT/err")"; fi
-roster1
+roster1; watched                                 # the empty roster's passes pruned every clock
 run; rc=$?                                       # positive control for 33/34
 if [ "$rc" = 0 ]
 then ok "35 same fixture fires once the roster has a row"; else bad "35 empty-roster control" "rc=$rc"; fi
@@ -345,7 +348,7 @@ if [ "$rc" = 0 ] && grep -q "WATCHDOG #1" "$ROOT/out"
 then ok "39 unterminated last line is read"; else bad "39 unterminated line" "rc=$rc $(cat "$ROOT/out")"; fi
 
 reset; : > "$CREW/roster.tsv"
-"$WD" --base main --no-commit 60 --interval 1 "$CREW" >"$ROOT/out" 2>"$ROOT/err" &
+"$WD" --base main --no-commit 2 --interval 1 "$CREW" >"$ROOT/out" 2>"$ROOT/err" &   # its clock starts on arrival
 p=$!; sleep 2
 printf '#1\t%s\n' "$WT" > "$ROOT/t.tsv"; mv "$ROOT/t.tsv" "$CREW/roster.tsv"   # write-then-mv
 i=0; while kill -0 "$p" 2>/dev/null && [ $i -lt 6 ]; do sleep 1; i=$((i+1)); done
@@ -375,20 +378,22 @@ then ok "43 it fires once the transcript dir is back"; else bad "43 unwatched co
 # and again for one that waited overnight on the operator (2026-09-26: 1153 min).
 reset; roster1; subagents 0; seed_commit 7200; go_quiet
 "$WD" --base main --no-commit 60 --interval 1 "$CREW" >"$ROOT/out" 2>"$ROOT/err" &
-p=$!; sleep 2                                    # at least one pass sees it idle
+p=$!; i=0                                        # wait for a pass that sees it idle and ends its stretch
+while grep -q "^#1	" "$CREW/active.tsv" && [ $i -lt 40 ]; do sleep 0.25; i=$((i+1)); done
 active; sleep 3                                  # then passes see it active
 if kill -0 "$p" 2>/dev/null
 then ok "44 idle for hours, then active -> silent"; else bad "44 idle then active" "fired: $(cat "$ROOT/out")"; fi
 kill "$p" 2>/dev/null; wait "$p" 2>/dev/null
-since=$(awk -F'\t' '$1 == "#1" {print $2}' "$CREW/active.tsv")
-if [ -n "$since" ] && [ $(( $(date +%s) - since )) -lt 60 ]
+since=$(awk -F'\t' '$1 == "#1" {print $3}' "$CREW/active.tsv")
+case "$since" in ''|*[!0-9]*) since=0 ;; esac          # a non-number must fail the case, not abort it
+if [ "$since" -gt 0 ] && [ $(( $(date +%s) - since )) -lt 60 ]
 then ok "45 its clock starts when it went active, not a day ago"; else bad "45 stretch start" "$(cat "$CREW/active.tsv")"; fi
 run --no-commit 2; rc=$?                         # positive control for 44: the same fixture, past it
 if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 0 min since it went active" "$ROOT/out"
 then ok "46 same fixture fires once it has been active past --no-commit"; else bad "46 stretch control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 
 # A stretch nobody watched may hold idle time: a sighting long after the last one starts a new stretch.
-reset; n=$(date +%s); printf '#1\t%s\t%s\n' $((n - 86400)) $((n - 7200)) > "$CREW/active.tsv"
+reset; n=$(date +%s); printf '#1\t%s\t%s\t%s\n' "$WT" $((n - 86400)) $((n - 7200)) > "$CREW/active.tsv"
 if silent
 then ok "47 a two-hour gap in sightings restarts the clock"; else bad "47 sighting gap" "fired: $(cat "$ROOT/out")"; fi
 run --no-commit 2; rc=$?                         # positive control for 47
@@ -400,6 +405,51 @@ reset
 run; rc=$?
 if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 12[0-9] min (head" "$ROOT/out"
 then ok "49 an unbroken stretch counts from HEAD, the later clock"; else bad "49 unbroken stretch" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
+# A new stretch at the same head is a new alert: the last stretch's dedupe key must not swallow it.
+# Both alerts land in their stretch's first --no-commit window, where the keys used to collide; at
+# --no-commit 5 the next window re-arms only after run's 8 s cap, so a swallowed alert shows.
+go_quiet
+if silent
+then ok "50 the worker goes idle -> silent, and its stretch ends"; else bad "50 idle after alert" "fired: $(cat "$ROOT/out")"; fi
+active
+run --no-commit 5; rc=$?                         # positive control for 50: a first short stretch
+if [ "$rc" = 0 ] && grep -q "since it went active" "$ROOT/out"
+then ok "50b a stretch past --no-commit alerts"; else bad "50b first stretch" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+go_quiet
+if silent
+then ok "50c idle again -> silent"; else bad "50c idle again" "fired: $(cat "$ROOT/out")"; fi
+active
+run --no-commit 5; rc=$?                         # positive control for 50c: a second stretch, same head
+if [ "$rc" = 0 ] && grep -q "since it went active" "$ROOT/out"
+then ok "51 a second stretch at the same head alerts again"; else bad "51 second stretch" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
+# A worker spawned again for the same ticket, in a new worktree, starts its own clock.
+WT3="$ROOT/wt3"; mkdir -p "$WT3"; git -C "$WT3" init -q -b main
+git -C "$WT3" config user.email t@t; git -C "$WT3" config user.name t; commit_in "$WT3" 7200
+mkdir -p "$HOME/.claude/projects/$(slug "$WT3")"; : > "$HOME/.claude/projects/$(slug "$WT3")/s.jsonl"
+reset; printf '#1\t%s\n' "$WT3" > "$CREW/roster.tsv"
+if silent
+then ok "52 a re-spawned ticket doesn't inherit the last worker's clock"; else bad "52 re-spawn" "fired: $(cat "$ROOT/out")"; fi
+run --no-commit 2; rc=$?                         # positive control for 52
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 0 min since it went active" "$ROOT/out"
+then ok "53 same fixture fires once the new worker is past --no-commit"; else bad "53 re-spawn control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+roster1
+
+# The orchestrator handling a finding and relaunching is not an idle gap: a sighting within
+# --no-commit of the last one keeps the clock.
+reset; n=$(date +%s); printf '#1\t%s\t%s\t%s\n' "$WT" $((n - 3000)) $((n - 1500)) > "$CREW/active.tsv"
+run --no-commit 2000; rc=$?
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 50 min since it went active" "$ROOT/out"
+then ok "54 a relaunch within --no-commit keeps the worker's clock"; else bad "54 slow relaunch" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
+# A ticket id with a backslash keeps its clock (awk -v would unescape it and never find the row).
+reset; printf 'T\\q\t%s\n' "$WT" > "$CREW/roster.tsv"
+run --no-commit 2; rc=$?
+if [ "$rc" = 0 ] && grep -qF 'WATCHDOG T\q: active but no commit' "$ROOT/out" \
+   && [ "$(grep -cF 'T\q	' "$CREW/active.tsv" | tr -d ' ')" = 1 ]
+then ok "55 a ticket id with a backslash keeps one row and its clock"; else bad "55 backslash id" "rc=$rc $(cat "$ROOT/out" "$ROOT/err") rows: $(cat "$CREW/active.tsv")"; fi
+roster1
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" = 0 ]

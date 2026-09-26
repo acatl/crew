@@ -10,7 +10,8 @@
 # A touched file overlaps a candidate path when it equals the path or sits under it
 # (a trailing "/" on the path is optional). Paths are relative to the repo root.
 #
-# Output: one TSV line per overlap: <branch> <TAB> <file> <TAB> <matched-path>
+# Output: one TSV line per overlap: <branch> <TAB> <file> <TAB> <matched-path>. A backslash, tab or
+#         newline in <file> prints as \\, \t or \n, so every overlap stays one line of three fields.
 # Exit:   0 no overlap · 1 overlap found · 2 usage or git error
 set -u
 
@@ -31,6 +32,7 @@ if [ -z "$base" ] || [ -z "$paths" ] || [ $# -eq 0 ]; then usage; fi
 IFS=',' read -r -a candidates <<< "$paths"
 
 g() { git -C "$wt" "$@"; }   # git in the worktree being listed
+tsv() { local s=${1//\\/\\\\}; s=${s//$'\t'/\\t}; printf '%s' "${s//$'\n'/\\n}"; }   # one TSV field
 
 # The listings are NUL-separated (-z), so every name arrives exactly as it is on disk: git C-quotes
 # names with non-ASCII bytes, quotes, backslashes or control characters in its line output, and a
@@ -56,15 +58,19 @@ for wt in "$@"; do
      || ! g ls-files -z --others --exclude-standard > "$tmp/untracked"; then
     echo "git could not list the files $branch touched in $wt" >&2; exit 2
   fi
+  # merged into a file, not a pipe, so a failing sort can't read as "touched nothing"
+  if ! LC_ALL=C sort -z -u "$tmp/committed" "$tmp/changed" "$tmp/untracked" > "$tmp/touched"; then
+    echo "could not merge the files $branch touched in $wt" >&2; exit 2
+  fi
   while IFS= read -r -d '' f; do
     for p in "${candidates[@]}"; do
       p="${p%/}"
       [ -n "$p" ] || continue
       case "$f" in
-        "$p"|"$p"/*) printf '%s\t%s\t%s\n' "$branch" "$f" "$p"; found=1 ;;
+        "$p"|"$p"/*) printf '%s\t%s\t%s\n' "$branch" "$(tsv "$f")" "$p"; found=1 ;;
       esac
     done
-  done < <(cat "$tmp/committed" "$tmp/changed" "$tmp/untracked" | LC_ALL=C sort -z -u)
+  done < "$tmp/touched"
 done
 
 exit "$found"
