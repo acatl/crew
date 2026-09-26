@@ -362,11 +362,11 @@ hand-growing a markdown parser 519 → 779 lines, and the orchestrator didn't lo
   between your turns; this covers the turn you are in.
 - **Surface to the operator** — don't wait for the worker to ask — when any *Worker* step 7 (loop
   budget) trigger shows, whether the watchdog or your own turn found it. The watchdog covers two of
-  them, one by proxy (sub-agent growth stands in for review iterations); the rest are yours:
-  review iterations past the project's limit, a fix-created finding, an
-  edge-case chase, a reimplementation of a spec, or a commit gap past the project's threshold. Say what it is spending on, the trend,
-  and the recommended stop (usually: fix what the last review found, commit, close out; or swap to a library). Redirecting
-  the worker then needs the operator's words, relayed.
+  them, one by proxy (sub-agent growth stands in for review iterations); the rest are yours: review
+  iterations past the brief's limit, a fix-created finding, an edge-case chase, a reimplementation
+  of a spec, or a commit gap past the brief's no-commit threshold. Say what it spends on, the trend,
+  and the recommended stop (usually: fix what the last review found, commit, close out; or swap to a
+  library). Redirecting the worker then needs the operator's words, relayed.
 
 **Status** (`crew status`, "what are my workers doing"): one row per roster worker — ticket, title,
 status (`chip` / `queued` / `running` / `waiting on you` / `blocked` / `cleared` / `done` /
@@ -408,7 +408,7 @@ You were spawned by an orchestrator. Your brief is your first message. You remem
    per-iteration finding counts. Stop and send `NEED-INPUT` *at once*, before the budget, on any of:
    - a finding caused by the previous iteration's own fix (fixes are seeding findings);
    - findings moving to ever-rarer inputs round over round (an edge-case chase, not a defect hunt);
-   - the fix is growing a reimplementation of a spec or format (markdown, YAML, URLs, dates, shell
+   - the fix is growing a reimplementation of a spec or format (Markdown, YAML, URLs, dates, shell
      quoting) → propose the well-tested library instead; its install is a Hard Gate to ask for, never
      a reason to hand-roll;
    - going your brief's no-commit threshold (absent, 60 minutes) without a commit — commit what's

@@ -136,6 +136,8 @@ fresh; rm -r "$S/skills/crew/references"
 red "26a no reference files at all fails before checking" check-budget "no *.md found — the lookup broke"
 red "26d and --update doesn't drop their budgets" check-budget "no *.md found — the lookup broke" --update
 if grep -qF "references/" "$S/baselines/budget.tsv"; then ok "26e the reference budgets are still there"; else bad "26e budgets kept" "$(cat "$S/baselines/budget.tsv")"; fi
+cp -R "$REPO/skills/crew/references" "$S/skills/crew/"   # positive control for 26a-26e: the same fixture, restored
+green "26f with the references back, the kept budgets pass" check-budget
 fresh; rm "$S/$LG"
 red "26b a budgeted file that's gone fails" check-budget "$LG: budgeted but gone"
 run check-budget --update                          # positive control for 26b: --update drops it
@@ -155,7 +157,8 @@ if grep -qF "PR 3 removes this exemption" "$ROOT/out"; then ok "30 the exemption
 # --- check-skill-frontmatter ----------------------------------------------------------------------------------
 fresh; edit "$SK" '/^license: MIT$/d'
 red "31 a missing license" check-skill-frontmatter "missing frontmatter: license"
-fresh; edit "$SK" '/^  author: Acatl Pacheco$/d'; edit "$SK" 's/^description: >-$/description: >-\
+fresh; green "31b the untouched frontmatter passes, the control for 32 and 33" check-skill-frontmatter
+edit "$SK" '/^  author: Acatl Pacheco$/d'; edit "$SK" 's/^description: >-$/description: >-\
   author: a line in the description, not in metadata/'
 red "32 an author: line in the description doesn't stand in for metadata.author" check-skill-frontmatter "missing frontmatter: author"
 fresh; edit "$SK" 's/^  author: Acatl Pacheco$/  links:\
@@ -164,6 +167,8 @@ red "33 an author: nested under another metadata key doesn't count" check-skill-
 fresh; edit "$SK" 's/^metadata:$/metadata:\
     # a comment, indented deeper than the keys/'
 green "34 a comment opening metadata doesn't set the child indent" check-skill-frontmatter
+edit "$SK" '/^  version: /d'                     # positive control for 34: the same fixture, a key removed
+red "34b the same fixture still fails on a missing version" check-skill-frontmatter "missing frontmatter: version"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" = 0 ]
