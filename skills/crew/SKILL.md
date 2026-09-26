@@ -402,8 +402,8 @@ You were spawned by an orchestrator. Your brief is your first message. You remem
    already got an answer here, say so in this session and don't act on the relay twice.
 6. **Stuck** → `BLOCKED`, end the turn. Don't work around it; don't ask the operator directly
    instead of reporting.
-7. **Loop budget — a fix/review cycle is bounded, never open-ended.** The limit is this project's
-   (`CREW.md` › Counters); absent one, **two** review→fix iterations per unit or PR round: the review,
+7. **Loop budget — a fix/review cycle is bounded, never open-ended.** The limit is the one your brief
+   states; absent one, **two** review→fix iterations per unit or PR round: the review,
    the fix, one re-review of the fix delta. Going past it needs the operator: `NEED-INPUT` with the
    per-iteration finding counts. Stop and send `NEED-INPUT` *at once*, before the budget, on any of:
    - a finding caused by the previous iteration's own fix (fixes are seeding findings);
@@ -411,8 +411,8 @@ You were spawned by an orchestrator. Your brief is your first message. You remem
    - the fix is growing a reimplementation of a spec or format (markdown, YAML, URLs, dates, shell
      quoting) → propose the well-tested library instead; its install is a Hard Gate to ask for, never
      a reason to hand-roll;
-   - going the project's no-commit threshold (`CREW.md` › Ledger › watchdog; absent, 60 minutes) without
-     a commit — commit what's green, then judge whether to go on.
+   - going your brief's no-commit threshold (absent, 60 minutes) without a commit — commit what's
+     green, then judge whether to go on.
    The budget caps review iterations, never fixes: every VALID finding is fixed and pinned whatever
    its severity (a finding wrong on the merits is declined with its reason), including the last
    allowed review's, in that same pass and without re-reviewing that fix. **At the last allowed

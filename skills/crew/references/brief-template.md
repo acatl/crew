@@ -2,9 +2,9 @@
 
 The orchestrator fills every `{…}` and sends the result as the `prompt` of
 `mcp__ccd_session__spawn_task`. A field with nothing to say gets `none`; no placeholder survives. Keep
-the marker comment on the brief's first line exactly as shown: the roster rebuild greps for it.
+the brief's first-line marker comment exactly as shown: the roster rebuild greps for it.
 
-There are two brief variants, which differ only in the Job section:
+Two brief variants differ only in the Job section:
 - **Ready**: the worker starts now. The Job section is filled in.
 - **Queued**: the worker waits for `START`. The Job section is the fixed queued block. The job itself,
   and the spec for an `inline` verb, go out later in `START`, written from the landed state.
@@ -29,7 +29,8 @@ There are two brief variants, which differ only in the Job section:
 | `{SETUP}` | `CREW.md` › Worktree setup |
 | `{STANDING}` | `CREW.md` › Standing boundaries, one bullet each, else drop the line |
 | `{BRIEF_PATH}` | where the orchestrator saved this brief: `~/.claude/crew/<slug>/briefs/<row>.md` |
-| `{NO_COMMIT}` | the project's no-commit threshold, `CREW.md` › Ledger › watchdog (e.g. "60 minutes"). It must match what the watchdog is launched with, or the worker and the watchdog escalate on different clocks |
+| `{ITERATIONS}` | `CREW.md` › Counters, its review→fix iterations per round; else `two` |
+| `{NO_COMMIT}` | `CREW.md` › Ledger › watchdog's no-commit threshold (e.g. "60 minutes"); it must match the watchdog's `--no-commit`, or the two escalate on different clocks |
 
 ---
 
@@ -70,7 +71,7 @@ orchestrator's memory. Everything you need is here or in the ticket.
 - Commit your work. Don't push, merge, open a PR, or archive this session unless the stop point
   includes it.
 - Never message another worker.
-- Loop budget (crew skill › Worker step 7): at most two review→fix iterations; stop early and send
+- Loop budget (crew skill › Worker step 7): at most {ITERATIONS} review→fix iterations; stop early and send
   `NEED-INPUT` on a fix-created finding, an edge-case chase, a hand-rolled reimplementation of a spec
   (propose the library), or {NO_COMMIT} without a commit.
 
@@ -104,7 +105,7 @@ latest landed state; it replaces this section. Run the crew skill's *START steps
 ## START
 
 Sent with `mcp__ccd_session_mgmt__send_message` to a queued worker's sessionId when its turn comes.
-Write it at that moment, from the landed state, not from the queued brief.
+Write it then, from the landed state, not from the queued brief.
 
 | Placeholder | Source |
 |---|---|
