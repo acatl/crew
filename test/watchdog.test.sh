@@ -48,21 +48,19 @@ commit_in()  { local d="@$(( $(date +%s) - $2 )) +0000"
                echo x >> "$1/f"; git -C "$1" add f
                GIT_COMMITTER_DATE="$d" GIT_AUTHOR_DATE="$d" git -C "$1" commit -qm c; }
 seed_commit(){ commit_in "$WT" "$1"; }
-# A transcript's first record carries its session's start, where trigger 1's clock starts when HEAD
-# is older. Fixtures default to a session far older than any head, so HEAD's clock rules and every
-# trigger-1 case keeps the meaning it had before the session clock existed. `active` rewrites that
-# record rather than truncating it.
-iso_ago()    { local e=$(( $(date +%s) - $1 ))
-               date -u -r "$e" +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -d "@$e" +%Y-%m-%dT%H:%M:%S; }
-born()       { SESS="{\"type\":\"queue-operation\",\"timestamp\":\"$(iso_ago "$1").000Z\"}"; active; }
-active()     { printf '%s\n' "$SESS" > "$PROJ/sess.jsonl"; }
+active()     { : > "$PROJ/sess.jsonl"; }
 # push every transcript outside the script's fixed 900s activity window
 stale_stamp(){ date -v-30M +%Y%m%d%H%M 2>/dev/null || date -d '30 minutes ago' +%Y%m%d%H%M; }
 go_quiet()   { find "$PROJ" -name '*.jsonl' -exec touch -t "$(stale_stamp)" {} +; }
 subagents()  { local i; rm -f "$PROJ"/sess/subagents/*.jsonl
                for ((i=1;i<=$1;i++)); do : > "$PROJ/sess/subagents/a$i.jsonl"; done; }
 roster1()    { printf '#1\t%s\n' "$WT" > "$CREW/roster.tsv"; }
-reset()      { rm -f "$CREW/reported.txt" "$CREW/watchdog.pid"; touch "$CREW/reported.txt"; }
+reset()      { rm -f "$CREW/reported.txt" "$CREW/watchdog.pid"; touch "$CREW/reported.txt"; watched; }
+# watched: the watchdog has watched every worker id this suite uses active for a day, unbroken, so
+# HEAD's clock rules and a trigger-1 case means what it did before the active clock existed.
+watched()    { local k n; n=$(date +%s); : > "$CREW/active.tsv"
+               for k in '#1' '#2' '#3' '#4' '#9' AB; do
+                 printf '%s\t%s\t%s\n' "$k" $((n - 86400)) "$n" >> "$CREW/active.tsv"; done; }
 # Trigger 1 needs an OLD head; a fresh commit makes it structurally impossible. Preferred over
 # pre-seeding a reported.txt key, which coupled the suite to that key's exact format.
 silence_t1() { commit_in "$WT" 0; }
@@ -83,7 +81,7 @@ silent() {
   wait "$p" 2>/dev/null; return 1
 }
 
-seed_commit 7200; born 86400; subagents 0; roster1; reset
+seed_commit 7200; active; subagents 0; roster1; reset
 
 # --- startup errors -------------------------------------------------------------------------------
 "$WD" --base main "$ROOT/nope" >/dev/null 2>"$ROOT/err"; rc=$?
@@ -156,9 +154,9 @@ reset; go_quiet
 if silent
 then ok "10 stale worker is not reported (activity gate)"; else bad "10 activity gate" "fired: $(cat "$ROOT/out")"; fi
 active                                           # positive control for 10, same fixture
-run; rc=$?
-if [ "$rc" = 0 ]
-then ok "11 same fixture fires once it writes again"; else bad "11 activity-gate control" "rc=$rc"; fi
+run --no-commit 2; rc=$?                         # its idle pass restarted the clock
+if [ "$rc" = 0 ] && grep -q "since it went active" "$ROOT/out"
+then ok "11 same fixture fires once it has been active past --no-commit"; else bad "11 activity-gate control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 
 # a repo with no commits must not fire or crash
 reset; mkdir -p "$ROOT/empty"; git -C "$ROOT/empty" init -q -b main
@@ -180,7 +178,7 @@ reset; printf '#4\t%s\n' "$ROOT/vanished" > "$CREW/roster.tsv"
 if silent && grep -q "no worktree at .* for #4" "$ROOT/err"
 then ok "12c missing worktree is warned, not silently dropped"; else bad "12c missing worktree" "$(cat "$ROOT/err")"; fi
 git clone -q "$WT" "$ROOT/vanished"              # positive control for 12c: the worktree is back
-mkdir -p "$HOME/.claude/projects/$(slug "$ROOT/vanished")"; printf '%s\n' "$SESS" > "$HOME/.claude/projects/$(slug "$ROOT/vanished")/s.jsonl"
+mkdir -p "$HOME/.claude/projects/$(slug "$ROOT/vanished")"; : > "$HOME/.claude/projects/$(slug "$ROOT/vanished")/s.jsonl"
 run; rc=$?
 if [ "$rc" = 0 ] && grep -q "WATCHDOG #4: active but no commit" "$ROOT/out"
 then ok "12f same row fires once its worktree exists"; else bad "12f missing-worktree control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
@@ -303,7 +301,7 @@ then ok "30 sub-agents after the push do count"; else bad "30 post-push count" "
 git -C "$WT" remote remove origin
 
 # --- several workers ----------------------------------------------------------------------------------
-reset; subagents 0; seed_commit 7200; commit_in "$WT2" 7200; printf '%s\n' "$SESS" > "$PROJ2/sess.jsonl"; active
+reset; subagents 0; seed_commit 7200; commit_in "$WT2" 7200; : > "$PROJ2/sess.jsonl"; active
 printf '#1\t%s\n#2\t%s\n' "$WT" "$WT2" > "$CREW/roster.tsv"
 run; rc=$?
 first=$(sed -n 's/^WATCHDOG \(#[0-9]*\).*/\1/p' "$ROOT/out")
@@ -372,38 +370,36 @@ run; rc=$?                                       # positive control for 41
 if [ "$rc" = 0 ] && grep -q "WATCHDOG #9" "$ROOT/out"
 then ok "43 it fires once the transcript dir is back"; else bad "43 unwatched control" "rc=$rc $(cat "$ROOT/out")"; fi
 
-# --- trigger 1's clock: HEAD's commit or the session's start, whichever is later ------------------------
-# A fresh worker is cut from a base that can be hours old. Counting from HEAD alone fired at spawn
-# (seen live, 2026-09-25: 107 min reported for a worker minutes old).
-reset; roster1; subagents 0; seed_commit 7200; born 5
-if silent
-then ok "44 fresh worker on an old base -> silent"; else bad "44 fresh worker" "fired: $(cat "$ROOT/out")"; fi
-born 120                                         # positive control for 44: the worker itself is past it
-run; rc=$?
-if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 2 min since its session started" "$ROOT/out"
-then ok "45 same fixture fires once the session is past --no-commit"; else bad "45 session clock" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+# --- trigger 1's clock: HEAD's commit or the start of the worker's active stretch -------------------------
+# Counting from HEAD alone fired at spawn for a worker on an old base (seen live, 2026-09-25: 107 min),
+# and again for one that waited overnight on the operator (2026-09-26: 1153 min).
+reset; roster1; subagents 0; seed_commit 7200; go_quiet
+"$WD" --base main --no-commit 60 --interval 1 "$CREW" >"$ROOT/out" 2>"$ROOT/err" &
+p=$!; sleep 2                                    # at least one pass sees it idle
+active; sleep 3                                  # then passes see it active
+if kill -0 "$p" 2>/dev/null
+then ok "44 idle for hours, then active -> silent"; else bad "44 idle then active" "fired: $(cat "$ROOT/out")"; fi
+kill "$p" 2>/dev/null; wait "$p" 2>/dev/null
+since=$(awk -F'\t' '$1 == "#1" {print $2}' "$CREW/active.tsv")
+if [ -n "$since" ] && [ $(( $(date +%s) - since )) -lt 60 ]
+then ok "45 its clock starts when it went active, not a day ago"; else bad "45 stretch start" "$(cat "$CREW/active.tsv")"; fi
+run --no-commit 2; rc=$?                         # positive control for 44: the same fixture, past it
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 0 min since it went active" "$ROOT/out"
+then ok "46 same fixture fires once it has been active past --no-commit"; else bad "46 stretch control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 
-# A worktree the app reuses keeps earlier occupants' transcripts. The session written most recently
-# is this worker's; the earlier one sorts last by name and holds the older start, so picking it by
-# name or by age would fire here.
-reset; born 5
-printf '%s\n' '{"type":"queue-operation","timestamp":"2000-01-01T00:00:00.000Z"}' > "$PROJ/zz-earlier.jsonl"
-touch -t "$(stale_stamp)" "$PROJ/zz-earlier.jsonl"
+# A stretch nobody watched may hold idle time: a sighting long after the last one starts a new stretch.
+reset; n=$(date +%s); printf '#1\t%s\t%s\n' $((n - 86400)) $((n - 7200)) > "$CREW/active.tsv"
 if silent
-then ok "46 an earlier occupant's session does not start the clock"; else bad "46 reused worktree" "fired: $(cat "$ROOT/out")"; fi
-born 120                                         # positive control for 46
-run; rc=$?
-if [ "$rc" = 0 ] && grep -q "since its session started" "$ROOT/out"
-then ok "47 same fixture fires once this worker's session is past --no-commit"; else bad "47 reused worktree control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
-rm -f "$PROJ/zz-earlier.jsonl"
+then ok "47 a two-hour gap in sightings restarts the clock"; else bad "47 sighting gap" "fired: $(cat "$ROOT/out")"; fi
+run --no-commit 2; rc=$?                         # positive control for 47
+if [ "$rc" = 0 ] && grep -q "since it went active" "$ROOT/out"
+then ok "48 same fixture fires once it has been active past --no-commit"; else bad "48 gap control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 
-# No readable first record: count from HEAD alone and say so, an early alarm and never silence.
-reset; : > "$PROJ/sess.jsonl"
+# An unbroken watch keeps a worker's clock across the one-shot exit and relaunch.
+reset
 run; rc=$?
-if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 12[0-9] min (head" "$ROOT/out" \
-   && [ "$(grep -c "no session start for #1" "$ROOT/err" | tr -d ' ')" = 1 ]
-then ok "48 no session start -> HEAD's clock, warned once"; else bad "48 no session start" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
-born 86400
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 12[0-9] min (head" "$ROOT/out"
+then ok "49 an unbroken stretch counts from HEAD, the later clock"; else bad "49 unbroken stretch" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" = 0 ]

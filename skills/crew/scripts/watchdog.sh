@@ -17,19 +17,24 @@
 #                 write-to-temp-then-mv, never in place.
 #   reported.txt  dedupe: a relaunched watchdog re-scans from the top and would re-fire on the
 #                 same unchanged condition, so what has been reported must outlive the process.
+#   active.tsv    clock:  <ticket> <TAB> <since> <TAB> <seen>, when the watchdog first saw each
+#                 worker active after an idle pass, and when it last saw it active. It outlives the
+#                 process too, so a relaunch keeps a worker's clock.
 #   watchdog.pid  lock:   one watchdog per project. NEVER kill by name — every project's watchdog
 #                 is a watchdog.sh, so `pkill -f watchdog.sh` takes out all of them at once.
 #                 Stop one with:  kill "$(cat <crew-dir>/watchdog.pid)"
 #
 # Triggers, per worker:
 #   1. a transcript was written in the last 15 min (the worker is alive) but nothing was committed
-#      for --no-commit, counted from HEAD's commit or from the start of the worker's session,
-#      whichever is later. A fresh worker is cut from a base that can be hours old, and counting
-#      from HEAD alone fired at spawn. The session is the top-level transcript written most
-#      recently, not the oldest one, because a worktree the app reuses keeps its earlier
-#      occupants' transcripts; its start is the timestamp of its first record. Deduped per ticket
-#      + head + elapsed window, so it re-arms once per --no-commit period rather than alerting once
-#      and then going quiet forever at an unchanging head.
+#      for --no-commit, counted from HEAD's commit or from when the watchdog first saw the worker
+#      active after an idle pass, whichever is later. Counting from HEAD alone fired at spawn for a
+#      worker cut from an old base, and again for one that waited hours on the operator. An idle
+#      pass ends a stretch; so does a gap longer than --interval + 15 min since the worker was last
+#      seen active, because a stretch the watchdog didn't watch (it wasn't running, or the ticket
+#      id is being reused) may have held idle time. A stretch starts when the watchdog first sees
+#      it, so a worker already active before the watchdog started is counted from the start.
+#      Deduped per ticket + head + elapsed window, so it re-arms once per --no-commit period
+#      rather than alerting once and then going quiet forever at an unchanging head.
 #   2. more than <count at the last alert> + --subagent-step sub-agent transcripts since the last
 #      push. Re-alerts only on GROWTH, never on an absolute count: pre-PR work legitimately spawns
 #      many sub-agents, and the absolute-count version fired constantly. A worker with no resolvable
@@ -38,18 +43,16 @@
 #
 # It says so on stderr, once, whenever it goes blind on a worker: a roster row whose worktree is
 # missing or is not a git repo, a worker with no transcript directory, a worker with no push
-# baseline, a malformed ticket id, or the roster disappearing. With no readable session start it
-# counts trigger 1 from HEAD alone, and says that once too: an early alarm, never silence. Redirect
-# stderr to a file the orchestrator can read; a silently unwatched worker is the failure this script
-# exists to prevent.
+# baseline, a malformed ticket id, a clock it can no longer write, or the roster disappearing.
+# Redirect stderr to a file the orchestrator can read; a silently unwatched worker is the failure
+# this script exists to prevent.
 #
 # Portability: stat(1) is not portable — BSD/macOS takes -f, GNU takes -c. The BSD-only form
 # produces nothing on Linux, which made the activity timestamp fall back to 0 and trigger 1 never
 # fire, so both forms are probed at startup and neither working is exit 4, never silence. Birth time
 # falls back to mtime per file, covering GNU's %W of 0 or "-" on filesystems that don't record it.
 # mtime >= btime, so trigger 2 over-counts there and fires slightly early — toward a false alarm,
-# never toward silence. date(1) splits the same way, BSD -j -f against GNU -d, for the session
-# start's ISO-8601 timestamp; with neither, trigger 1 counts from HEAD alone and says so.
+# never toward silence.
 #
 # Output: one line on stdout, at the first trigger only, prefixed WATCHDOG.
 # Exit:   0     a trigger fired; the finding is the single line on stdout (the normal exit)
@@ -81,7 +84,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-[ -n "$base" ] && [ $# -eq 1 ] || usage
+if [ -z "$base" ] || [ $# -ne 1 ]; then usage; fi
 
 # Every one of these reaches an arithmetic context or `sleep`, so validate the WHOLE value and
 # normalise it. A stray ':' used to slip through a prefix check; a leading zero made 0600 octal
@@ -107,43 +110,21 @@ step=$(num     --subagent-step "$step"     1 10000)  || usage
 crewdir=$(cd "${1%/}" 2>/dev/null && pwd) || { echo "no such crew dir: $1" >&2; exit 2; }
 roster="$crewdir/roster.tsv"
 reported="$crewdir/reported.txt"
+active="$crewdir/active.tsv"
 pidfile="$crewdir/watchdog.pid"
 [ -f "$roster" ] || { echo "no roster: $roster (the orchestrator writes it before launching)" >&2; exit 2; }
 touch "$reported" 2>/dev/null || { echo "cannot write $reported" >&2; exit 2; }
+touch "$active" 2>/dev/null || { echo "cannot write $active" >&2; exit 2; }
 
 # --- stat(1) flavour, probed once -------------------------------------------------------------
 if probe=$(stat -f %m "$crewdir" 2>/dev/null) && [ -n "$probe" ] && [ -z "${probe//[0-9]/}" ]; then
-  stat_m=(stat -f %m); stat_b=(stat -f '%B %m'); stat_n=(stat -f '%m %N')   # BSD / macOS
+  stat_m=(stat -f %m); stat_b=(stat -f '%B %m')          # BSD / macOS
 elif probe=$(stat -c %Y "$crewdir" 2>/dev/null) && [ -n "$probe" ] && [ -z "${probe//[0-9]/}" ]; then
-  stat_m=(stat -c %Y); stat_b=(stat -c '%W %Y'); stat_n=(stat -c '%Y %n')   # GNU / coreutils
+  stat_m=(stat -c %Y); stat_b=(stat -c '%W %Y')          # GNU / coreutils
 else
   echo "no usable stat(1): neither 'stat -f %m' (BSD) nor 'stat -c %Y' (GNU) works here" >&2
   exit 4
 fi
-
-# --- date(1) flavour, probed once --------------------------------------------------------------
-# Only trigger 1's session clock needs it, and losing it only makes trigger 1 early, so a missing
-# parser is a warning, not an exit.
-if [ "$(date -j -u -f '%Y-%m-%dT%H:%M:%S' 1970-01-02T00:00:00 +%s 2>/dev/null)" = 86400 ]; then
-  iso_epoch() { date -j -u -f '%Y-%m-%dT%H:%M:%S' "$1" +%s 2>/dev/null; }                # BSD
-elif [ "$(date -u -d '1970-01-02 00:00:00' +%s 2>/dev/null)" = 86400 ]; then
-  iso_epoch() { date -u -d "${1/T/ }" +%s 2>/dev/null; }                                # GNU
-else
-  iso_epoch() { return 1; }
-  echo "no date(1) here parses ISO-8601 — trigger 1 counts from HEAD's commit alone" >&2
-fi
-
-# session_start <transcript-dir> -> epoch of the first record of the session written most recently
-session_start() {
-  local cur ts
-  cur=$(find "$1" -maxdepth 1 -name '*.jsonl' -type f -exec "${stat_n[@]}" {} + 2>/dev/null \
-        | sort -n | tail -n 1 | cut -d' ' -f2-)
-  [ -n "$cur" ] || return 1
-  ts=$(head -n 5 "$cur" 2>/dev/null \
-       | grep -o '"timestamp":"[0-9]\{4\}-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]' | head -n 1)
-  [ -n "$ts" ] || return 1
-  iso_epoch "${ts#'"timestamp":"'}"
-}
 
 # --- one watchdog per project -----------------------------------------------------------------
 # The lock must be per project, not per script name: every project's watchdog is a watchdog.sh, and
@@ -189,6 +170,30 @@ warn_once() {  # warn_once <key-without-spaces> <message>...
   echo "$*" >&2
 }
 
+# active.tsv, one line per worker seen active. Rewritten write-to-temp-then-mv. The ""-concatenation
+# keeps awk from reading ids like "01" and "1" as the same number.
+without() { awk -F'\t' -v k="$1" '$1"" != k""' "$active" 2>/dev/null; }
+save_active() {  # save_active <new content>
+  if ! { if [ -n "$1" ]; then printf '%s\n' "$1"; fi > "$active.tmp" && mv "$active.tmp" "$active"; }; then
+    warn_once "active" "cannot write $active — trigger 1 can't keep a worker's clock"
+  fi
+}
+# saw_active <ticket> <now>: sets $stretch, when the worker's current active stretch began
+saw_active() {
+  local since="" seen="" rest
+  IFS=$'\t' read -r since seen rest < <(awk -F'\t' -v k="$1" '$1"" == k"" {print $2 "\t" $3}' "$active" 2>/dev/null)
+  case "$since:$seen" in *[!0-9:]*|:*|*:) since=$2 seen=$2 ;; esac
+  # A gap in sightings longer than one pass allows is time nobody watched: count it as idle.
+  if (( $2 - seen > interval + ACTIVE )); then since=$2; fi
+  save_active "$(without "$1"; printf '%s\t%s\t%s\n' "$1" "$since" "$2")"
+  stretch=$since
+}
+saw_idle() {  # saw_idle <ticket>: an idle pass ends the worker's stretch
+  if awk -F'\t' -v k="$1" '$1"" == k"" {found = 1} END {exit !found}' "$active" 2>/dev/null; then
+    save_active "$(without "$1")"
+  fi
+}
+
 while true; do
   if [ -f "$roster" ]; then
     snapshot=$(cat "$roster" 2>/dev/null)
@@ -222,28 +227,26 @@ while true; do
       continue
     fi
 
+    # activity = newest write to any transcript of this worker (its sub-agents included). Its
+    # clock is kept before the git checks, so a worker whose repo can't be read yet keeps its own.
+    last_act=$(find "$proj" -name '*.jsonl' -type f -exec "${stat_m[@]}" {} + 2>/dev/null | sort -n | tail -1)
+    case "$last_act" in ''|*[!0-9]*) last_act=0 ;; esac
+    t=$(now)
+    stretch=0
+    if (( t - last_act < ACTIVE )); then saw_active "$ticket" "$t"; else saw_idle "$ticket"; fi
+
     if ! rev=$(git -C "$wt" rev-parse --short HEAD 2>/dev/null); then
       warn_once "$ticket:rev" "no HEAD in $wt for $ticket (not a repo, or no commits) — it is unwatched"
       continue
     fi
     commit_ts=$(git -C "$wt" log -1 --format=%ct 2>/dev/null || echo 0)
     case "$commit_ts" in ''|*[!0-9]*) commit_ts=0 ;; esac
-    # activity = newest write to any transcript of this worker (its sub-agents included)
-    last_act=$(find "$proj" -name '*.jsonl' -type f -exec "${stat_m[@]}" {} + 2>/dev/null | sort -n | tail -1)
-    case "$last_act" in ''|*[!0-9]*) last_act=0 ;; esac
-    t=$(now)
 
     # trigger 1: still working, but nothing committed in a long time. The clock starts at HEAD's
-    # commit or at the session's start, whichever is later (see the header); the session is read
-    # only once HEAD's clock alone has run out, since the later clock can't have run out before it.
-    if [ "$commit_ts" -gt 0 ] && (( t - last_act < ACTIVE && t - commit_ts > nocommit )); then
+    # commit or at the start of the worker's active stretch, whichever is later (see the header).
+    if [ "$commit_ts" -gt 0 ] && (( t - last_act < ACTIVE )); then
       since=$commit_ts clock=""
-      start=$(session_start "$proj") || start=""
-      case "$start" in
-        ''|*[!0-9]*) warn_once "$ticket:start" "no session start for $ticket (no readable first record" \
-                       "in $proj) — trigger 1 counts from HEAD's commit alone, so it can fire early" ;;
-        *) if [ "$start" -gt "$commit_ts" ]; then since=$start clock=" since its session started"; fi ;;
-      esac
+      if [ "$stretch" -gt "$commit_ts" ]; then since=$stretch clock=" since it went active"; fi
       # The head does not change while a worker is stuck, so keying on it alone means one alert
       # ever. The window number re-arms it once per --no-commit period. Window 1 keeps the
       # original key verbatim, so an existing reported.txt still suppresses what it suppressed.

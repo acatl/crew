@@ -54,11 +54,14 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
   goes idle, so no idle notice ever fires. The orchestrator launches the watchdog with
   `run_in_background`, and its exit is what wakes the orchestrator: it prints one `WATCHDOG …` line on
   the first trigger and exits 0.
-  - Input: `roster.tsv`, re-read on every pass. Dedupe state that outlives the process:
-    `reported.txt`. Lock: `watchdog.pid`, matched by the crew-dir path, never the script name.
-  - Worker activity is read from Claude Code's transcript dirs, `~/.claude/projects/<slug>`. The
-    no-commit clock starts at HEAD's commit or at the first record of the worker's newest transcript,
-    whichever is later.
+  - Input: `roster.tsv`, re-read on every pass. State that outlives the process: `reported.txt`
+    (dedupe) and `active.tsv` (each worker's clock). Lock: `watchdog.pid`, matched by the crew-dir
+    path, never the script name.
+  - Worker activity is read from the modification times in Claude Code's transcript dirs,
+    `~/.claude/projects/<slug>`, never their contents. The no-commit clock starts at HEAD's commit or
+    at the start of the worker's current active stretch, whichever is later. A stretch starts when
+    the watchdog first sees the worker active after an idle pass, or after a gap in sightings longer
+    than one pass allows.
 - **`scripts/overlap.sh` is the parallel-safety check** (orchestrator step 3). It lists files
   in-flight workers have touched that fall under a candidate surface.
 - **Outside the skill:** `test/` holds the suites, so they don't ship with the skill. `scripts/` holds
@@ -117,7 +120,7 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   SKILL.md into `references/` removes it.
 - **SKILL.md Gotchas carry their evidence level**: "Seen live" with where and when, *inferred*, or
   *reported, not reproduced*. New entries follow that pattern.
-- **`watchdog.sh` must stay portable across BSD and GNU `stat` and `date`,** each probed at startup.
+- **`watchdog.sh` must stay portable across BSD and GNU `stat`,** probed at startup.
   CI's `test` job runs the suites on macOS and Linux, which is the only place both branches run.
 - **Tests pair every silence with a positive control.** Every `silent` assertion in
   `watchdog.test.sh`, every exit-0 assertion in `overlap.test.sh`, and every check in
