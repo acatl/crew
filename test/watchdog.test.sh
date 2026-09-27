@@ -290,8 +290,10 @@ if [ "$rc" = 0 ] && grep -q "20 sub-agents since last push" "$ROOT/out"
 then ok "28e same fixture fires once the base resolves"; else bad "28e no-baseline control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 seed_commit 7200
 
-# a push moves the baseline, so sub-agents older than it stop counting
-reset; silence_t1; subagents 8
+# a push moves the baseline, so sub-agents older than it stop counting. They are made a second BEFORE
+# the pushed commit: the baseline is that commit's time and only a later birth counts, so making them
+# after it passed only when both landed in the same second, and a slow runner failed it.
+reset; subagents 8; sleep 1; silence_t1
 git init -q --bare "$ROOT/bare.git"
 git -C "$WT" remote add origin "$ROOT/bare.git"
 git -C "$WT" push -q origin main
