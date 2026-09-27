@@ -1,0 +1,34 @@
+{
+  "name": "crew",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Claude Code skill for orchestrator-worker sessions: one orchestrator spawns, briefs, relays for, verifies and cleans up a fresh worker session per ticket.",
+  "license": "MIT",
+  "author": "Acatl Pacheco",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/acatl/crew.git"
+  },
+  "scripts": {
+    "lint:md": "markdownlint-cli2 \"**/*.md\"",
+    "spell": "cspell --no-progress --gitignore \"**/*.md\"",
+    "links": "scripts/check-links.sh",
+    "lint:sh": "shellcheck -x scripts/*.sh scripts/lib/*.sh skills/crew/scripts/*.sh test/*.sh .husky/pre-commit .husky/pre-push .husky/commit-msg",
+    "skill": "scripts/check-structure.sh && scripts/check-content.sh && scripts/check-budget.sh && scripts/check-invariants.sh && scripts/check-section-refs.sh && scripts/check-skill-frontmatter.sh && test/checks.test.sh",
+    "test": "test/watchdog.test.sh && test/overlap.test.sh",
+    "check": "npm run lint:md && npm run spell && npm run links && npm run lint:sh && npm run skill",
+    "verify": "scripts/verify.sh",
+    "prepare": "husky"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.0",
+    "@commitlint/config-conventional": "^21.2.0",
+    "cspell": "^8.17.5",
+    "husky": "^9.1.7",
+    "lint-staged": "16.4.0",
+    "markdownlint-cli2": "^0.16.0"
+  }
+}

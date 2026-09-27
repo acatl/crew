@@ -11,6 +11,14 @@ description: >-
   to a worker", "queue workers for", "run these tickets in sequence", "crew status", "what are my
   workers doing". Also loads in a worker whose first message starts with `<!-- crew:brief`.
 argument-hint: "<verb> <ticket-id>[ → <ticket-id>…] [mode]  |  status"
+license: MIT
+compatibility: >-
+  Needs the Claude desktop app's Code tab, whose session tools (spawn_task, send_message, get_session,
+  archive_session) the Claude Code CLI does not provide; bash and git; and a BSD or GNU stat(1), so
+  macOS or Linux.
+metadata:
+  author: Acatl Pacheco
+  version: "0.0.0" # x-release-please-version
 ---
 
 # crew — orchestrator ↔ worker sessions
@@ -100,6 +108,10 @@ permission-gated. A fresh session is the only dependable clean start.
 The verb defaults to `build`. The mode is passed through untouched; no mode means the command's own
 default.
 
+**`<skill-dir>`** is this skill's own directory: the path Claude Code prints as "Base directory for this
+skill" when it loads the skill. The scripts below run from `<skill-dir>/scripts/`. Substitute that real
+path: the skill is installed per user or per project, so never assume either one.
+
 ### 0. Resume from the ledger
 
 The roster lives in your conversation, which a compaction or a `/clear` destroys. The ledger is the
@@ -133,7 +145,7 @@ a time, so check them against workers outside the sequence, not against each oth
 
 1. **Actual overlap** — what in-flight workers have already touched:
    ```bash
-   ~/.claude/skills/crew/overlap.sh --base <base> --paths <p1,p2,...> <worker-cwd>...
+   <skill-dir>/scripts/overlap.sh --base <base> --paths <p1,p2,...> <worker-cwd>...
    ```
    Worker cwds are the roster's `worktreePath`s. Exit 0 = clear, 1 = overlap (TSV lines:
    branch, file, matched path), 2 = usage or git error.
@@ -152,7 +164,7 @@ and stop. Never merge anything to clear the path.
 
 ### 4. Pre-spawn card — always
 
-Every field has a default; `go` accepts them all. Render it as live markdown:
+Every field has a default; `go` accepts them all. Render it as live Markdown:
 
 > **Spawn KINO-5 → worker** · `/hg-build KINO-5 yolo`
 >
@@ -201,6 +213,7 @@ Every field has a default; `go` accepts them all. Render it as live markdown:
 - **NEED-INPUT** → nudge the operator right away:
   > ⏸ **KINO-5 needs you** — <question, one line>
   > <options>
+  > <!-- markdownlint-disable-next-line MD051 -->
   > Answer here and I'll relay, or in [KINO-5 — Add export command](#<worker-sessionId>).
 
   If the worker marked it `answer: in this session only`, drop "answer here" and say why.
@@ -247,8 +260,8 @@ Execute only what the card agreed, and name it as you do it.
 - `keep` → leave it running; follow-up work goes to it by `RELAY`.
 - **Roster and watchdog** → drop the worker's line from `roster.tsv` as it stops. When the last one
   goes, stop the watchdog by the pid in `watchdog.pid`, clear its `Monitors` line, and delete
-  `reported.txt`. That file only dedupes the sequence that just ended: nothing truncates it, and a
-  later worker that reuses a ticket id at the same sha would be deduped against it forever.
+  `reported.txt` and `active.tsv`. Both serve only the sequence that just ended: nothing truncates
+  them, and a later worker reusing a ticket id would be deduped or clocked against them.
 
 Archiving detaches the worktree (the branch is released and kept, so it can be merged or checked out
 elsewhere) and hands the directory to the app's reuse pool. It's reversible (`unarchive_session`). The
@@ -305,14 +318,14 @@ also spawned non-crew chips, confirm with the `crew:brief` marker in the worker'
 
 Idle notices only fire when a worker stops. A worker stuck in a fix/review loop never stops, so no
 notice ever arrives. Origin (hg, 2026-09-22): a unit worker ran ~15 isolated-review rounds over hours,
-hand-growing a markdown parser 519 → 779 lines, and the orchestrator didn't look for the whole stretch.
+hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't look for the whole stretch.
 
 - **While any worker is `running`, a watchdog process runs.** Write `roster.tsv` **first** — a missing
   crew dir or roster is an immediate exit 2 — then launch it with the Bash tool's `run_in_background`,
   not a shell `&`: the harness re-invokes you when a backgrounded command exits, and that exit is the
   entire mechanism.
   ```bash
-  ~/.claude/skills/crew/watchdog.sh --base <base> \
+  <skill-dir>/scripts/watchdog.sh --base <base> \
     [--interval <s>] [--no-commit <s>] [--subagent-step <n>] \
     ~/.claude/crew/<slug>/ 2>> ~/.claude/crew/<slug>/watchdog.log
   ```
@@ -341,19 +354,19 @@ hand-growing a markdown parser 519 → 779 lines, and the orchestrator didn't lo
   silently yields an unwatched worker. One `--base` covers the whole roster, and it is used only as
   the baseline before a worker's first push; on a mixed-base roster, pass the base most of them share.
 - **Stop it by the pid** in `~/.claude/crew/<slug>/watchdog.pid` once the last worker stops, and clear
-  its `Monitors` line. **Never `pkill -f watchdog.sh`** — every project runs this same script path, so
-  a name-based kill takes out every project's watchdog at once.
+  its `Monitors` line. **Never `pkill -f watchdog.sh`** — every project's watchdog is a `watchdog.sh`,
+  so a name-based kill takes out every project's watchdog at once.
 - **Also check on every orchestrator turn**, cheaply: `list_events` tail (limit ~40) and
   `git log -1 --format=%cr` plus `git status --porcelain | wc -l` in each running worker's
   `worktreePath`. Count review→fix iterations since its last report. The watchdog covers the stretches
   between your turns; this covers the turn you are in.
 - **Surface to the operator** — don't wait for the worker to ask — when any *Worker* step 7 (loop
-  budget) trigger shows, whether the watchdog or your own turn found it. The watchdog covers two of
-  them, one by proxy (sub-agent growth stands in for review iterations); the rest are yours:
-  review iterations past the project's limit, a fix-created finding, an
-  edge-case chase, a reimplementation of a spec, or a commit gap past the project's threshold. Say what it is spending on, the trend,
-  and the recommended stop (usually: fix what the last review found, commit, close out; or swap to a library). Redirecting
-  the worker then needs the operator's words, relayed.
+  budget) trigger shows, whether the watchdog or your own turn found it. Between your turns the
+  watchdog covers a commit gap past the brief's no-commit threshold, and review iterations only
+  roughly (sub-agent growth past its step, not the brief's limit); the rest are yours: a fix-created
+  finding, an edge-case chase, a reimplementation of a spec. Say what it spends on, the trend, and the
+  recommended stop (usually: fix what the last review found, commit, close out; or swap to a library).
+  Redirecting the worker then needs the operator's words, relayed.
 
 **Status** (`crew status`, "what are my workers doing"): one row per roster worker — ticket, title,
 status (`chip` / `queued` / `running` / `waiting on you` / `blocked` / `cleared` / `done` /
@@ -389,17 +402,17 @@ You were spawned by an orchestrator. Your brief is your first message. You remem
    already got an answer here, say so in this session and don't act on the relay twice.
 6. **Stuck** → `BLOCKED`, end the turn. Don't work around it; don't ask the operator directly
    instead of reporting.
-7. **Loop budget — a fix/review cycle is bounded, never open-ended.** The limit is this project's
-   (`CREW.md` › Counters); absent one, **two** review→fix iterations per unit or PR round: the review,
+7. **Loop budget — a fix/review cycle is bounded, never open-ended.** The limit is the one your brief
+   states; absent one, **two** review→fix iterations per unit or PR round: the review,
    the fix, one re-review of the fix delta. Going past it needs the operator: `NEED-INPUT` with the
    per-iteration finding counts. Stop and send `NEED-INPUT` *at once*, before the budget, on any of:
    - a finding caused by the previous iteration's own fix (fixes are seeding findings);
    - findings moving to ever-rarer inputs round over round (an edge-case chase, not a defect hunt);
-   - the fix is growing a reimplementation of a spec or format (markdown, YAML, URLs, dates, shell
+   - the fix is growing a reimplementation of a spec or format (Markdown, YAML, URLs, dates, shell
      quoting) → propose the well-tested library instead; its install is a Hard Gate to ask for, never
      a reason to hand-roll;
-   - going the project's no-commit threshold (`CREW.md` › Ledger › watchdog; absent, 60 minutes) without
-     a commit — commit what's green, then judge whether to go on.
+   - going your brief's no-commit threshold (absent, 60 minutes) without a commit — commit what's
+     green, then judge whether to go on.
    The budget caps review iterations, never fixes: every VALID finding is fixed and pinned whatever
    its severity (a finding wrong on the merits is declined with its reason), including the last
    allowed review's, in that same pass and without re-reviewing that fix. **At the last allowed

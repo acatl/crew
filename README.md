@@ -16,14 +16,18 @@ skill interviews you for on first use.
 ## Layout
 
 ```text
-skills/crew/
-  SKILL.md              the contract: messages, input invariant, authority, orchestrator + worker flows
-  references/           brief template, ledger format, docs/CREW.md interview
-  watchdog.sh           background poller that wakes the orchestrator when a looping worker stalls
-  watchdog.test.sh      sandboxed tests for watchdog.sh (touches nothing real)
-  overlap.sh            parallel-safety check: does a candidate surface collide with in-flight workers?
+skills/crew/                the skill: this directory is what gets installed
+  SKILL.md                  the contract: messages, input invariant, authority, orchestrator + worker flows
+  references/               brief template, ledger format, docs/CREW.md interview
+  scripts/
+    watchdog.sh             background poller that wakes the orchestrator when a looping worker stalls
+    overlap.sh              parallel-safety check: does a candidate surface collide with in-flight workers?
+test/                       sandboxed suites for both scripts and for the repo's checks (touch nothing real)
 scripts/
-  link-skills.sh        symlink skills/* into ~/.claude/skills (idempotent, never clobbers)
+  link-skills.sh            symlink skills/* into ~/.claude/skills (idempotent, never clobbers)
+  verify.sh                 every CI check, in CI's order; the pre-push hook runs it
+  check-*.sh                the repo's checks: structure, content metrics, word budget, invariants, references
+baselines/                  the word budget and content metrics the checks compare against
 ```
 
 ## Install
@@ -35,8 +39,15 @@ scripts/link-skills.sh          # creates ~/.claude/skills/crew -> <repo>/skills
 scripts/link-skills.sh check    # exit 0 only if every skill is linked
 ```
 
-Install at user level (`~/.claude/skills/crew`), not into a project's `.claude/skills/`. SKILL.md calls
-its scripts at `~/.claude/skills/crew/...`, and each project's crew ledger records those paths too.
+Or install it into one project only:
+
+```bash
+CLAUDE_SKILLS_DIR=/path/to/project/.claude/skills scripts/link-skills.sh
+```
+
+Either works. SKILL.md runs its scripts from the directory Claude Code reports as the skill's base
+directory, wherever that is. The orchestrator's own state lives in `~/.claude/crew/` whichever way you
+install.
 
 ## Development
 
@@ -50,7 +61,8 @@ its scripts at `~/.claude/skills/crew/...`, and each project's crew ledger recor
   ln -sfn "$PWD/skills/crew" ~/.claude/skills/crew                 # done: back to main
   ```
 
-- **After editing a script, run the tests:** `skills/crew/watchdog.test.sh`.
+- **Before you push, run the checks:** `npm ci` once, then `./scripts/verify.sh`. The pre-push hook
+  runs it too. [CONTRIBUTING.md](CONTRIBUTING.md) › Local checks lists the tools it needs.
 - **After editing `watchdog.sh`, restart any running watchdog.** It is a long-lived process and bash reads
   its script from disk while running. Stop it by pid
   (`kill "$(cat ~/.claude/crew/<slug>/watchdog.pid)"`), never with `pkill` by name.

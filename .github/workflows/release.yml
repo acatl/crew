@@ -1,0 +1,33 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+
+# Restrictive default for the workflow; the release-please job elevates its own.
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: release-please
+    runs-on: ubuntu-latest
+    # Scoped to this job (not workflow-wide): only release-please needs write access —
+    # to open/update the Release PR and push the tag + GitHub Release. `issues: write`
+    # is required for the `autorelease:*` state labels and release comments it applies
+    # via the Issues API.
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    # Don't run on forks — only the canonical repo cuts releases.
+    if: github.repository == 'acatl/crew'
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

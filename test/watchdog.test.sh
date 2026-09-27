@@ -2,17 +2,17 @@
 # Tests for watchdog.sh. Builds a throwaway repo, crew dir and fake transcript tree under a
 # sandboxed $HOME, so it touches nothing real. Run it after any change:
 #
-#   ~/.claude/skills/crew/watchdog.test.sh
+#   test/watchdog.test.sh
 #
-# The portability branch cannot be covered here: a machine has one stat(1) flavour, so whichever
-# branch this machine does not use ships code-reviewed, not tested.
+# A machine has one stat(1) flavour, so a local run covers only its own branch of the portability
+# probe. CI runs this suite on macOS (BSD) and Linux (GNU), which covers both.
 #
 # Reading a "stays silent" assertion: silence alone is weak evidence — a watchdog that is blind for
 # a mechanical reason is also silent. Every `silent` call below is therefore PAIRED with a positive
 # control on the same fixture: a later assertion crosses the threshold and must fire. Never add a
 # `silent` assertion without its pair.
 set -u
-WD="$(cd "$(dirname "$0")" && pwd)/watchdog.sh"
+WD="$(cd "$(dirname "$0")/.." && pwd)/skills/crew/scripts/watchdog.sh"
 ROOT=$(mktemp -d)
 pass=0; fail=0
 ok()  { pass=$((pass+1)); printf 'ok   %s\n' "$1"; }
@@ -55,7 +55,15 @@ go_quiet()   { find "$PROJ" -name '*.jsonl' -exec touch -t "$(stale_stamp)" {} +
 subagents()  { local i; rm -f "$PROJ"/sess/subagents/*.jsonl
                for ((i=1;i<=$1;i++)); do : > "$PROJ/sess/subagents/a$i.jsonl"; done; }
 roster1()    { printf '#1\t%s\n' "$WT" > "$CREW/roster.tsv"; }
-reset()      { rm -f "$CREW/reported.txt" "$CREW/watchdog.pid"; touch "$CREW/reported.txt"; }
+reset()      { rm -f "$CREW/reported.txt" "$CREW/watchdog.pid"; touch "$CREW/reported.txt"; watched; }
+# watched: the watchdog has watched every worker this suite uses active for a day, unbroken, so
+# HEAD's clock rules and a trigger-1 case means what it did before the active clock existed. Rows
+# are keyed by ticket and worktree, and a pass prunes those off the roster, so a case that changes
+# the roster calls this again.
+watched()    { local n; n=$(date +%s)
+               printf '%s\t%s\t%s\t%s\n' '#1' "$WT" $((n - 86400)) "$n" '#2' "$WT2" $((n - 86400)) "$n" \
+                 '#3' "$ROOT/empty" $((n - 86400)) "$n" '#4' "$ROOT/vanished" $((n - 86400)) "$n" \
+                 '#9' "$WT2" $((n - 86400)) "$n" 'AB' "$WT" $((n - 86400)) "$n" > "$CREW/active.tsv"; }
 # Trigger 1 needs an OLD head; a fresh commit makes it structurally impossible. Preferred over
 # pre-seeding a reported.txt key, which coupled the suite to that key's exact format.
 silence_t1() { commit_in "$WT" 0; }
@@ -149,9 +157,9 @@ reset; go_quiet
 if silent
 then ok "10 stale worker is not reported (activity gate)"; else bad "10 activity gate" "fired: $(cat "$ROOT/out")"; fi
 active                                           # positive control for 10, same fixture
-run; rc=$?
-if [ "$rc" = 0 ]
-then ok "11 same fixture fires once it writes again"; else bad "11 activity-gate control" "rc=$rc"; fi
+run --no-commit 2; rc=$?                         # its idle pass restarted the clock
+if [ "$rc" = 0 ] && grep -q "since it went active" "$ROOT/out"
+then ok "11 same fixture fires once it has been active past --no-commit"; else bad "11 activity-gate control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 
 # a repo with no commits must not fire or crash
 reset; mkdir -p "$ROOT/empty"; git -C "$ROOT/empty" init -q -b main
@@ -162,16 +170,30 @@ if silent
 then ok "12 repo with no commits -> no fire, no crash"; else bad "12 empty repo" "$(cat "$ROOT/out" "$ROOT/err")"; fi
 if [ "$(grep -c "no HEAD in" "$ROOT/err" | tr -d ' ')" = 1 ]
 then ok "12b and says once that it is unwatched"; else bad "12b empty-repo warning" "$(cat "$ROOT/err")"; fi
+git -C "$ROOT/empty" config user.email t@t; git -C "$ROOT/empty" config user.name t
+commit_in "$ROOT/empty" 7200                     # positive control for 12: the same repo, now committed
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #3: active but no commit" "$ROOT/out"
+then ok "12e same repo fires once it has a stale commit"; else bad "12e empty-repo control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 
 # A roster row whose worktree is gone used to be dropped in total silence.
 reset; printf '#4\t%s\n' "$ROOT/vanished" > "$CREW/roster.tsv"
 if silent && grep -q "no worktree at .* for #4" "$ROOT/err"
 then ok "12c missing worktree is warned, not silently dropped"; else bad "12c missing worktree" "$(cat "$ROOT/err")"; fi
+git clone -q "$WT" "$ROOT/vanished"              # positive control for 12c: the worktree is back
+mkdir -p "$HOME/.claude/projects/$(slug "$ROOT/vanished")"; : > "$HOME/.claude/projects/$(slug "$ROOT/vanished")/s.jsonl"
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #4: active but no commit" "$ROOT/out"
+then ok "12f same row fires once its worktree exists"; else bad "12f missing-worktree control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 
 # A ticket id with whitespace would break the awk dedupe and re-fire forever; reject the row.
 reset; printf 'A B\t%s\n' "$WT" > "$CREW/roster.tsv"
 if silent && grep -q "whitespace" "$ROOT/err"
 then ok "12d whitespace in a ticket id is rejected"; else bad "12d whitespace id" "$(cat "$ROOT/err")"; fi
+watched; printf 'AB\t%s\n' "$WT" > "$CREW/roster.tsv"   # positive control for 12d: same worktree, valid id
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "WATCHDOG AB: active but no commit" "$ROOT/out"
+then ok "12g same worktree fires under a valid id"; else bad "12g whitespace-id control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 roster1
 
 # --- built-in defaults -------------------------------------------------------------------------------
@@ -218,7 +240,7 @@ kill "$p" 2>/dev/null; wait "$p" 2>/dev/null
 
 # --- trigger 2: the growth floor ----------------------------------------------------------------------
 reset; silence_t1; active
-subagents 3
+sleep 1; subagents 3                             # born after the baseline commit, so all 3 count
 if silent
 then ok "22 at the floor -> silent"; else bad "22 at floor" "fired: $(cat "$ROOT/out")"; fi
 
@@ -241,7 +263,7 @@ then ok "25 growth past the new floor -> fires"; else bad "25 growth past floor"
 if grep -q "threshold +3" "$ROOT/out" && ! grep -q "review passes" "$ROOT/out"
 then ok "26 threshold stated in sub-agents, not reviews"; else bad "26 threshold unit" "$(cat "$ROOT/out")"; fi
 
-reset; silence_t1; subagents 1
+reset; silence_t1; sleep 1; subagents 1        # born after the baseline commit, so it counts
 if silent --subagent-step 1
 then ok "27 --subagent-step 1, at the floor -> silent"; else bad "27 step flag silent" "fired: $(cat "$ROOT/out")"; fi
 subagents 2
@@ -262,19 +284,67 @@ if silent --base no-such-ref
 then ok "28c no push baseline -> does not fire"; else bad "28c no baseline" "fired: $(cat "$ROOT/out")"; fi
 if grep -q "no push baseline for #1" "$ROOT/err"
 then ok "28d and says trigger 2 is off for it"; else bad "28d no-baseline warning" "$(cat "$ROOT/err")"; fi
+sleep 1; subagents 20                            # positive control for 28c: a resolvable base counts them
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "20 sub-agents since last push" "$ROOT/out"
+then ok "28e same fixture fires once the base resolves"; else bad "28e no-baseline control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 seed_commit 7200
 
-# a push moves the baseline, so sub-agents older than it stop counting
-reset; silence_t1; subagents 8
+# a push moves the baseline, so sub-agents from before it stop counting, including those between the
+# commit and the push: that is a worker's self-review. The baseline is when the push happened, so the
+# gaps below keep commit, sub-agents and push in separate seconds; timed from the commit instead, or
+# from the merge-base fallback, these 8 would count.
+reset; silence_t1; sleep 1; subagents 8; sleep 1
 git init -q --bare "$ROOT/bare.git"
 git -C "$WT" remote add origin "$ROOT/bare.git"
 git -C "$WT" push -q origin main
 if silent
-then ok "29 a push re-baselines trigger 2"; else bad "29 push re-baseline" "fired: $(cat "$ROOT/out")"; fi
+then ok "29 a push re-baselines trigger 2, from when it was pushed"; else bad "29 push re-baseline" "fired: $(cat "$ROOT/out")"; fi
 sleep 1; subagents 8                             # recreated strictly after the push
 run; rc=$?
 if [ "$rc" = 0 ] && grep -q "8 sub-agents since last push" "$ROOT/out"
 then ok "30 sub-agents after the push do count"; else bad "30 post-push count" "rc=$rc $(cat "$ROOT/out")"; fi
+
+# a second push re-baselines from itself: the newest push in the reflog, not the first
+commit_in "$WT" 0; sleep 1; git -C "$WT" push -q origin main
+reset; sleep 1; subagents 4
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "4 sub-agents since last push (first alert" "$ROOT/out"
+then ok "30b a second push re-baselines from itself"; else bad "30b second push" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
+# a fetch moves origin/<branch> too, but it is not this worker's push: its sub-agents still count
+reset; sleep 1; subagents 4; sleep 1
+git clone -q -b main "$ROOT/bare.git" "$ROOT/other"
+git -C "$ROOT/other" config user.email t@t; git -C "$ROOT/other" config user.name t
+git -C "$ROOT/other" config commit.gpgsign false
+echo y >> "$ROOT/other/g"; git -C "$ROOT/other" add g; git -C "$ROOT/other" commit -qm other
+git -C "$ROOT/other" push -q origin main; git -C "$WT" fetch -q origin
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "4 sub-agents since last push (first alert" "$ROOT/out"
+then ok "30c a fetch doesn't re-baseline trigger 2"; else bad "30c fetch" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
+# An alert keyed by the pushed commit's time, as before push times came from the reflog, still
+# suppresses the same push's count.
+git -C "$WT" pull -q --no-rebase origin main; commit_in "$WT" 0; reset; sleep 1; git -C "$WT" push -q origin main
+sleep 1; subagents 8
+printf '#1 subs %s 8\n' "$(git -C "$WT" log -1 --format=%ct origin/main)" > "$CREW/reported.txt"
+if silent
+then ok "30d an alert keyed by the commit's time still stands for its push"; else bad "30d old subs key" "fired: $(cat "$ROOT/out")"; fi
+: > "$CREW/reported.txt"
+run; rc=$?                                       # positive control for 30d
+if [ "$rc" = 0 ] && grep -q "8 sub-agents since last push (first alert" "$ROOT/out"
+then ok "30e same fixture fires once that key is gone"; else bad "30e old-key control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
+# No push in the reflog (core.logAllRefUpdates off): count from the pushed commit's time, and say so.
+# A newer, unpushed commit separates that from the merge-base fallback, which would count none.
+git -C "$WT" remote remove origin; git init -q --bare "$ROOT/bare2.git"; git -C "$WT" remote add origin "$ROOT/bare2.git"
+reset; silence_t1; git -C "$WT" -c core.logAllRefUpdates=false push -q origin main
+sleep 1; subagents 4; sleep 1; commit_in "$WT" 0
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "4 sub-agents since last push" "$ROOT/out" \
+   && grep -q "no push in origin/main's reflog for #1" "$ROOT/err"
+then ok "30f without a push in the reflog it counts from the pushed commit, and warns"; else bad "30f no reflog" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+subagents 0
 git -C "$WT" remote remove origin
 
 # --- several workers ----------------------------------------------------------------------------------
@@ -296,7 +366,7 @@ if silent
 then ok "33 empty roster -> keeps sleeping"; else bad "33 empty roster" "exited: $(cat "$ROOT/err")"; fi
 if [ ! -s "$ROOT/err" ]
 then ok "34 an empty roster is not an error"; else bad "34 empty roster stderr" "$(cat "$ROOT/err")"; fi
-roster1
+roster1                                          # an empty roster prunes no clock
 run; rc=$?                                       # positive control for 33/34
 if [ "$rc" = 0 ]
 then ok "35 same fixture fires once the roster has a row"; else bad "35 empty-roster control" "rc=$rc"; fi
@@ -322,7 +392,7 @@ if [ "$rc" = 0 ] && grep -q "WATCHDOG #1" "$ROOT/out"
 then ok "39 unterminated last line is read"; else bad "39 unterminated line" "rc=$rc $(cat "$ROOT/out")"; fi
 
 reset; : > "$CREW/roster.tsv"
-"$WD" --base main --no-commit 60 --interval 1 "$CREW" >"$ROOT/out" 2>"$ROOT/err" &
+"$WD" --base main --no-commit 2 --interval 1 "$CREW" >"$ROOT/out" 2>"$ROOT/err" &   # its clock starts on arrival
 p=$!; sleep 2
 printf '#1\t%s\n' "$WT" > "$ROOT/t.tsv"; mv "$ROOT/t.tsv" "$CREW/roster.tsv"   # write-then-mv
 i=0; while kill -0 "$p" 2>/dev/null && [ $i -lt 6 ]; do sleep 1; i=$((i+1)); done
@@ -346,6 +416,133 @@ mv "$ROOT/hidden" "$PROJ2"
 run; rc=$?                                       # positive control for 41
 if [ "$rc" = 0 ] && grep -q "WATCHDOG #9" "$ROOT/out"
 then ok "43 it fires once the transcript dir is back"; else bad "43 unwatched control" "rc=$rc $(cat "$ROOT/out")"; fi
+
+# --- trigger 1's clock: HEAD's commit or the start of the worker's active stretch -------------------------
+# Counting from HEAD alone fired at spawn for a worker on an old base (seen live, 2026-09-25: 107 min),
+# and again for one that waited overnight on the operator (2026-09-26: 1153 min).
+reset; roster1; subagents 0; seed_commit 7200; go_quiet
+"$WD" --base main --no-commit 60 --interval 1 "$CREW" >"$ROOT/out" 2>"$ROOT/err" &
+p=$!; i=0                                        # wait for a pass that sees it idle and ends its stretch
+while grep -q "^#1	" "$CREW/active.tsv" && [ $i -lt 40 ]; do sleep 0.25; i=$((i+1)); done
+active; sleep 3                                  # then passes see it active
+if kill -0 "$p" 2>/dev/null
+then ok "44 idle for hours, then active -> silent"; else bad "44 idle then active" "fired: $(cat "$ROOT/out")"; fi
+kill "$p" 2>/dev/null; wait "$p" 2>/dev/null
+since=$(awk -F'\t' '$1 == "#1" {print $3}' "$CREW/active.tsv")
+case "$since" in ''|*[!0-9]*) since=0 ;; esac          # a non-number must fail the case, not abort it
+if [ "$since" -gt 0 ] && [ $(( $(date +%s) - since )) -lt 60 ]
+then ok "45 its clock starts when it went active, not a day ago"; else bad "45 stretch start" "$(cat "$CREW/active.tsv")"; fi
+run --no-commit 2; rc=$?                         # positive control for 44: the same fixture, past it
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 0 min since it went active" "$ROOT/out"
+then ok "46 same fixture fires once it has been active past --no-commit"; else bad "46 stretch control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
+# A stretch nobody watched may hold idle time: a sighting long after the last one starts a new stretch.
+reset; n=$(date +%s); printf '#1\t%s\t%s\t%s\n' "$WT" $((n - 86400)) $((n - 7200)) > "$CREW/active.tsv"
+if silent
+then ok "47 a two-hour gap in sightings restarts the clock"; else bad "47 sighting gap" "fired: $(cat "$ROOT/out")"; fi
+run --no-commit 2; rc=$?                         # positive control for 47
+if [ "$rc" = 0 ] && grep -q "since it went active" "$ROOT/out"
+then ok "48 same fixture fires once it has been active past --no-commit"; else bad "48 gap control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
+# An unbroken watch keeps a worker's clock across the one-shot exit and relaunch.
+reset
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 12[0-9] min (head" "$ROOT/out"
+then ok "49 an unbroken stretch counts from HEAD, the later clock"; else bad "49 unbroken stretch" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
+# A new stretch at the same head is a new alert: the last stretch's dedupe key must not swallow it.
+# Both alerts land in their stretch's first --no-commit window, where the keys used to collide; at
+# --no-commit 5 the next window re-arms only after run's 8 s cap, so a swallowed alert shows.
+go_quiet
+if silent
+then ok "50 the worker goes idle -> silent, and its stretch ends"; else bad "50 idle after alert" "fired: $(cat "$ROOT/out")"; fi
+active
+run --no-commit 5; rc=$?                         # positive control for 50: a first short stretch
+if [ "$rc" = 0 ] && grep -q "since it went active" "$ROOT/out"
+then ok "50b a stretch past --no-commit alerts"; else bad "50b first stretch" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+go_quiet
+if silent
+then ok "50c idle again -> silent"; else bad "50c idle again" "fired: $(cat "$ROOT/out")"; fi
+active
+run --no-commit 5; rc=$?                         # positive control for 50c: a second stretch, same head
+if [ "$rc" = 0 ] && grep -q "since it went active" "$ROOT/out"
+then ok "51 a second stretch at the same head alerts again"; else bad "51 second stretch" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
+# A worker spawned again for the same ticket, in a new worktree, starts its own clock.
+WT3="$ROOT/wt3"; mkdir -p "$WT3"; git -C "$WT3" init -q -b main
+git -C "$WT3" config user.email t@t; git -C "$WT3" config user.name t; commit_in "$WT3" 7200
+mkdir -p "$HOME/.claude/projects/$(slug "$WT3")"; : > "$HOME/.claude/projects/$(slug "$WT3")/s.jsonl"
+reset; printf '#1\t%s\n' "$WT3" > "$CREW/roster.tsv"
+if silent
+then ok "52 a re-spawned ticket doesn't inherit the last worker's clock"; else bad "52 re-spawn" "fired: $(cat "$ROOT/out")"; fi
+run --no-commit 2; rc=$?                         # positive control for 52
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 0 min since it went active" "$ROOT/out"
+then ok "53 same fixture fires once the new worker is past --no-commit"; else bad "53 re-spawn control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+roster1
+
+# A sighting within one pass plus the activity window keeps the clock; unwatched time past that
+# restarts it, even when it is shorter than --no-commit, since it may have been spent waiting.
+reset; n=$(date +%s); printf '#1\t%s\t%s\t%s\n' "$WT" $((n - 3000)) $((n - 600)) > "$CREW/active.tsv"
+run --no-commit 2000; rc=$?
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 50 min since it went active" "$ROOT/out"
+then ok "54 a sighting within --interval + 15 min keeps the clock"; else bad "54 recent sighting" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+reset; n=$(date +%s); printf '#1\t%s\t%s\t%s\n' "$WT" $((n - 3000)) $((n - 1500)) > "$CREW/active.tsv"
+if silent --no-commit 2000
+then ok "54b 25 unwatched minutes restart the clock, though under --no-commit"; else bad "54b unwatched gap" "fired: $(cat "$ROOT/out")"; fi
+run --no-commit 2; rc=$?                         # positive control for 54b
+if [ "$rc" = 0 ] && grep -q "since it went active" "$ROOT/out"
+then ok "54c same fixture fires once it has been watched past --no-commit"; else bad "54c gap control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
+# One finding per run, but every rostered worker is sighted before the exit, so a stuck worker listed
+# after the one that fired keeps its clock across the relaunch.
+reset; : > "$PROJ2/sess.jsonl"; n=$(date +%s)
+printf '#1\t%s\t%s\t%s\n#2\t%s\t%s\t%s\n' "$WT" $((n - 86400)) $((n - 100)) "$WT2" $((n - 86400)) $((n - 100)) > "$CREW/active.tsv"
+printf '#1\t%s\n#2\t%s\n' "$WT" "$WT2" > "$CREW/roster.tsv"
+run; rc=$?
+seen2=$(awk -F'\t' '$1 == "#2" {print $4}' "$CREW/active.tsv"); case "$seen2" in ''|*[!0-9]*) seen2=0 ;; esac
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1" "$ROOT/out" && [ "$seen2" -ge "$n" ]
+then ok "54d an alert still records a sighting for the rest of the roster"; else bad "54d sight before exit" "rc=$rc seen2=$seen2 n=$n $(cat "$ROOT/out")"; fi
+roster1
+
+# HEAD's clock keeps the older dedupe key, so a reported.txt written before the stretch clock existed
+# still suppresses what it suppressed.
+reset; seed_commit 90
+printf '#1 nocommit %s\n' "$(git -C "$WT" rev-parse --short HEAD)" > "$CREW/reported.txt"
+if silent
+then ok "54e an existing key suppresses the same HEAD-clock alert"; else bad "54e legacy key" "fired: $(cat "$ROOT/out")"; fi
+: > "$CREW/reported.txt"
+run; rc=$?                                       # positive control for 54e
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 1 min (head" "$ROOT/out"
+then ok "54f same fixture fires once the key is gone"; else bad "54f legacy-key control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+seed_commit 7200
+
+# A worker dropped from the roster loses its row, so the next one in the same worktree starts fresh.
+reset; printf '#2\t%s\n' "$WT2" > "$CREW/roster.tsv"; : > "$PROJ2/sess.jsonl"
+run; roster1                                     # a pass without #1 prunes its row
+if silent
+then ok "54g a re-dispatch into the same worktree starts its own clock"; else bad "54g same-worktree re-dispatch" "fired: $(cat "$ROOT/out")"; fi
+run --no-commit 2; rc=$?                         # positive control for 54g
+if [ "$rc" = 0 ] && grep -q "since it went active" "$ROOT/out"
+then ok "54h same fixture fires once it is past --no-commit"; else bad "54h re-dispatch control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
+# A ticket id with a backslash keeps its clock (awk -v would unescape it and never find the row).
+reset; printf 'T\\q\t%s\n' "$WT" > "$CREW/roster.tsv"
+run --no-commit 2; rc=$?
+if [ "$rc" = 0 ] && grep -qF 'WATCHDOG T\q: active but no commit' "$ROOT/out" \
+   && [ "$(grep -cF 'T\q	' "$CREW/active.tsv" | tr -d ' ')" = 1 ]
+then ok "55 a ticket id with a backslash keeps one row and its clock"; else bad "55 backslash id" "rc=$rc $(cat "$ROOT/out" "$ROOT/err") rows: $(cat "$CREW/active.tsv")"; fi
+# and trigger 2 finds its last alert for such an id, so a relaunch doesn't re-fire the same count
+reset; silence_t1; sleep 1; subagents 4
+run; rc=$?
+if [ "$rc" = 0 ] && grep -qF 'WATCHDOG T\q: 4 sub-agents since last push (first alert' "$ROOT/out"
+then ok "56 trigger 2 fires for a backslash id"; else bad "56 backslash trigger 2" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+if silent
+then ok "57 and its relaunch at the same count stays silent"; else bad "57 backslash dedupe" "fired: $(cat "$ROOT/out")"; fi
+subagents 8
+run; rc=$?                                       # positive control for 57
+if [ "$rc" = 0 ] && grep -qF 'was 4 at last alert' "$ROOT/out"
+then ok "58 growth past its floor fires again"; else bad "58 backslash growth" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+subagents 0; seed_commit 7200; roster1
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" = 0 ]

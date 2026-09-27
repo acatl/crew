@@ -31,19 +31,19 @@ crewdir() {
 
 It fails loudly rather than returning a partial path; a silent fallback would scatter ledgers.
 
-```
+```text
 ~/.claude/crew/<slug>/
   ledger.md            live state only — bounded by work in flight
   briefs/<row>.md      each brief exactly as sent, so a resume can re-attach it
   archive-YYYY-MM.md   evicted rows, append-only, never read in normal operation
   roster.tsv           the watchdog's input: <ticket> TAB <worktree>, one per running worker
-  reported.txt         what the watchdog already reported — it outlives the one-shot process
+  reported.txt, active.tsv  what the watchdog reported, and each worker's clock; both outlive its one-shot runs
   watchdog.pid         the running watchdog's pid; how you stop it
   watchdog.log         its stderr: where it says a worker is unwatched, or the roster vanished
 ```
 
-Outside the repo on purpose: this is session state, which is machine-local, so it needs no
-`.gitignore` change in every project and it survives a worktree being archived.
+Outside the repo on purpose: this is machine-local session state, so it needs no `.gitignore`
+change in every project and survives a worktree being archived.
 
 ## Shape
 

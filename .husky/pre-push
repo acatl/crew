@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+# The full sensor set, the same one CI runs (scripts/verify.sh), on exactly
+# what this push publishes. verify.sh measures the working tree, so the tree
+# must be clean and every pushed commit must be the checked-out one: otherwise
+# the sensors pass on bytes the push does not carry (a raised baseline hidden
+# by an uncommitted revert, another branch pushed from here). A push that only
+# deletes publishes no commit, so it measures nothing.
+# Never skipped: no --no-verify (CONTRIBUTING.md).
+head=$(git rev-parse HEAD)
+publishes=
+while read -r ref sha _; do
+  case "$sha" in *[!0]*) ;; *) continue ;; esac # a deletion publishes no commit
+  if [ "$(git rev-parse --verify --quiet "$sha^{commit}")" != "$head" ]; then
+    echo "pre-push: $ref is not the checked-out commit, so the sensors cannot measure it — check it out, then push from there" >&2
+    exit 1
+  fi
+  publishes=1
+done
+[ -n "$publishes" ] || exit 0
+if [ -n "$(git status --porcelain)" ]; then
+  echo "pre-push: the working tree has uncommitted changes, which the sensors would measure instead of what you push — commit or discard them, then push again" >&2
+  exit 1
+fi
+./scripts/verify.sh
