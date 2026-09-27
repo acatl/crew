@@ -184,17 +184,28 @@ fi
 
 # --- the loop limit reaches a worker through its brief ---------------------------------------------------
 # Workers never read CREW.md. The orchestrator resolves CREW.md › Counters into the brief's
-# {ITERATIONS}, and SKILL.md reads the limit from the brief, so SKILL.md never cites Counters itself.
+# {ITERATIONS}, and the Worker section reads the limit from the brief, so it never cites Counters
+# itself. The orchestrator's sections read CREW.md, so the ban is scoped to Worker sections, found by
+# heading in any skill file (PR 3 moves sections); one must exist, or the check would pass blind.
 limit_ok=1
-while IFS=$'\t' read -r loc hit; do
+worker=$(LC_ALL=C awk 'FNR == 1 {w = 0}
+  /^#+ / {n = index($0, " ") - 1; if (w && n <= lvl) w = 0
+          if ($0 ~ /^#+ Worker[[:space:]]*$/) {w = 1; lvl = n; next}}
+  w {printf "%s:%d\t%s\n", FILENAME, FNR, $0}' "${mds[@]}")
+if [ -z "$worker" ]; then
+  reworded "$SKILL/*.md" "a Worker section heading"; limit_ok=0
+fi
+while IFS=$'\t' read -r loc _; do
   [ -n "$loc" ] || continue
-  fail "$loc: SKILL.md cites '$hit', but workers never read CREW.md; the limit reaches them as the brief's {ITERATIONS}"
+  fail "$loc: the Worker section cites CREW.md › Counters, but workers never read CREW.md; the limit reaches them as the brief's {ITERATIONS}"
   limit_ok=0
-done < <(scan 'CREW\.md`?[[:space:]]+›[[:space:]]+Counters' "$SKILL/SKILL.md")
+done < <(grep -E 'CREW\.md`?[[:space:]]+›[[:space:]]+Counters' <<< "$worker" || true)
 if [ -z "$(scan "$(ws 'Loop budget [^:]*: at most [{]ITERATIONS[}] review→fix iterations')" "$BRIEF")" ]; then
   fail "$BRIEF: the brief's Loop budget line no longer says 'at most {ITERATIONS} review→fix iterations'"; limit_ok=0
 fi
-if [ -z "$(scan "[|] \`[{]ITERATIONS[}]\` [|] \`CREW\\.md\` › Counters" "$BRIEF")" ]; then
+# shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
+row_re='[|] `[{]ITERATIONS[}]` [|] `[^`|]*CREW\.md` › Counters'
+if [ -z "$(scan "$(ws "$row_re")" "$BRIEF")" ]; then
   fail "$BRIEF: no placeholder row sourcing {ITERATIONS} from \`CREW.md\` › Counters"; limit_ok=0
 fi
 if [ "$limit_ok" = 1 ]; then held=$((held + 1)); fi

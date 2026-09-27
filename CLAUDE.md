@@ -109,8 +109,8 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   `crew-md.md`. *Checked*, as is every `references/<name>.md` the skill mentions.
 - **The loop limit reaches a worker through its brief.** Workers never read `CREW.md`: the
   orchestrator resolves `CREW.md` › Counters into the brief's `{ITERATIONS}`, and SKILL.md reads the
-  limit from the brief. *Checked*: SKILL.md never cites Counters, and the brief's Loop budget line
-  carries `{ITERATIONS}`.
+  limit from the brief. *Checked*: no Worker section cites Counters (the orchestrator's may), the
+  brief's Loop budget line carries `{ITERATIONS}`, and its placeholder row sources it from Counters.
 
 ## Conventions
 

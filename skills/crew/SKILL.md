@@ -361,12 +361,12 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   `worktreePath`. Count review→fix iterations since its last report. The watchdog covers the stretches
   between your turns; this covers the turn you are in.
 - **Surface to the operator** — don't wait for the worker to ask — when any *Worker* step 7 (loop
-  budget) trigger shows, whether the watchdog or your own turn found it. The watchdog covers two
-  between your turns: review iterations past the brief's limit (by proxy: sub-agent growth) and a
-  commit gap past the brief's no-commit threshold; the other three are yours alone: a fix-created
-  finding, an edge-case chase, a reimplementation of a spec. Say what it spends on, the trend,
-  and the recommended stop (usually: fix what the last review found, commit, close out; or swap to a
-  library). Redirecting the worker then needs the operator's words, relayed.
+  budget) trigger shows, whether the watchdog or your own turn found it. Between your turns the
+  watchdog covers a commit gap past the brief's no-commit threshold, and review iterations only
+  roughly (sub-agent growth past its step, not the brief's limit); the rest are yours: a fix-created
+  finding, an edge-case chase, a reimplementation of a spec. Say what it spends on, the trend, and the
+  recommended stop (usually: fix what the last review found, commit, close out; or swap to a library).
+  Redirecting the worker then needs the operator's words, relayed.
 
 **Status** (`crew status`, "what are my workers doing"): one row per roster worker — ticket, title,
 status (`chip` / `queued` / `running` / `waiting on you` / `blocked` / `cleared` / `done` /

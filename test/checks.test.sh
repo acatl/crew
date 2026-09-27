@@ -8,9 +8,9 @@
 #   test/checks.test.sh
 #
 # A check that passes proves nothing on its own: a check blind for a mechanical reason passes too.
-# So every check is first run green on an untouched copy, and a drift case must turn it red AND name
-# the file that drifted. A case that changes a fixture is paired on that same fixture: a green case
-# with one that fires, a red one with one that passes.
+# So every check is first run green on an untouched copy, the control for each drift case after it
+# (fresh rebuilds that same copy), and a drift case must turn it red AND name the file that drifted.
+# A case that leaves a changed fixture green is paired with one that fires on that same fixture.
 set -u
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 ROOT=$(mktemp -d)
@@ -29,8 +29,14 @@ fresh() {
   cp -R "$REPO/skills" "$REPO/scripts" "$REPO/baselines" "$S/"
   cp "$REPO/test/watchdog.test.sh" "$S/test/"
 }
-# edit <file> <sed expression>: in place through a temp file, since BSD and GNU sed -i disagree
-edit() { sed "$2" "$S/$1" > "$S/$1.new" && mv "$S/$1.new" "$S/$1"; }
+# edit <file> <sed expression>: in place through a temp file, since BSD and GNU sed -i disagree. An
+# edit that errors or changes nothing is itself a failure: the case after it would test an untouched
+# fixture, and a green case would pass blind.
+edit() {
+  if ! sed "$2" "$S/$1" > "$S/$1.new"; then bad "edit $1" "sed failed: $2"; return 1; fi
+  if cmp -s "$S/$1" "$S/$1.new"; then bad "edit $1" "changed nothing: $2"; fi
+  mv "$S/$1.new" "$S/$1"
+}
 run() { local c=$1; shift; "$S/scripts/$c.sh" "$@" >"$ROOT/out" 2>&1; }
 
 green() {  # green <label> <check>
@@ -83,10 +89,7 @@ fresh; edit "$SK" 's#confirm with the `crew:brief` marker#confirm with the `crew
 red "10 a stray spelling of the marker's name" check-invariants "'crew:brf'"
 fresh; edit "$BT" 's#A `RELAY` carries#A relay carries#'
 red "11 the fallback drops a message kind" check-invariants "doesn't name \`RELAY\`"
-fresh; edit "$SK" 's#absent one, \*\*two\*\*#absent one (`CREW.md` › Counters), **two**#'
-red "13b SKILL.md citing CREW.md › Counters for the limit" check-invariants "SKILL.md cites 'CREW.md\` › Counters'"
-fresh; edit "$BT" 's#at most {ITERATIONS} review#at most two review#'
-red "13c the brief hard-coding the limit again" check-invariants "no longer says 'at most {ITERATIONS}"
+
 fresh; edit "$SK" "s#the worker's four reports#the worker's five reports#"
 red "12 the description miscounts the reports" check-invariants "$SK"
 fresh; edit "$SK" 's#besides the four kinds#besides the three kinds#'
@@ -95,6 +98,19 @@ fresh; edit "$LG" "s#sed 's\#/\#-\#g'#sed 's\#[/.]\#-\#g'#"
 red "14 the crew-dir slug is unified with the transcript one" check-invariants "$LG"
 fresh; edit test/watchdog.test.sh "s#^slug() { printf '%s' \"\$1\" | sed 's\#\[/.\]\#-\#g'; }#slug() { printf '%s' \"\$1\" | sed 's\#/\#-\#g'; }#"
 red "15 the test's slug drifts from the watchdog's" check-invariants "test/watchdog.test.sh"
+# the loop limit reaches a worker only through its brief: the Worker section never cites Counters
+fresh; edit "$SK" 's@^### 0\. Resume from the ledger@Track `CREW.md` › Counters per worker in the ledger.\
+\
+&@'
+green "15b the orchestrator's sections may cite CREW.md › Counters" check-invariants
+edit "$SK" 's#absent one, \*\*two\*\*#absent one (`CREW.md` › Counters), **two**#'   # same fixture
+red "15c the Worker section citing CREW.md › Counters" check-invariants "the Worker section cites CREW.md › Counters"
+fresh; edit "$BT" 's#at most {ITERATIONS} review#at most two review#'
+red "15d the brief hard-coding the limit again" check-invariants "$BT: the brief's Loop budget line"
+fresh; edit "$BT" 's#^| `{ITERATIONS}` | `CREW.md` › Counters#|  `{ITERATIONS}`  |  `docs/CREW.md` › Counters#'
+green "15e a padded placeholder row naming docs/CREW.md still counts" check-invariants
+edit "$BT" 's#`docs/CREW.md` › Counters#`docs/CREW.md` › Ledger#'                  # same fixture
+red "15f the row sourcing {ITERATIONS} from anything but Counters" check-invariants "$BT: no placeholder row sourcing"
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"
@@ -162,6 +178,8 @@ if grep -qF "PR 3 removes this exemption" "$ROOT/out"; then ok "30 the exemption
 # --- check-skill-frontmatter ----------------------------------------------------------------------------------
 fresh; edit "$SK" '/^license: MIT$/d'
 red "31 a missing license" check-skill-frontmatter "missing frontmatter: license"
+# The line names "metadata" on purpose: an unanchored /metadata/ match would open the metadata block
+# there, so 31b is what fails if the check's `^metadata:` anchor is lost.
 fresh; edit "$SK" 's/^description: >-$/description: >-\
   author: a line in the description, and metadata mentioned/'
 green "31b a description with its own author: line passes while metadata has one" check-skill-frontmatter
