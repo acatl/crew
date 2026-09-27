@@ -41,10 +41,11 @@
 #      than alerting once and then going quiet forever at an unchanging head.
 #   2. more than <count at the last alert> + --subagent-step sub-agent transcripts since the last
 #      push. Re-alerts only on GROWTH, never on an absolute count: pre-PR work legitimately spawns
-#      many sub-agents, and the absolute-count version fired constantly. The last push is when the
-#      remote-tracking ref moved, from its reflog, not the pushed commit's own time: a worker's
-#      self-review runs between its commit and its push, and counting from the commit reported
-#      that review as a loop after every push. Without a reflog it falls back to the commit's time.
+#      many sub-agents, and the absolute-count version fired constantly. The last push is the
+#      newest "update by push" in origin/<branch>'s reflog, not the pushed commit's own time: a
+#      worker's self-review runs between its commit and its push, and counting from the commit
+#      reported that review as a loop after every push. A fetch moves the ref too, but isn't a
+#      push. With no push in the reflog it falls back to the commit's time and says so.
 #      A worker with no resolvable push baseline is SKIPPED for this trigger and warned about,
 #      never counted from zero — that would be the absolute count again.
 #
@@ -205,6 +206,12 @@ saw_active() {
 saw_idle() {  # saw_idle <ticket> <worktree>: an idle pass ends the worker's stretch
   if [ -n "$(row_of "$1" "$2")" ]; then save_active "$(without "$1" "$2")"; fi
 }
+# last_alert <ticket> <push time>: the sub-agent count trigger 2 last alerted at for that push, or 0.
+# The ""-concatenations keep awk from coercing ids like "01" and "1" into the same number.
+last_alert() {
+  K="$1" P="$2" awk '$1"" == ENVIRON["K"]"" && $2 == "subs" && $3"" == ENVIRON["P"]"" {n = $4} END {print n + 0}' \
+    "$reported" 2>/dev/null
+}
 prune_active() {  # prune_active <roster snapshot>: drop the rows of workers no longer on it
   local kept
   [ -s "$active" ] || return 0
@@ -296,11 +303,16 @@ while true; do
 
     # trigger 2: sub-agents piling up since the last push (a review loop, roughly)
     br=$(git -C "$wt" branch --show-current 2>/dev/null)
-    push_ts=""
-    if [ -n "$br" ]; then   # when the ref moved (see the header), else the pushed commit's time
-      push_ts=$(git -C "$wt" reflog -1 --format=%gd --date=unix "refs/remotes/origin/$br" 2>/dev/null \
-                | sed -n 's/.*@{\([0-9][0-9]*\)}$/\1/p')
-      [ -n "$push_ts" ] || push_ts=$(git -C "$wt" log -1 --format=%ct "origin/$br" 2>/dev/null || true)
+    push_ts="" commit_ct=""
+    if [ -n "$br" ]; then   # the newest push (see the header); the pattern takes an epoch, not @{0}
+      push_ts=$(git -C "$wt" reflog -1 --grep-reflog='^update by push' --format=%gd --date=unix \
+                  "refs/remotes/origin/$br" 2>/dev/null | sed -n 's/.*@{\([1-9][0-9]\{8,\}\)}$/\1/p')
+      commit_ct=$(git -C "$wt" log -1 --format=%ct "origin/$br" 2>/dev/null || true)
+      if [ -z "$push_ts" ] && [ -n "$commit_ct" ]; then
+        warn_once "$ticket:reflog" "no push in origin/$br's reflog for $ticket — trigger 2 counts from" \
+          "the pushed commit's time, so a self-review before a push can read as a loop"
+        push_ts=$commit_ct
+      fi
     fi
     if [ -z "$push_ts" ] && mb=$(git -C "$wt" merge-base HEAD "$base" 2>/dev/null); then
       push_ts=$(git -C "$wt" log -1 --format=%ct "$mb" 2>/dev/null || true)
@@ -315,10 +327,13 @@ while true; do
 
     subs=$(find "$proj" -path '*/subagents/*.jsonl' -type f -exec "${stat_b[@]}" {} + 2>/dev/null \
            | awk -v p="$push_ts" '{b=($1>0?$1:$2)} b>p{n++} END{print n+0}')
-    # Re-alert only on growth: new commits alone must not re-fire. The ""-concatenations keep awk
-    # from coercing ids like "01" and "1" into the same number.
-    last=$(K="$ticket" P="$push_ts" awk \
-      '$1"" == ENVIRON["K"]"" && $2 == "subs" && $3"" == ENVIRON["P"]"" {n = $4} END {print n + 0}' "$reported" 2>/dev/null)
+    # Re-alert only on growth: new commits alone must not re-fire.
+    last=$(last_alert "$ticket" "$push_ts")
+    # Before push times came from the reflog, an alert keyed the push by its commit's time; that
+    # key still stands for the same push.
+    if [ "$last" = 0 ] && [ -n "$commit_ct" ] && [ "$commit_ct" != "$push_ts" ]; then
+      last=$(last_alert "$ticket" "$commit_ct")
+    fi
     floor=$(( last > 0 ? last + step : step ))
     if (( subs > floor )); then
       printf '%s subs %s %s\n' "$ticket" "$push_ts" "$subs" >> "$reported"

@@ -304,6 +304,47 @@ sleep 1; subagents 8                             # recreated strictly after the 
 run; rc=$?
 if [ "$rc" = 0 ] && grep -q "8 sub-agents since last push" "$ROOT/out"
 then ok "30 sub-agents after the push do count"; else bad "30 post-push count" "rc=$rc $(cat "$ROOT/out")"; fi
+
+# a second push re-baselines from itself: the newest push in the reflog, not the first
+commit_in "$WT" 0; sleep 1; git -C "$WT" push -q origin main
+reset; sleep 1; subagents 4
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "4 sub-agents since last push (first alert" "$ROOT/out"
+then ok "30b a second push re-baselines from itself"; else bad "30b second push" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
+# a fetch moves origin/<branch> too, but it is not this worker's push: its sub-agents still count
+reset; sleep 1; subagents 4; sleep 1
+git clone -q -b main "$ROOT/bare.git" "$ROOT/other"
+git -C "$ROOT/other" config user.email t@t; git -C "$ROOT/other" config user.name t
+git -C "$ROOT/other" config commit.gpgsign false
+echo y >> "$ROOT/other/g"; git -C "$ROOT/other" add g; git -C "$ROOT/other" commit -qm other
+git -C "$ROOT/other" push -q origin main; git -C "$WT" fetch -q origin
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "4 sub-agents since last push (first alert" "$ROOT/out"
+then ok "30c a fetch doesn't re-baseline trigger 2"; else bad "30c fetch" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
+# An alert keyed by the pushed commit's time, as before push times came from the reflog, still
+# suppresses the same push's count.
+git -C "$WT" pull -q --no-rebase origin main; commit_in "$WT" 0; reset; sleep 1; git -C "$WT" push -q origin main
+sleep 1; subagents 8
+printf '#1 subs %s 8\n' "$(git -C "$WT" log -1 --format=%ct origin/main)" > "$CREW/reported.txt"
+if silent
+then ok "30d an alert keyed by the commit's time still stands for its push"; else bad "30d old subs key" "fired: $(cat "$ROOT/out")"; fi
+: > "$CREW/reported.txt"
+run; rc=$?                                       # positive control for 30d
+if [ "$rc" = 0 ] && grep -q "8 sub-agents since last push (first alert" "$ROOT/out"
+then ok "30e same fixture fires once that key is gone"; else bad "30e old-key control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+
+# No push in the reflog (core.logAllRefUpdates off): count from the pushed commit's time, and say so.
+# A newer, unpushed commit separates that from the merge-base fallback, which would count none.
+git -C "$WT" remote remove origin; git init -q --bare "$ROOT/bare2.git"; git -C "$WT" remote add origin "$ROOT/bare2.git"
+reset; silence_t1; git -C "$WT" -c core.logAllRefUpdates=false push -q origin main
+sleep 1; subagents 4; sleep 1; commit_in "$WT" 0
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "4 sub-agents since last push" "$ROOT/out" \
+   && grep -q "no push in origin/main's reflog for #1" "$ROOT/err"
+then ok "30f without a push in the reflog it counts from the pushed commit, and warns"; else bad "30f no reflog" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+subagents 0
 git -C "$WT" remote remove origin
 
 # --- several workers ----------------------------------------------------------------------------------
