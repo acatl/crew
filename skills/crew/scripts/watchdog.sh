@@ -41,9 +41,12 @@
 #      than alerting once and then going quiet forever at an unchanging head.
 #   2. more than <count at the last alert> + --subagent-step sub-agent transcripts since the last
 #      push. Re-alerts only on GROWTH, never on an absolute count: pre-PR work legitimately spawns
-#      many sub-agents, and the absolute-count version fired constantly. A worker with no resolvable
-#      push baseline is SKIPPED for this trigger and warned about, never counted from zero — that
-#      would be the absolute count again.
+#      many sub-agents, and the absolute-count version fired constantly. The last push is when the
+#      remote-tracking ref moved, from its reflog, not the pushed commit's own time: a worker's
+#      self-review runs between its commit and its push, and counting from the commit reported
+#      that review as a loop after every push. Without a reflog it falls back to the commit's time.
+#      A worker with no resolvable push baseline is SKIPPED for this trigger and warned about,
+#      never counted from zero — that would be the absolute count again.
 #
 # It says so on stderr, once, whenever it goes blind on a worker: a roster row whose worktree is
 # missing or is not a git repo, a worker with no transcript directory, a worker with no push
@@ -294,7 +297,11 @@ while true; do
     # trigger 2: sub-agents piling up since the last push (a review loop, roughly)
     br=$(git -C "$wt" branch --show-current 2>/dev/null)
     push_ts=""
-    if [ -n "$br" ]; then push_ts=$(git -C "$wt" log -1 --format=%ct "origin/$br" 2>/dev/null || true); fi
+    if [ -n "$br" ]; then   # when the ref moved (see the header), else the pushed commit's time
+      push_ts=$(git -C "$wt" reflog -1 --format=%gd --date=unix "refs/remotes/origin/$br" 2>/dev/null \
+                | sed -n 's/.*@{\([0-9][0-9]*\)}$/\1/p')
+      [ -n "$push_ts" ] || push_ts=$(git -C "$wt" log -1 --format=%ct "origin/$br" 2>/dev/null || true)
+    fi
     if [ -z "$push_ts" ] && mb=$(git -C "$wt" merge-base HEAD "$base" 2>/dev/null); then
       push_ts=$(git -C "$wt" log -1 --format=%ct "$mb" 2>/dev/null || true)
     fi

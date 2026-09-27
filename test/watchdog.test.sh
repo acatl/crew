@@ -240,7 +240,7 @@ kill "$p" 2>/dev/null; wait "$p" 2>/dev/null
 
 # --- trigger 2: the growth floor ----------------------------------------------------------------------
 reset; silence_t1; active
-subagents 3
+sleep 1; subagents 3                             # born after the baseline commit, so all 3 count
 if silent
 then ok "22 at the floor -> silent"; else bad "22 at floor" "fired: $(cat "$ROOT/out")"; fi
 
@@ -263,7 +263,7 @@ then ok "25 growth past the new floor -> fires"; else bad "25 growth past floor"
 if grep -q "threshold +3" "$ROOT/out" && ! grep -q "review passes" "$ROOT/out"
 then ok "26 threshold stated in sub-agents, not reviews"; else bad "26 threshold unit" "$(cat "$ROOT/out")"; fi
 
-reset; silence_t1; subagents 1
+reset; silence_t1; sleep 1; subagents 1        # born after the baseline commit, so it counts
 if silent --subagent-step 1
 then ok "27 --subagent-step 1, at the floor -> silent"; else bad "27 step flag silent" "fired: $(cat "$ROOT/out")"; fi
 subagents 2
@@ -290,15 +290,16 @@ if [ "$rc" = 0 ] && grep -q "20 sub-agents since last push" "$ROOT/out"
 then ok "28e same fixture fires once the base resolves"; else bad "28e no-baseline control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 seed_commit 7200
 
-# a push moves the baseline, so sub-agents older than it stop counting. They are made a second BEFORE
-# the pushed commit: the baseline is that commit's time and only a later birth counts, so making them
-# after it passed only when both landed in the same second, and a slow runner failed it.
-reset; subagents 8; sleep 1; silence_t1
+# a push moves the baseline, so sub-agents from before it stop counting, including those between the
+# commit and the push: that is a worker's self-review. The baseline is when the push happened, so the
+# gaps below keep commit, sub-agents and push in separate seconds; timed from the commit instead, or
+# from the merge-base fallback, these 8 would count.
+reset; silence_t1; sleep 1; subagents 8; sleep 1
 git init -q --bare "$ROOT/bare.git"
 git -C "$WT" remote add origin "$ROOT/bare.git"
 git -C "$WT" push -q origin main
 if silent
-then ok "29 a push re-baselines trigger 2"; else bad "29 push re-baseline" "fired: $(cat "$ROOT/out")"; fi
+then ok "29 a push re-baselines trigger 2, from when it was pushed"; else bad "29 push re-baseline" "fired: $(cat "$ROOT/out")"; fi
 sleep 1; subagents 8                             # recreated strictly after the push
 run; rc=$?
 if [ "$rc" = 0 ] && grep -q "8 sub-agents since last push" "$ROOT/out"
