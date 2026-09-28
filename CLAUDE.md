@@ -54,15 +54,17 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
   goes idle, so no idle notice ever fires. The orchestrator launches the watchdog with
   `run_in_background`, and its exit is what wakes the orchestrator: it prints one `WATCHDOG …` line on
   the first trigger and exits 0.
-  - Input: `roster.tsv`, re-read on every pass. State that outlives the process: `reported.txt`
-    (dedupe) and `active.tsv` (each worker's clock, keyed by ticket and worktree, pruned to the
-    roster). Lock: `watchdog.pid`, matched by the crew-dir path, never the script name.
+  - Input: `roster.tsv` (`<ticket>` TAB `<worktree-path>` TAB `<start epoch>`, the start optional),
+    re-read on every pass. State that outlives the process: `reported.txt` (dedupe) and
+    `active.tsv` (each worker's clock, keyed by ticket and worktree, pruned to the roster). Lock:
+    `watchdog.pid`, matched by the crew-dir path, never the script name.
   - Worker activity is read from the modification times in Claude Code's transcript dirs,
-    `~/.claude/projects/<slug>`, never their contents. The no-commit clock starts at HEAD's commit or
-    at the start of the worker's current active stretch, whichever is later. A stretch starts when
-    the watchdog first sees the worker active after an idle pass, or after a gap in sightings longer
-    than `--interval` + 15 min. Before exiting on a finding it sights the whole roster, so a prompt
-    relaunch keeps every clock.
+    `~/.claude/projects/<slug>`, never their contents. The no-commit clock starts at the latest of
+    HEAD's commit, the worker's roster start, and the start of its current active stretch. The
+    roster start covers a stretch an earlier worker on the same ticket and worktree left in
+    `active.tsv`. A stretch starts when the watchdog first sees the worker active after an idle
+    pass, or after a gap in sightings longer than `--interval` + 15 min. Before exiting on a finding
+    it sights the whole roster, so a prompt relaunch keeps every clock.
 - **`scripts/overlap.sh` is the parallel-safety check** (orchestrator step 3). It lists files
   in-flight workers have touched that fall under a candidate surface.
 - **Outside the skill:** `test/` holds the suites, so they don't ship with the skill. `scripts/` holds
@@ -103,6 +105,9 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   - crew dirs (`~/.claude/crew/`, `crewdir()` in `ledger.md`) replace only `/`.
 
   Don't unify them. *Checked.*
+- **The roster format.** `watchdog.sh`'s header defines `roster.tsv`'s columns (`<ticket>`,
+  `<worktree-path>`, `<start epoch>`), and SKILL.md's *Watchdog* section and `ledger.md`'s file
+  listing restate them. *Checked*, column by column.
 - **The `<!-- crew:brief` marker** is used for role detection, in the frontmatter `description`, and
   by the roster rebuild's grep. Keep it byte-exact. *Checked* against the brief template's first line.
 - **`CREW.md` › Section references** in the skill name `## ` headings of the template in

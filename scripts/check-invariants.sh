@@ -229,6 +229,28 @@ if [ "$crew_slug" != "sed 's#/#-#g'" ]; then
 fi
 if [ "$slug_ok" = 1 ]; then held=$((held + 1)); fi
 
+# --- the roster format: watchdog.sh's header is the source ---------------------------------------------
+# Its roster.tsv line names the columns ("<ticket> <TAB> <worktree-path> [<TAB> <start epoch>]"). Each
+# copy under skills/crew runs from `<ticket>` to the next comma and must name the same columns, in order.
+cols() { grep -oE '<[a-z][a-z -]*>' | tr '\n' ' ' | sed 's/ $//'; }
+want=$(grep -E '^#[[:space:]]+roster\.tsv[[:space:]]+input:' "$WATCHDOG" | sed 's/,.*//' | cols || true)
+if [ -z "$want" ]; then
+  reworded "$WATCHDOG" "the header's 'roster.tsv    input:  <ticket> …' line"
+else
+  out=$(scan '<ticket>[^,]*,' "${mds[@]}")
+  if [ -z "$out" ]; then
+    reworded "$SKILL/*.md" "a roster format copy ('<ticket>' … up to a comma)"
+  else
+    roster_ok=1
+    while IFS=$'\t' read -r loc got; do
+      if [ "$(cols <<< "$got")" != "$want" ]; then
+        fail "$loc: the roster columns read '$(cols <<< "$got")', but $WATCHDOG's header makes them '$want'"; roster_ok=0
+      fi
+    done <<< "$out"
+    if [ "$roster_ok" = 1 ]; then held=$((held + 1)); fi
+  fi
+fi
+
 if [ "$fails" -gt 0 ]; then
   printf '✖ %d restated value(s) drifted; CLAUDE.md › Invariants that span files lists every copy\n' "$fails" >&2
   exit 1

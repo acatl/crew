@@ -33,13 +33,13 @@ It fails loudly rather than returning a partial path; a silent fallback would sc
 
 ```text
 ~/.claude/crew/<slug>/
-  ledger.md            live state only — bounded by work in flight
+  ledger.md            live state only, bounded by work in flight
   briefs/<row>.md      each brief exactly as sent, so a resume can re-attach it
   archive-YYYY-MM.md   evicted rows, append-only, never read in normal operation
-  roster.tsv           the watchdog's input: <ticket> TAB <worktree>, one per running worker
+  roster.tsv           the watchdog's input: <ticket> TAB <worktree-path> TAB <start epoch>, one per running worker
   reported.txt, active.tsv  what the watchdog reported, and each worker's clock; both outlive its one-shot runs
   watchdog.pid         the running watchdog's pid; how you stop it
-  watchdog.log         its stderr: where it says a worker is unwatched, or the roster vanished
+  watchdog.log         its stderr: which worker is unwatched, or that the roster vanished
 ```
 
 Outside the repo on purpose: this is machine-local session state, so it needs no `.gitignore`

@@ -206,7 +206,8 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 
 - **ONLINE** → `get_session(<worker sessionId>)`: confirm `parentSessionId` is yours, and record
   `worktreePath` (the worker's cwd for `overlap.sh` and verify) and `sourceBranch`. Then:
-  `state: ready` → status `running`, subscribe to its idle notice (see *Subscribing*).
+  `state: ready` → status `running`, add its roster line (see *Watchdog*), subscribe to its idle
+  notice (see *Subscribing*).
   `state: queued` → status `queued`. **Don't subscribe yet:** it goes idle at once, so the notice would
   mean nothing. Subscribe when you send its `START`. Either way, write the session id and worktree to
   the row.
@@ -301,7 +302,8 @@ units will have changed the base under them, and a spec written now would be sta
 2. **Clean up** unit N per its card.
 3. **Start** unit N+1: send `START` ([references/brief-template.md](references/brief-template.md) ›
    START) with the new base sha and its Job section, written now from the landed state. Include what
-   earlier units changed and anything they handed on. Then subscribe to its idle notice.
+   earlier units changed and anything they handed on. Then add its roster line and subscribe to its
+   idle notice.
 
 **Hold the base still.** While a sequence is in flight, nothing commits to `<base>` except landings.
 That includes you; tell the operator the same. One stray commit and the next ff-only landing is refused.
@@ -345,8 +347,11 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   transcripts — a fixed 15-minute window, not a tunable. A worker that has stopped writing altogether,
   wedged or hung or dead, is invisible to both triggers however old its HEAD is. That case is yours to
   catch on your own turns.
-- **Its roster is `~/.claude/crew/<slug>/roster.tsv`** — `<ticket>` TAB `<worktree-path>`, one line per
-  `running` worker, and yours to maintain. Write the ledger row and the roster line in the same step:
+- **Its roster is `~/.claude/crew/<slug>/roster.tsv`** — `<ticket>` TAB `<worktree-path>` TAB
+  `<start epoch>`, one line per `running` worker, and yours to maintain. Set the start to `date +%s`
+  as the worker goes `running`: its no-commit clock never starts earlier, so a clock an earlier worker
+  left for the same ticket and worktree can't fire minutes in. Write the ledger row and the roster
+  line in the same step:
   a missing line is a worker nobody is watching, and nothing will tell you. Rewrite it
   write-to-temp-then-`mv`, never in place. It is re-read every pass, so an edit lands with no restart.
   The worktree path must be **byte-identical to the one the app reports** — the transcript directory

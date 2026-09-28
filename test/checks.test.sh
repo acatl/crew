@@ -111,6 +111,15 @@ fresh; edit "$BT" 's#^| `{ITERATIONS}` | `CREW.md` › Counters#|  `{ITERATIONS}
 green "15e a padded placeholder row naming docs/CREW.md still counts" check-invariants
 edit "$BT" 's#`docs/CREW.md` › Counters#`docs/CREW.md` › Ledger#'                  # same fixture
 red "15f the row sourcing {ITERATIONS} from anything but Counters" check-invariants "$BT: no placeholder row sourcing"
+# the roster format: watchdog.sh's header names the columns, and every copy names the same ones
+fresh; edit "$LG" 's#<worktree-path> TAB <start epoch>, one per#<worktree-path>, one per#'
+red "15g a roster copy drops the start column" check-invariants "$LG"
+fresh; edit "$SK" 's#`<start epoch>`, one line per#`<started>`, one line per#'
+red "15h a wrapped roster copy renames a column" check-invariants "$SK"
+fresh; edit "$WD" 's#\[<TAB> <start epoch>\], one line per#[<TAB> <started>], one line per#'
+red "15i the header changes and a copy is named" check-invariants "$LG"
+fresh; edit "$WD" 's#roster.tsv    input:#roster.tsv    in:#'
+red "15j a reworded header line is reported, not passed" check-invariants "the header's 'roster.tsv"
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"

@@ -1,6 +1,6 @@
 # Word budgets for the skill's files, checked by scripts/check-budget.sh. A count may hold or
 # fall; a rise fails. --update lowers these; only the operator raises one (--allow-raise).
-skills/crew/SKILL.md	5686
+skills/crew/SKILL.md	5734
 skills/crew/references/brief-template.md	1071
 skills/crew/references/crew-md.md	929
 skills/crew/references/ledger.md	1128

@@ -10,10 +10,12 @@
 # already in hand. The orchestrator handles it, then launches a fresh watchdog.
 #
 # State, all in <crew-dir> (this project's ~/.claude/crew/<slug>/, see references/ledger.md):
-#   roster.tsv    input:  <ticket> <TAB> <worktree-path>, one line per RUNNING worker, written by
-#                 the orchestrator. A leading "#" is part of a ticket id, not a comment; a ticket id
-#                 may not contain whitespace. Re-read every pass, so a worker can be added or
-#                 dropped with no restart and no signal. The orchestrator rewrites it
+#   roster.tsv    input:  <ticket> <TAB> <worktree-path> [<TAB> <start epoch>], one line per
+#                 RUNNING worker, written by the orchestrator. The start, optional, is when the
+#                 worker went ONLINE; it floors trigger 1's clock. A start that isn't a past epoch
+#                 is ignored and warned about. A leading "#" is part of a ticket id, not a comment;
+#                 a ticket id may not contain whitespace. Re-read every pass, so a worker can be
+#                 added or dropped with no restart and no signal. The orchestrator rewrites it
 #                 write-to-temp-then-mv, never in place.
 #   reported.txt  dedupe: a relaunched watchdog re-scans from the top and would re-fire on the
 #                 same unchanged condition, so what has been reported must outlive the process.
@@ -28,17 +30,19 @@
 #
 # Triggers, per worker:
 #   1. a transcript was written in the last 15 min (the worker is alive) but nothing was committed
-#      for --no-commit, counted from HEAD's commit or from when the watchdog first saw the worker
-#      active after an idle pass, whichever is later. Counting from HEAD alone fired at spawn for a
-#      worker cut from an old base, and again for one that waited hours on the operator. An idle
-#      pass ends a stretch. So does a gap in sightings longer than --interval + 15 min, one pass
-#      plus the activity window: longer than that, the watchdog wasn't watching, and the gap may
-#      hold idle time. Before it exits on a finding it records a sighting for every rostered
-#      worker, so a prompt relaunch keeps each clock. A stretch starts when the watchdog first sees
-#      it, so a worker already active before the watchdog started is counted from then. Deduped
-#      per ticket + head + elapsed window, plus the stretch's start when the stretch is the later
-#      clock, so each stretch alerts on its own; it re-arms once per --no-commit period rather
-#      than alerting once and then going quiet forever at an unchanging head.
+#      for --no-commit, counted from the latest of: HEAD's commit, the worker's roster start, and
+#      when the watchdog first saw it active after an idle pass. Counting from HEAD alone fired at
+#      spawn for a worker cut from an old base, and again for one that waited hours on the
+#      operator. The start covers what the stretch can't: a clock an earlier worker on the same
+#      ticket and worktree left in active.tsv. An idle pass ends a stretch. So does a gap in
+#      sightings longer than --interval + 15 min, one pass plus the activity window: longer than
+#      that, the watchdog wasn't watching, and the gap may hold idle time. Before it exits on a
+#      finding it records a sighting for every rostered worker, so a prompt relaunch keeps each
+#      clock. A stretch starts when the watchdog first sees it, so a worker already active before
+#      the watchdog started is counted from then. Deduped per ticket + head + elapsed window, plus
+#      the clock's start when the stretch or the roster start is the later clock, so each stretch
+#      alerts on its own; it re-arms once per --no-commit period rather than alerting once and
+#      then going quiet forever at an unchanging head.
 #   2. more than <count at the last alert> + --subagent-step sub-agent transcripts since the last
 #      push. Re-alerts only on GROWTH, never on an absolute count: pre-PR work legitimately spawns
 #      many sub-agents, and the absolute-count version fired constantly. The last push is the
@@ -51,7 +55,8 @@
 #
 # It says so on stderr, once, whenever it goes blind on a worker: a roster row whose worktree is
 # missing or is not a git repo, a worker with no transcript directory, a worker with no push
-# baseline, a malformed ticket id, a clock it can no longer write, or the roster disappearing.
+# baseline, a malformed ticket id or roster start, a clock it can no longer write, or the roster
+# disappearing.
 # Redirect stderr to a file the orchestrator can read; a silently unwatched worker is the failure
 # this script exists to prevent.
 #
@@ -276,19 +281,33 @@ while true; do
     commit_ts=$(git -C "$wt" log -1 --format=%ct 2>/dev/null || echo 0)
     case "$commit_ts" in ''|*[!0-9]*) commit_ts=0 ;; esac
 
+    # The roster start (column 3, optional): when the worker went ONLINE. Anything but a past epoch
+    # is ignored, and said so: a start in the future would hold trigger 1 off forever.
+    start=${rest%%$'\t'*}
+    case "$start" in
+      '') start=0 ;;
+      *[!0-9]*) start=bad ;;
+      *) if [ "${#start}" -gt 10 ] || (( 10#$start > t )); then start=bad; else start=$((10#$start)); fi ;;
+    esac
+    if [ "$start" = bad ]; then
+      warn_once "$ticket:start" "roster start for $ticket is not a past epoch, ignored: '${rest%%$'\t'*}'"
+      start=0
+    fi
+
     # One finding per run. Once there is one, the rest of the roster is only sighted, so every
     # clock is fresh when the orchestrator relaunches.
     [ -z "$alert" ] || continue
 
-    # trigger 1: still working, but nothing committed in a long time. The clock starts at HEAD's
-    # commit or at the start of the worker's active stretch, whichever is later (see the header).
+    # trigger 1: still working, but nothing committed in a long time. The clock starts at the
+    # latest of HEAD's commit, the roster start and the worker's active stretch (see the header).
     if [ "$commit_ts" -gt 0 ] && (( t - last_act < ACTIVE )); then
       since=$commit_ts clock=""
-      if [ "$stretch" -gt "$commit_ts" ]; then since=$stretch clock=" since it went active"; fi
+      if [ "$stretch" -gt "$since" ]; then since=$stretch clock=" since it went active"; fi
+      if [ "$start" -gt "$since" ]; then since=$start clock=" since it started"; fi
       # The head does not change while a worker is stuck, so keying on it alone means one alert
-      # ever. The window number re-arms it once per --no-commit period, and a stretch clock's start
-      # separates one stretch from the next at the same head. HEAD's clock keeps the older key, so
-      # an existing reported.txt still suppresses what it suppressed.
+      # ever. The window number re-arms it once per --no-commit period, and a later clock's start
+      # separates one stretch or worker from the next at the same head. HEAD's clock keeps the
+      # older key, so an existing reported.txt still suppresses what it suppressed.
       win=$(( (t - since) / nocommit ))
       key="$ticket nocommit $rev"
       if [ "$since" != "$commit_ts" ]; then key="$key s$since"; fi
