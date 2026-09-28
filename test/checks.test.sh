@@ -124,6 +124,8 @@ fresh; edit "$WD" 's#\[<TAB> <start epoch>\], one line per#[<TAB> <started>], on
 red "15i the header changes and a copy is named" check-invariants "$LG"
 fresh; edit "$WD" 's#roster.tsv    input:#roster.tsv    in:#'
 red "15j a reworded header line is reported, not passed" check-invariants "the header's 'roster.tsv"
+fresh; edit "$SK" 's#`<ticket>` TAB `<worktree-path>` TAB#one ticket TAB `<worktree-path>` TAB#'
+red "15k one reworded copy fails though the other still matches" check-invariants "$SK: its roster format copy"
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"
