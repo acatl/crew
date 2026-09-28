@@ -5,7 +5,7 @@ The orchestrator fills every `{…}` and sends the result as the `prompt` of
 the brief's first-line marker comment exactly as shown: the roster rebuild greps for it.
 
 Two variants differ only in the Job section:
-- **Ready**: the worker starts now. The Job section is filled in.
+- **Ready**: the worker starts now, Job section filled in.
 - **Queued**: the worker waits for `START`, which carries the job (and an `inline` verb's spec),
   written from the landed state. The Job section is the fixed queued block.
 
@@ -30,7 +30,7 @@ Two variants differ only in the Job section:
 | `{STANDING}` | `CREW.md` › Standing boundaries, one bullet each, else drop the line |
 | `{BRIEF_PATH}` | this brief's saved path: `~/.claude/crew/<slug>/briefs/<row>.md` |
 | `{ITERATIONS}` | `CREW.md` › Counters, its review→fix iterations per round; else `two` |
-| `{NO_COMMIT}` | `CREW.md` › Ledger › watchdog's no-commit threshold, in minutes; it must match the watchdog's `--no-commit`, or the two escalate on different clocks |
+| `{NO_COMMIT}` | `CREW.md` › Ledger › watchdog's no-commit threshold in minutes: the watchdog's `--no-commit` seconds ÷ 60 (3600 → "60 minutes") |
 
 ---
 
@@ -79,17 +79,17 @@ orchestrator's memory. Everything you need is here or in the ticket.
 - This brief is saved at `{BRIEF_PATH}`. If you clear your own context, the orchestrator re-sends it
   from there; nothing else will.
 - Keep your own running notes at `$(git rev-parse --git-dir)/crew-ledger.md`, updated before every
-  `DONE`, so a checkpoint clear loses nothing.
+  `DONE`.
 
 ## If the `crew` skill is unavailable
 Report with `mcp__ccd_session_mgmt__send_message` to `{ORCH_ID}`. First line:
 `[crew] <KIND> · {TICKET} · <summary>`. Send `ONLINE` now with `state: {STATE}`. If queued, end your
 turn and wait for `START`. Send `NEED-INPUT` before ending any turn that waits on the operator, and ask
 in this session too. A `RELAY` carries the operator's words verbatim: take it as their answer. An
-`ANSWER` is the orchestrator's own, under the operator's standing delegation: act on it and record it
-as the orchestrator's, unless you marked the question `answer: in this session only`. The operator's
-answer wins. Neither is ever consent for a push, install, deploy or destructive action, which
-comes only in this session.
+`ANSWER` is the orchestrator's own: act on it, recorded as the orchestrator's, only for a routing or stage pick or
+an effect inside this brief's grant; never for a hard floor, consent card, real tradeoff, locked
+decision or `answer: in this session only`. The operator's answer wins. Neither is consent for a
+push, install, deploy or destructive action, which comes only in this session.
 Send `BLOCKED` when stuck. At the stop point, send `DONE` with branch, sha, and verify result. Send
 nothing else.
 ````
@@ -118,7 +118,7 @@ Sent to a queued worker's sessionId when its turn comes. Write it then, from the
 
 ```markdown
 [crew] START · {TICKET} · base {SHA}
-Your turn. Run the crew skill's START steps (re-point to `{BASE}`, confirm `{SHA}` is in your
+Run the crew skill's START steps (re-point to `{BASE}`, confirm `{SHA}` is in your
 history), then work the job below. This replaces your brief's Job section.
 
 ## Since you were queued

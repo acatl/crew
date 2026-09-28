@@ -241,19 +241,19 @@ want=$(grep -E '^#[[:space:]]+roster\.tsv[[:space:]]+input:' "$WATCHDOG" | sed '
 if [ -z "$want" ]; then
   reworded "$WATCHDOG" "the header's 'roster.tsv    input:  <ticket> …' line"
 else
-  roster_ok=1
-  out=$(scan '<ticket>[^,]*,' "${mds[@]}")
-  nfiles=$(sed -n 's/:[0-9]*\t.*//p' <<< "$out" | LC_ALL=C sort -u | grep -c . || true)
-  if [ "$nfiles" -lt "$ROSTER_COPIES" ]; then
-    reworded "$SKILL/*.md" "a roster format copy ('<ticket>' … up to a comma) in $ROSTER_COPIES files, found in $nfiles:$(sed -n 's/:[0-9]*\t.*//p' <<< "$out" | LC_ALL=C sort -u | tr '\n' ' ' | sed 's/ $//;s/^./ &/')"
-    roster_ok=0
-  fi
+  roster_ok=1 files=""
   while IFS=$'\t' read -r loc got; do
     [ -n "$loc" ] || continue
+    case " $files " in *" ${loc%:*} "*) ;; *) files="${files:+$files }${loc%:*}" ;; esac
     if [ "$(cols <<< "$got")" != "$want" ]; then
       fail "$loc: the roster columns read '$(cols <<< "$got")', but $WATCHDOG's header makes them '$want'"; roster_ok=0
     fi
-  done <<< "$out"
+  done <<< "$(scan '<ticket>[^,]*,' "${mds[@]}")"
+  nfiles=$(wc -w <<< "$files" | tr -d ' ')
+  if [ "$nfiles" -lt "$ROSTER_COPIES" ]; then
+    reworded "$SKILL/*.md" "a roster format copy ('<ticket>' … up to a comma) in $ROSTER_COPIES files, found in $nfiles:${files:+ $files}"
+    roster_ok=0
+  fi
   if [ "$roster_ok" = 1 ]; then held=$((held + 1)); fi
 fi
 
