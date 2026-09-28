@@ -241,21 +241,50 @@ want=$(grep -E '^#[[:space:]]+roster\.tsv[[:space:]]+input:' "$WATCHDOG" | sed '
 if [ -z "$want" ]; then
   reworded "$WATCHDOG" "the header's 'roster.tsv    input:  <ticket> …' line"
 else
-  roster_ok=1 files=""
+  roster_ok=1
+  out=$(scan '<ticket>[^,]*,' "${mds[@]}")   # a failing scan aborts here (set -e), never reads as "reworded"
   while IFS=$'\t' read -r loc got; do
     [ -n "$loc" ] || continue
-    case " $files " in *" ${loc%:*} "*) ;; *) files="${files:+$files }${loc%:*}" ;; esac
     if [ "$(cols <<< "$got")" != "$want" ]; then
       fail "$loc: the roster columns read '$(cols <<< "$got")', but $WATCHDOG's header makes them '$want'"; roster_ok=0
     fi
-  done <<< "$(scan '<ticket>[^,]*,' "${mds[@]}")"
-  nfiles=$(wc -w <<< "$files" | tr -d ' ')
+  done <<< "$out"
+  # one file per line, so a path with a space is still one file
+  files=$(while IFS=$'\t' read -r loc _; do if [ -n "$loc" ]; then printf '%s\n' "${loc%:*}"; fi; done <<< "$out" \
+          | LC_ALL=C sort -u)
+  nfiles=$(grep -c . <<< "$files" || true)
   if [ "$nfiles" -lt "$ROSTER_COPIES" ]; then
-    reworded "$SKILL/*.md" "a roster format copy ('<ticket>' … up to a comma) in $ROSTER_COPIES files, found in $nfiles:${files:+ $files}"
+    reworded "$SKILL/*.md" "a roster format copy ('<ticket>' … up to a comma) in $ROSTER_COPIES files, found in $nfiles:$(tr '\n' ' ' <<< "$files" | sed 's/ $//;s/^./ &/')"
     roster_ok=0
   fi
   if [ "$roster_ok" = 1 ]; then held=$((held + 1)); fi
 fi
+
+# --- ANSWER never answers an `answer: in this session only` question ---------------------------------
+# That boundary is SECURITY.md's consent-laundering scope, and it fell out of the orchestrator's side
+# twice under word-budget tightening. Three places must state it, each found by heading, not file: the
+# Orchestrator section, the Worker section, and the brief's fallback section. "State it" means the
+# marker and an ANSWER in one sentence: nearness alone passed with the guard sentence deleted, since
+# another ANSWER sits a line away.
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+guard_re='`answer: in this session only`[^.]*ANSWER|ANSWER[^.]*`answer: in this session only`'
+section() {  # section <heading ERE> <files...>: that section's text, one line, from every file holding it
+  LC_ALL=C awk -v h="$1" 'FNR == 1 {w = 0}
+    /^#+ / {n = index($0, " ") - 1; if (w && n <= lvl) w = 0
+            if ($0 ~ h) {w = 1; lvl = n; next}}
+    w' "${@:2}" | tr '\n' ' ' | tr -s ' '
+}
+guard_ok=1
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+for where in '^#+ Orchestrator[[:space:]]*$' '^#+ Worker[[:space:]]*$' '^#+ If the `crew` skill is unavailable'; do
+  text=$(section "$where" "${mds[@]}")
+  if [ -z "$text" ]; then
+    reworded "$SKILL/*.md" "a section headed '$where'"; guard_ok=0
+  elif ! grep -qE -- "$guard_re" <<< "$text"; then
+    fail "$SKILL/*.md: the section headed '$where' no longer says ANSWER never answers an \`answer: in this session only\` question"; guard_ok=0
+  fi
+done
+if [ "$guard_ok" = 1 ]; then held=$((held + 1)); fi
 
 if [ "$fails" -gt 0 ]; then
   printf '✖ %d restated value(s) drifted; CLAUDE.md › Invariants that span files lists every copy\n' "$fails" >&2

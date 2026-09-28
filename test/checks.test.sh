@@ -133,6 +133,18 @@ printf '\nroster.tsv: `<ticket>` TAB `<worktree-path>` TAB `<start epoch>`, one 
 green "15m a copy moved to another file still counts" check-invariants
 edit skills/crew/references/watchdog.md 's# TAB `<start epoch>`##'                        # same fixture
 red "15n and the moved copy is still checked" check-invariants "skills/crew/references/watchdog.md"
+fresh; edit "$SK" 's#`<ticket>` TAB `<worktree-path>` TAB#one ticket TAB `<worktree-path>` TAB#'
+edit "$LG" 's#<ticket> TAB <worktree-path> TAB#one ticket TAB <worktree-path> TAB#'
+printf '\nroster.tsv: `<ticket>` TAB `<worktree-path>` TAB `<start epoch>`, one line per worker.\n' \
+  > "$S/skills/crew/references/roster notes.md"
+red "15r one copy in a file whose name has a space counts as one file" check-invariants "found in 1: skills/crew/references/roster notes.md"
+# ANSWER never answers an in-session-only question: the Orchestrator, Worker and fallback sections say so
+fresh; edit "$SK" 's#, say why, and send no `RELAY` or `ANSWER`\.#, and say why.#'
+red "15o the orchestrator's guard drops out" check-invariants "the section headed '^#+ Orchestrator"
+fresh; edit "$SK" 's#, for a gated action or `answer: in this session only`\. The operator#, or for a gated action. The operator#'
+red "15p the worker's guard drops out" check-invariants "the section headed '^#+ Worker"
+fresh; edit "$BT" 's#locked decision or `answer: in this session only`\.#locked decision.#'
+red "15q the fallback's guard drops out" check-invariants "the section headed '^#+ If the"
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"
