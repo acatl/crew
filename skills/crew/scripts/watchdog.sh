@@ -12,7 +12,7 @@
 # State, all in <crew-dir> (this project's ~/.claude/crew/<slug>/, see references/ledger.md):
 #   roster.tsv    input:  <ticket> <TAB> <worktree-path> [<TAB> <start epoch>], one line per
 #                 RUNNING worker, written by the orchestrator. The start, optional, is when the
-#                 worker went ONLINE; it floors trigger 1's clock. A start that isn't a past epoch
+#                 worker went running; it floors trigger 1's clock. A start that isn't a past epoch
 #                 is ignored and warned about. A leading "#" is part of a ticket id, not a comment;
 #                 a ticket id may not contain whitespace. Re-read every pass, so a worker can be
 #                 added or dropped with no restart and no signal. The orchestrator rewrites it
@@ -281,7 +281,7 @@ while true; do
     commit_ts=$(git -C "$wt" log -1 --format=%ct 2>/dev/null || echo 0)
     case "$commit_ts" in ''|*[!0-9]*) commit_ts=0 ;; esac
 
-    # The roster start (column 3, optional): when the worker went ONLINE. Anything but a past epoch
+    # The roster start (column 3, optional): when the worker went running. Anything but a past epoch
     # is ignored, and said so: a start in the future would hold trigger 1 off forever.
     start=${rest%%$'\t'*}
     case "$start" in

@@ -219,12 +219,12 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   > <!-- markdownlint-disable-next-line MD051 -->
   > Answer here and I'll relay, or in [KINO-5 — Add export command](#<worker-sessionId>).
 
-  If the worker marked it `answer: in this session only`, drop "answer here" and say why. When a
-  standing delegation covers a clear-cut question, send `ANSWER` instead, write it to the row, and
-  tell the operator what you answered; their `RELAY` overrides it. When the operator answers here:
-  first read the worker's tail (`list_events`, limit 4). If it has already been answered there, say
-  so and don't relay. Otherwise send `RELAY` with their words verbatim. Ledger: the question goes
-  into `owed` verbatim while it's pending, and collapses to the decision once answered.
+  If the worker marked it `answer: in this session only`, drop "answer here" and say why. Under a
+  standing delegation, answer any other clear-cut question yourself with `ANSWER`: write it to the
+  row and tell the operator, whose `RELAY` overrides it. When the operator answers here: first read
+  the worker's tail (`list_events`, limit 4). If it has already been answered there, say so and
+  don't relay. Otherwise send `RELAY` with their words verbatim. Ledger: the question goes into
+  `owed` verbatim while it's pending, and collapses to the decision once answered.
 - **BLOCKED** → surface it the same way, with the worker's proposed fix. Decide with the operator.
 - **DONE** → verify by running, in the worker's cwd: `CREW.md` › Verify, else `docs/HARNESS.md` ›
   Sensors, else ask. Report the verdict against the worker's claim, and write it to the row with the
@@ -407,7 +407,7 @@ You were spawned by an orchestrator. Your brief is your first message. You remem
    already got an answer here, say so in this session and don't act on the relay twice.
    **ANSWER arrives** → the orchestrator's own: act on it, recorded as "orchestrator, under the
    operator's standing delegation", never as the operator's words. Refuse one for a consent card, a
-   gated action or an `answer: in this session only` question, saying so here. A `RELAY` overrides it.
+   gated action or `answer: in this session only`, saying so here. The operator's own answer wins.
 6. **Stuck** → `BLOCKED`, end the turn. Don't work around it; don't ask the operator directly
    instead of reporting.
 7. **Loop budget — a fix/review cycle is bounded, never open-ended.** The limit is the one your brief
