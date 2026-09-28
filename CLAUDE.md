@@ -41,9 +41,9 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
 - **`SKILL.md` is the contract, and one file serves both roles.** A session reads *The contract* and
   then either *Orchestrator* (numbered steps 0–8) or *Worker*. A worker is identified by its first
   message starting with `<!-- crew:brief`.
-- **Sessions talk only through `send_message` by sessionId,** using six message kinds: worker →
-  orchestrator `ONLINE`/`NEED-INPUT`/`BLOCKED`/`DONE`, orchestrator → worker `RELAY`/`START`.
-  Tool-permission prompts and gated consent are never relayed.
+- **Sessions talk only through `send_message` by sessionId,** using seven message kinds: worker →
+  orchestrator `ONLINE`/`NEED-INPUT`/`BLOCKED`/`DONE`, orchestrator → worker `RELAY`/`START`/`ANSWER`.
+  Tool-permission prompts and gated consent are never relayed, and never answered by an `ANSWER`.
 - **`references/` holds what the orchestrator fills or persists:**
   - `brief-template.md`: the worker's first message, in a ready and a queued variant, plus `START`.
   - `crew-md.md`: the first-use interview that writes each consuming project's `docs/CREW.md`, the
@@ -84,8 +84,8 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   exists.
 - **The message contract is duplicated.** The *If the `crew` skill is unavailable* section of
   `brief-template.md` condenses SKILL.md's message rules. Change one, change the other. *Checked:* the
-  six kinds in SKILL.md's *Messages* tables, the fallback section, the frontmatter description ("four
-  reports", "RELAY and START") and the *Worker* rule ("the four kinds").
+  seven kinds in SKILL.md's *Messages* tables, the fallback section, the frontmatter description
+  ("four reports", "RELAY, START and ANSWER") and the *Worker* rule ("the four kinds").
 - **Watchdog defaults are 1200 s interval, 3600 s no-commit, sub-agent step 3.** They are restated in
   five places, all *checked*:
   - the `watchdog.sh` defaults, the source;

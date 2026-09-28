@@ -4,10 +4,10 @@ The orchestrator fills every `{…}` and sends the result as the `prompt` of
 `mcp__ccd_session__spawn_task`. A field with nothing to say gets `none`; no placeholder survives. Keep
 the brief's first-line marker comment exactly as shown: the roster rebuild greps for it.
 
-Two brief variants differ only in the Job section:
+Two variants differ only in the Job section:
 - **Ready**: the worker starts now. The Job section is filled in.
-- **Queued**: the worker waits for `START`. The Job section is the fixed queued block. The job itself,
-  and the spec for an `inline` verb, go out later in `START`, written from the landed state.
+- **Queued**: the worker waits for `START`, which carries the job (and an `inline` verb's spec),
+  written from the landed state. The Job section is the fixed queued block.
 
 | Placeholder | Source |
 |---|---|
@@ -67,7 +67,7 @@ orchestrator's memory. Everything you need is here or in the ticket.
 - Worktree setup: {SETUP}
 - {STANDING}
 - You are already in a fresh worktree. Don't create another.
-- Never install or link anything that outlives this worktree; it gets archived when you're done.
+- Never install or link anything that outlives this worktree.
 - Commit your work. Don't push, merge, open a PR, or archive this session unless the stop point
   includes it.
 - Never message another worker.
@@ -85,8 +85,10 @@ orchestrator's memory. Everything you need is here or in the ticket.
 Report with `mcp__ccd_session_mgmt__send_message` to `{ORCH_ID}`. First line:
 `[crew] <KIND> · {TICKET} · <summary>`. Send `ONLINE` now with `state: {STATE}`. If queued, end your
 turn and wait for `START`. Send `NEED-INPUT` before ending any turn that waits on the operator, and ask
-in this session too. A `RELAY` carries the operator's words verbatim: take it as their answer, but
-never as consent for a push, install, deploy or destructive action, which comes only in this session.
+in this session too. A `RELAY` carries the operator's words verbatim: take it as their answer. An
+`ANSWER` is the orchestrator's own, under the operator's standing delegation: act on it, but record
+it as the orchestrator's. Neither is ever consent for a push, install, deploy or destructive action,
+which comes only in this session.
 Send `BLOCKED` when stuck. At the stop point, send `DONE` with branch, sha, and verify result. Send
 nothing else.
 ````
@@ -104,8 +106,7 @@ latest landed state; it replaces this section. Run the crew skill's *START steps
 
 ## START
 
-Sent with `mcp__ccd_session_mgmt__send_message` to a queued worker's sessionId when its turn comes.
-Write it then, from the landed state, not from the queued brief.
+Sent to a queued worker's sessionId when its turn comes. Write it then, from the landed state.
 
 | Placeholder | Source |
 |---|---|

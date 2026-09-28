@@ -16,8 +16,8 @@ assignees: ""
 
 ## Trace
 
-<!-- The [crew] messages exchanged (ONLINE / NEED-INPUT / BLOCKED / DONE / RELAY / START), or the script
-command line, exit code, and stderr. Redact anything private. -->
+<!-- The [crew] messages exchanged (ONLINE / NEED-INPUT / BLOCKED / DONE / RELAY / START / ANSWER), or
+the script command line, exit code, and stderr. Redact anything private. -->
 
 ## Environment
 

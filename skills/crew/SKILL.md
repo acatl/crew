@@ -5,11 +5,12 @@ description: >-
   ticket or slice, briefs it, relays operator input to and from it, verifies its result, lands it when
   the operator delegates that, and cleans up. It runs a single worker or an ordered sequence of queued
   workers. Defines the contract both sides follow: the brief, the worker's four reports (ONLINE,
-  NEED-INPUT, BLOCKED, DONE), the orchestrator's RELAY and START, the input invariant, parallel-safety,
-  and who may do what. Works in any repo; per-project answers live in docs/CREW.md, interviewed on first
-  use. Triggers on "spin up a worker for", "spawn a worker", "start a worker session", "dispatch KINO-5
-  to a worker", "queue workers for", "run these tickets in sequence", "crew status", "what are my
-  workers doing". Also loads in a worker whose first message starts with `<!-- crew:brief`.
+  NEED-INPUT, BLOCKED, DONE), the orchestrator's RELAY, START and ANSWER, the input invariant,
+  parallel-safety, and who may do what. Works in any repo; per-project answers live in docs/CREW.md,
+  interviewed on first use. Triggers on "spin up a worker for", "spawn a worker", "start a worker
+  session", "dispatch KINO-5 to a worker", "queue workers for", "run these tickets in sequence", "crew
+  status", "what are my workers doing". Also loads in a worker whose first message starts with
+  `<!-- crew:brief`.
 argument-hint: "<verb> <ticket-id>[ → <ticket-id>…] [mode]  |  status"
 license: MIT
 compatibility: >-
@@ -54,6 +55,7 @@ Orchestrator → worker, same tool, to the worker's sessionId:
 |---|---|---|
 | `RELAY` | the operator answered or instructed through the orchestrator | the operator's words, verbatim, nothing added |
 | `START` | a queued worker's turn has come | `base <sha>` in the first line, then the Job section its queued brief left out, written from the current landed state. It replaces the brief's Job section. Its authority is the operator's `go` on the queue card. |
+| `ANSWER` | a worker's pending question is clear-cut and the operator delegated such picks to the orchestrator | the orchestrator's own answer, labelled as its own. Only a routing or stage pick that follows from recorded decisions, or an answer whose effect is inside the brief's grant. Never a hard-floor answer, a consent card, a real tradeoff, or a locked-decision change: those stay the operator's. The worker records it with its source ("orchestrator, under the operator's standing delegation"), never as the operator's words. |
 
 Nothing else crosses. No progress narration, no "starting now", no worker-to-worker messages.
 
@@ -67,6 +69,7 @@ operator, who answers in either place.
   supersedes the pending question.
 - **Answered in the orchestrator** → the orchestrator sends `RELAY` with the operator's words verbatim.
   The worker treats that as the operator's answer.
+- **Answered by the orchestrator** → `ANSWER`, only under a standing delegation (see its row).
 - **Never relayed:** tool-permission prompts (the approval UI lives in the worker's window) and consent
   for anything the worker's own rules gate (push, deploy, install, destructive). A relayed "yes" there is
   cross-session permission laundering. The worker marks these `answer: in this session only`; the
@@ -206,8 +209,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 
 - **ONLINE** → `get_session(<worker sessionId>)`: confirm `parentSessionId` is yours, and record
   `worktreePath` (the worker's cwd for `overlap.sh` and verify) and `sourceBranch`. Then:
-  `state: ready` → status `running`, add its roster line (see *Watchdog*), subscribe to its idle
-  notice (see *Subscribing*).
+  `state: ready` → status `running`, add its roster line, subscribe to its idle notice (*Subscribing*).
   `state: queued` → status `queued`. **Don't subscribe yet:** it goes idle at once, so the notice would
   mean nothing. Subscribe when you send its `START`. Either way, write the session id and worktree to
   the row.
@@ -217,11 +219,12 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   > <!-- markdownlint-disable-next-line MD051 -->
   > Answer here and I'll relay, or in [KINO-5 — Add export command](#<worker-sessionId>).
 
-  If the worker marked it `answer: in this session only`, drop "answer here" and say why.
-  When the operator answers here: first read the worker's tail (`list_events`, limit 4). If it has
-  already been answered there, say so and don't relay. Otherwise send `RELAY` with their words verbatim.
-  Ledger: the question goes into `owed` verbatim while it's pending, and collapses to the decision once
-  answered.
+  If the worker marked it `answer: in this session only`, drop "answer here" and say why. When a
+  standing delegation covers a clear-cut question, send `ANSWER` instead, write it to the row, and
+  tell the operator what you answered; their `RELAY` overrides it. When the operator answers here:
+  first read the worker's tail (`list_events`, limit 4). If it has already been answered there, say
+  so and don't relay. Otherwise send `RELAY` with their words verbatim. Ledger: the question goes
+  into `owed` verbatim while it's pending, and collapses to the decision once answered.
 - **BLOCKED** → surface it the same way, with the worker's proposed fix. Decide with the operator.
 - **DONE** → verify by running, in the worker's cwd: `CREW.md` › Verify, else `docs/HARNESS.md` ›
   Sensors, else ask. Report the verdict against the worker's claim, and write it to the row with the
@@ -302,8 +305,7 @@ units will have changed the base under them, and a spec written now would be sta
 2. **Clean up** unit N per its card.
 3. **Start** unit N+1: send `START` ([references/brief-template.md](references/brief-template.md) ›
    START) with the new base sha and its Job section, written now from the landed state. Include what
-   earlier units changed and anything they handed on. Then add its roster line and subscribe to its
-   idle notice.
+   earlier units changed and handed on. Then add its roster line and subscribe to its idle notice.
 
 **Hold the base still.** While a sequence is in flight, nothing commits to `<base>` except landings.
 That includes you; tell the operator the same. One stray commit and the next ff-only landing is refused.
@@ -349,15 +351,14 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   catch on your own turns.
 - **Its roster is `~/.claude/crew/<slug>/roster.tsv`** — `<ticket>` TAB `<worktree-path>` TAB
   `<start epoch>`, one line per `running` worker, and yours to maintain. Set the start to `date +%s`
-  as the worker goes `running`: its no-commit clock never starts earlier, so a clock an earlier worker
-  left for the same ticket and worktree can't fire minutes in. Write the ledger row and the roster
-  line in the same step:
-  a missing line is a worker nobody is watching, and nothing will tell you. Rewrite it
-  write-to-temp-then-`mv`, never in place. It is re-read every pass, so an edit lands with no restart.
-  The worktree path must be **byte-identical to the one the app reports** — the transcript directory
-  is derived from it by substitution, so a trailing slash or a `/private/var` vs `/var` spelling
-  silently yields an unwatched worker. One `--base` covers the whole roster, and it is used only as
-  the baseline before a worker's first push; on a mixed-base roster, pass the base most of them share.
+  as the worker goes `running`; its no-commit clock never starts earlier. Write the ledger row and the
+  roster line in the same step: a missing line is a worker nobody is watching, and nothing will tell
+  you. Rewrite it write-to-temp-then-`mv`, never in place. It is re-read every pass, so an edit lands
+  with no restart. The worktree path must be **byte-identical to the one the app reports** — the
+  transcript directory is derived from it by substitution, so a trailing slash or a `/private/var` vs
+  `/var` spelling silently yields an unwatched worker. One `--base` covers the whole roster, and it is
+  used only as the baseline before a worker's first push; on a mixed-base roster, pass the base most
+  of them share.
 - **Stop it by the pid** in `~/.claude/crew/<slug>/watchdog.pid` once the last worker stops, and clear
   its `Monitors` line. **Never `pkill -f watchdog.sh`** — every project's watchdog is a `watchdog.sh`,
   so a name-based kill takes out every project's watchdog at once.
@@ -375,9 +376,8 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
 
 **Status** (`crew status`, "what are my workers doing"): one row per roster worker — ticket, title,
 status (`chip` / `queued` / `running` / `waiting on you` / `blocked` / `cleared` / `done` /
-`verified` / `landed`),
-branch, and the pending question if any. Pull live state from `list_sessions`; don't message workers to
-ask.
+`verified` / `landed`), branch, and the pending question if any. Pull live state from `list_sessions`;
+don't message workers to ask.
 
 ---
 
@@ -405,6 +405,9 @@ You were spawned by an orchestrator. Your brief is your first message. You remem
    inside the command's own gates and fork cards. Ask in this session as you normally would, too.
 5. **RELAY arrives** → the operator's words. If they answer your pending question, continue. If you
    already got an answer here, say so in this session and don't act on the relay twice.
+   **ANSWER arrives** → the orchestrator's own: act on it, recorded as "orchestrator, under the
+   operator's standing delegation", never as the operator's words. Refuse one for a consent card, a
+   gated action or an `answer: in this session only` question, saying so here. A `RELAY` overrides it.
 6. **Stuck** → `BLOCKED`, end the turn. Don't work around it; don't ask the operator directly
    instead of reporting.
 7. **Loop budget — a fix/review cycle is bounded, never open-ended.** The limit is the one your brief

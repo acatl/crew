@@ -92,6 +92,10 @@ red "11 the fallback drops a message kind" check-invariants "doesn't name \`RELA
 
 fresh; edit "$SK" "s#the worker's four reports#the worker's five reports#"
 red "12 the description miscounts the reports" check-invariants "$SK"
+fresh; edit "$SK" "s#the orchestrator's RELAY, START and ANSWER#the orchestrator's RELAY and START#"
+red "12b the description drops an orchestrator kind" check-invariants "the description gives the orchestrator RELAY START"
+fresh; edit "$BT" 's#^`ANSWER` is the orchestrator#The answer is the orchestrator#'
+red "12c the fallback drops ANSWER" check-invariants "doesn't name \`ANSWER\`"
 fresh; edit "$SK" 's#besides the four kinds#besides the three kinds#'
 red "13 the worker rule miscounts the kinds" check-invariants "$SK"
 fresh; edit "$LG" "s#sed 's\#/\#-\#g'#sed 's\#[/.]\#-\#g'#"

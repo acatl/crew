@@ -153,11 +153,11 @@ else
     done
   fi
 
-  # the frontmatter description: "the worker's four reports (…), the orchestrator's X and Y"
+  # the frontmatter description: "the worker's four reports (…), the orchestrator's X, Y and Z"
   desc_w=$(sed -nE "s/.*the worker's ([a-z]+) reports \(([^)]*)\).*/\1|\2/p" <<< "$fm")
-  desc_o=$(sed -nE "s/.*the orchestrator's ([A-Z-]+) and ([A-Z-]+).*/\1 \2/p" <<< "$fm")
+  desc_o=$(sed -nE "s/.*the orchestrator's (([A-Z-]+, )*[A-Z-]+) and ([A-Z-]+).*/\1 \3/p" <<< "$fm" | tr -d ',')
   if [ -z "$desc_w" ] || [ -z "$desc_o" ]; then
-    reworded "$SKILL/SKILL.md" "the description's \"the worker's N reports (…), the orchestrator's X and Y\""; kinds_ok=0
+    reworded "$SKILL/SKILL.md" "the description's \"the worker's N reports (…), the orchestrator's X, Y and Z\""; kinds_ok=0
   else
     listed=$(tr -d ' ' <<< "${desc_w#*|}" | tr ',' '\n' | LC_ALL=C sort)
     if [ "${desc_w%%|*}" != "$(word "$nwk")" ] || [ "$listed" != "$wk" ]; then
