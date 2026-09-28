@@ -125,7 +125,14 @@ red "15i the header changes and a copy is named" check-invariants "$LG"
 fresh; edit "$WD" 's#roster.tsv    input:#roster.tsv    in:#'
 red "15j a reworded header line is reported, not passed" check-invariants "the header's 'roster.tsv"
 fresh; edit "$SK" 's#`<ticket>` TAB `<worktree-path>` TAB#one ticket TAB `<worktree-path>` TAB#'
-red "15k one reworded copy fails though the other still matches" check-invariants "$SK: its roster format copy"
+red "15k one reworded copy fails though the other still matches" check-invariants "found in 1: $LG"
+fresh; edit "$LG" 's#<ticket> TAB <worktree-path> TAB#one ticket TAB <worktree-path> TAB#'
+red "15l and so does the other one" check-invariants "found in 1: $SK"
+fresh; edit "$SK" 's#^- \*\*Its roster is `~/\.claude/crew/<slug>/roster\.tsv`\*\* — `<ticket>` TAB `<worktree-path>` TAB#- **Its roster is `~/.claude/crew/<slug>/roster.tsv`**, in references/watchdog.md. TAB#'
+printf '\nroster.tsv: `<ticket>` TAB `<worktree-path>` TAB `<start epoch>`, one line per worker.\n' > "$S/skills/crew/references/watchdog.md"
+green "15m a copy moved to another file still counts" check-invariants
+edit skills/crew/references/watchdog.md 's# TAB `<start epoch>`##'                        # same fixture
+red "15n and the moved copy is still checked" check-invariants "skills/crew/references/watchdog.md"
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"

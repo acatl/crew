@@ -231,26 +231,29 @@ if [ "$slug_ok" = 1 ]; then held=$((held + 1)); fi
 
 # --- the roster format: watchdog.sh's header is the source ---------------------------------------------
 # Its roster.tsv line names the columns ("<ticket> <TAB> <worktree-path> [<TAB> <start epoch>]"). A
-# copy runs from `<ticket>` to the next comma and must name the same columns, in order. SKILL.md's
-# Watchdog section and ledger.md's file listing each hold one, and each must still be found: a copy
-# reworded out of the pattern would otherwise pass on the strength of the other.
+# copy runs from `<ticket>` to the next comma and must name the same columns, in order. There are two
+# copies, in two files (SKILL.md's Watchdog section and ledger.md's file listing today), counted by
+# file rather than named, so a section that moves is still checked. A copy reworded out of the pattern
+# drops the count, so it can't pass on the strength of the other.
+ROSTER_COPIES=2
 cols() { grep -oE '<[a-z][a-z -]*>' | tr '\n' ' ' | sed 's/ $//'; }
 want=$(grep -E '^#[[:space:]]+roster\.tsv[[:space:]]+input:' "$WATCHDOG" | sed 's/,.*//' | cols || true)
 if [ -z "$want" ]; then
   reworded "$WATCHDOG" "the header's 'roster.tsv    input:  <ticket> …' line"
 else
   roster_ok=1
-  for f in "$SKILL/SKILL.md" "$LEDGER"; do
-    if [ -z "$(scan '<ticket>[^,]*,' "$f")" ]; then
-      reworded "$f" "its roster format copy ('<ticket>' … up to a comma)"; roster_ok=0
-    fi
-  done
+  out=$(scan '<ticket>[^,]*,' "${mds[@]}")
+  nfiles=$(sed -n 's/:[0-9]*\t.*//p' <<< "$out" | LC_ALL=C sort -u | grep -c . || true)
+  if [ "$nfiles" -lt "$ROSTER_COPIES" ]; then
+    reworded "$SKILL/*.md" "a roster format copy ('<ticket>' … up to a comma) in $ROSTER_COPIES files, found in $nfiles:$(sed -n 's/:[0-9]*\t.*//p' <<< "$out" | LC_ALL=C sort -u | tr '\n' ' ' | sed 's/ $//;s/^./ &/')"
+    roster_ok=0
+  fi
   while IFS=$'\t' read -r loc got; do
     [ -n "$loc" ] || continue
     if [ "$(cols <<< "$got")" != "$want" ]; then
       fail "$loc: the roster columns read '$(cols <<< "$got")', but $WATCHDOG's header makes them '$want'"; roster_ok=0
     fi
-  done <<< "$(scan '<ticket>[^,]*,' "${mds[@]}")"
+  done <<< "$out"
   if [ "$roster_ok" = 1 ]; then held=$((held + 1)); fi
 fi
 

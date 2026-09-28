@@ -219,10 +219,10 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   > <!-- markdownlint-disable-next-line MD051 -->
   > Answer here and I'll relay, or in [KINO-5 — Add export command](#<worker-sessionId>).
 
-  If the worker marked it `answer: in this session only`, drop "answer here" and say why. Under a
-  standing delegation, answer any other clear-cut question yourself with `ANSWER`: write it to the
-  row and tell the operator, whose `RELAY` overrides it. When the operator answers here: first read
-  the worker's tail (`list_events`, limit 4). If it has already been answered there, say so and
+  If the worker marked it `answer: in this session only`, drop "answer here" and say why. Otherwise,
+  send `ANSWER` instead only when a standing delegation covers the question within its row's limits;
+  write it to the row and tell the operator, whose `RELAY` overrides it. When they answer here:
+  first read the worker's tail (`list_events`, limit 4). If it's already answered there, say so and
   don't relay. Otherwise send `RELAY` with their words verbatim. Ledger: the question goes into
   `owed` verbatim while it's pending, and collapses to the decision once answered.
 - **BLOCKED** → surface it the same way, with the worker's proposed fix. Decide with the operator.

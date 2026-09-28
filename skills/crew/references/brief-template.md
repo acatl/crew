@@ -15,22 +15,22 @@ Two variants differ only in the Job section:
 | `{STATE}` | `ready` or `queued` |
 | `{ORCH_ID}`, `{ORCH_TITLE}` | `get_session("self")` |
 | `{TITLE}` | card › Title |
-| `{BASE}` | the base the orchestrator chose for THIS unit (SKILL.md step 3.4), as a ref (e.g. `graph-port`) |
+| `{BASE}` | the base chosen for THIS unit (SKILL.md step 3.4), as a ref (e.g. `graph-port`) |
 | `{BASE_SHA}` | that ref's sha at spawn time; the worker re-points to it (*Worker* step 2) |
-| `{TICKET_SOURCE}` | `CREW.md` › Ticket source, filled for this ticket (e.g. "Kino task KINO-5 — read it with the Kino MCP `get_task`"), or "the spec below" for an `inline` verb |
+| `{TICKET_SOURCE}` | `CREW.md` › Ticket source, filled (e.g. "Kino task KINO-5 — read it with the Kino MCP `get_task`"), or "the spec below" for an `inline` verb |
 | `{SCOPE}` | card › Scope |
 | `{COMMAND}` | `CREW.md` › Verbs. `command` kind: the Command with `{ticket}` and `{mode}` substituted. `inline` kind: "Carry out the spec below, " + the Command column's rules |
 | `{MODE}` | the trigger, or `default` |
 | `{STOP_POINT}` | card › Scope's stop point, else `CREW.md` › Verbs › Stop point |
 | `{SURFACE}` | step 2 estimate |
 | `{FORBIDDEN}` | step 3 overlaps the operator chose to proceed with, else `none` |
-| `{SPEC}` | `inline` verbs only: the full unit spec, including decisions that live only in the orchestrator's memory. Drop the `## Spec` section for `command` verbs |
+| `{SPEC}` | `inline` verbs only: the full unit spec, including decisions only in the orchestrator's memory. Drop the `## Spec` section for `command` verbs |
 | `{BRANCH_RULE}` | `CREW.md` › Branch naming, resolved (e.g. "rename to `kino-5`"), else "keep the branch you're on" |
 | `{SETUP}` | `CREW.md` › Worktree setup |
 | `{STANDING}` | `CREW.md` › Standing boundaries, one bullet each, else drop the line |
-| `{BRIEF_PATH}` | where the orchestrator saved this brief: `~/.claude/crew/<slug>/briefs/<row>.md` |
+| `{BRIEF_PATH}` | this brief's saved path: `~/.claude/crew/<slug>/briefs/<row>.md` |
 | `{ITERATIONS}` | `CREW.md` › Counters, its review→fix iterations per round; else `two` |
-| `{NO_COMMIT}` | `CREW.md` › Ledger › watchdog's no-commit threshold (e.g. "60 minutes"); it must match the watchdog's `--no-commit`, or the two escalate on different clocks |
+| `{NO_COMMIT}` | `CREW.md` › Ledger › watchdog's no-commit threshold, in minutes; it must match the watchdog's `--no-commit`, or the two escalate on different clocks |
 
 ---
 
@@ -86,9 +86,10 @@ Report with `mcp__ccd_session_mgmt__send_message` to `{ORCH_ID}`. First line:
 `[crew] <KIND> · {TICKET} · <summary>`. Send `ONLINE` now with `state: {STATE}`. If queued, end your
 turn and wait for `START`. Send `NEED-INPUT` before ending any turn that waits on the operator, and ask
 in this session too. A `RELAY` carries the operator's words verbatim: take it as their answer. An
-`ANSWER` is the orchestrator's own, under the operator's standing delegation: act on it, but record
-it as the orchestrator's. Neither is ever consent for a push, install, deploy or destructive action,
-which comes only in this session.
+`ANSWER` is the orchestrator's own, under the operator's standing delegation: act on it and record it
+as the orchestrator's, unless you marked the question `answer: in this session only`. The operator's
+answer wins. Neither is ever consent for a push, install, deploy or destructive action, which
+comes only in this session.
 Send `BLOCKED` when stuck. At the stop point, send `DONE` with branch, sha, and verify result. Send
 nothing else.
 ````
@@ -111,8 +112,8 @@ Sent to a queued worker's sessionId when its turn comes. Write it then, from the
 | Placeholder | Source |
 |---|---|
 | `{SHA}` | `git rev-parse HEAD` on `<base>` in the main checkout, after the last landing |
-| `{LANDED}` | one line per unit landed since this worker was queued: id, sha, what it changed that this unit touches |
-| `{HANDOFFS}` | anything an earlier unit left for this one (a leftover, a renamed file, a decision), else `none` |
+| `{LANDED}` | one line per unit landed since it was queued: id, sha, what it changed that this unit touches |
+| `{HANDOFFS}` | anything an earlier unit left for this one (a leftover, a decision), else `none` |
 | Job and Spec fields | same as the brief's, computed now |
 
 ```markdown

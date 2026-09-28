@@ -107,7 +107,8 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   Don't unify them. *Checked.*
 - **The roster format.** `watchdog.sh`'s header defines `roster.tsv`'s columns (`<ticket>`,
   `<worktree-path>`, `<start epoch>`), and SKILL.md's *Watchdog* section and `ledger.md`'s file
-  listing restate them. *Checked*, column by column.
+  listing restate them. *Checked*, column by column, and both copies must be found (counted by file, so
+  a section that moves stays checked).
 - **The `<!-- crew:brief` marker** is used for role detection, in the frontmatter `description`, and
   by the roster rebuild's grep. Keep it byte-exact. *Checked* against the brief template's first line.
 - **`CREW.md` › Section references** in the skill name `## ` headings of the template in
