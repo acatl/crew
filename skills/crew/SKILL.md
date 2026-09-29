@@ -444,7 +444,7 @@ first line.
 2. Re-point your branch to the current base: `git switch -C "$(git branch --show-current)" <base>`.
    Nothing is lost; step 1 proved the branch has no work on it.
 3. Check the sha is in your history: `git merge-base --is-ancestor <sha> HEAD`. If not → `BLOCKED`.
-4. START's Job section replaces your brief's. Continue at step 2 above.
+4. START's Job section and base sha replace the brief's. Continue at step 2.
 
 Never: push, merge, or open a PR past the stop point · touch the `Do not touch` paths · install or link
 anything that outlives this worktree (global installs, links from your home directory into it), since

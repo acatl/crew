@@ -2,7 +2,7 @@
 
 The orchestrator fills every `{…}` and sends the result as the `prompt` of
 `mcp__ccd_session__spawn_task`. A field with nothing to say gets `none`; no placeholder survives. Keep
-the brief's first-line marker comment exactly as shown: the roster rebuild greps for it.
+the first-line marker byte-exact: the roster rebuild greps for it.
 
 Two variants differ only in the Job section:
 - **Ready**: the worker starts now, Job section filled in.
@@ -17,14 +17,14 @@ Two variants differ only in the Job section:
 | `{TITLE}` | card › Title |
 | `{BASE}` | the base chosen for THIS unit (SKILL.md step 3.4), as a ref (e.g. `graph-port`) |
 | `{BASE_SHA}` | that ref's sha at spawn time; the worker re-points to it (*Worker* step 2) |
-| `{TICKET_SOURCE}` | `CREW.md` › Ticket source, filled (e.g. "Kino task KINO-5 — read it with the Kino MCP `get_task`"), or "the spec below" for an `inline` verb |
+| `{TICKET_SOURCE}` | `CREW.md` › Ticket source, filled (e.g. "Kino task KINO-5, via the Kino MCP `get_task`"), or "the spec below" for an `inline` verb |
 | `{SCOPE}` | card › Scope |
 | `{COMMAND}` | `CREW.md` › Verbs. `command` kind: the Command with `{ticket}` and `{mode}` substituted. `inline` kind: "Carry out the spec below, " + the Command column's rules |
 | `{MODE}` | the trigger, or `default` |
 | `{STOP_POINT}` | card › Scope's stop point, else `CREW.md` › Verbs › Stop point |
 | `{SURFACE}` | step 2 estimate |
 | `{FORBIDDEN}` | step 3 overlaps the operator chose to proceed with, else `none` |
-| `{SPEC}` | `inline` verbs only: the full unit spec, including decisions only in the orchestrator's memory. Drop the `## Spec` section for `command` verbs |
+| `{SPEC}` | `inline` verbs only: the full unit spec, including decisions only in the orchestrator's memory; drop `## Spec` for `command` verbs |
 | `{BRANCH_RULE}` | `CREW.md` › Branch naming, resolved (e.g. "rename to `kino-5`"), else "keep the branch you're on" |
 | `{SETUP}` | `CREW.md` › Worktree setup |
 | `{STANDING}` | `CREW.md` › Standing boundaries, one bullet each, else drop the line |
@@ -90,8 +90,8 @@ in this session too. A `RELAY` carries the operator's words verbatim: take it as
 the orchestrator's, only for a routing or stage pick that follows from recorded decisions or an
 effect inside this brief's grant. Say so here and refuse an `ANSWER` for a hard floor, consent card,
 gated action, real tradeoff, locked decision or `answer: in this session only`. The operator's
-answer wins. Neither is consent for a push, install, deploy or destructive action, which comes only
-in this session.
+answer wins. Neither is consent for a tool-permission prompt or a gated action (push, install,
+deploy, destructive): that comes only in this session.
 Send `BLOCKED` when stuck. At the stop point, send `DONE` with branch, sha, and verify result. Send
 nothing else.
 ````
@@ -121,7 +121,7 @@ Sent to a queued worker's sessionId when its turn comes. Write it then, from the
 ```markdown
 [crew] START · {TICKET} · base {SHA}
 Run the crew skill's START steps (re-point to `{BASE}`, confirm `{SHA}` is in your
-history), then work the job below. This replaces your brief's Job section.
+history), then work the job below. This replaces your brief's Job section, and `{SHA}` its base sha.
 
 ## Since you were queued
 {LANDED}
