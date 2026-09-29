@@ -50,6 +50,10 @@ its PR).
   rule (`docs/pr-round-workflow.md` › Stopping › Merging); otherwise
   the operator merges. That go is the written rule being applied, not consent relayed from
   another session, so the worker acts on it.
+- **A PR worker's round `DONE` is a checkpoint** (its first line says `checkpoint`): verify it and
+  write the verdict, but don't land, clean up, or `START` the next unit; that waits for the merge
+  `DONE`. On the first one, add the worker's PR review monitor to the ledger's Monitors (stop: the
+  worker turns `auto_fix` off after merging); drop the line at cleanup.
 - **One PR in flight here at a time.** The CodeRabbit review pool is account-wide (about 5
   reviews an hour, shared with `acatl/hg` and `acatl/kino`), so a worker opens its PR only
   when the orchestrator says a slot is free.
@@ -72,12 +76,8 @@ Copied into every brief:
 - **Never run `scripts/link-skills.sh`, or repoint `~/.claude/skills/crew`, from a worktree.**
   Either would make every session on the machine load the worktree's unlanded skill.
 - **Push and PR only as the brief grants:** never `main`, never another worker's branch.
-- **At PR open, bind the PR and turn on its review monitor** (`docs/pr-round-workflow.md` › Who runs
-  the rounds): `get_status`, else `bind_pr`; then `set_monitor` with `auto_fix: true` and the PR's
-  URL. It wakes you for each review round, so a round's `DONE` is a checkpoint, not your stop. If
-  the app asks you to approve either call, send `NEED-INPUT` marked `answer: in this session only`.
-  Don't clear your context while it is on. Turn it off (`auto_fix: false`) once the PR merges. The
-  orchestrator records it in its ledger's Monitors while it runs.
+- **At PR open, bind the PR and turn on its review monitor**, as `docs/pr-round-workflow.md` › Who
+  runs the rounds says, which also covers its approval prompt, clearing, and turning it off.
 - **Hard Gates need the operator's yes in the worker's own session:** adding, removing or
   changing a dependency, CI and shared config, anything written outside the repo. Installing
   from the committed lockfile (`npm ci`) is not a gate.

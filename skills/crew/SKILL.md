@@ -213,10 +213,10 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   `state: queued` → status `queued`. **Don't subscribe yet:** it goes idle at once, so the notice means
   nothing. Subscribe when you send its `START`. Either way, write the session id and worktree to the row.
 - **NEED-INPUT** → never send `ANSWER` or `RELAY` for `answer: in this session only`: nudge without
-  "answer here", and say why. Before any `ANSWER` or `RELAY`, read the worker's tail (`list_events`,
-  limit 4): answered there already → say so, send nothing. A standing delegation covers the question
-  within the `ANSWER` row's limits → no nudge; send `ANSWER`, write it to the ledger row, and tell
-  the operator, whose `RELAY` overrides it. Else nudge:
+  "answer here", and say why. Otherwise, a standing delegation covers the question within the
+  `ANSWER` row's limits → no nudge; send `ANSWER`, write it to the ledger row, and tell the operator,
+  whose `RELAY` overrides it. Right before sending any `ANSWER` or `RELAY`, read the worker's tail
+  (`list_events`, limit 4): answered there already → say so, send nothing. Else nudge:
   > ⏸ **KINO-5 needs you** — <question, one line>
   > <options>
   > <!-- markdownlint-disable-next-line MD051 -->

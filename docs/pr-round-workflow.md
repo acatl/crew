@@ -39,10 +39,16 @@ are context the next round needs.
 - **At PR open, bind the PR and turn on its review monitor.** Right after `gh pr create`, call
   the app's `get_status` and, if it doesn't report this PR, `bind_pr` with its URL. Then call
   `set_monitor` with `auto_fix: true` and the PR's URL. The monitor is what wakes the owner for
-  each round (§ 0); without it, a worker that reported `DONE` sleeps through the reviews. An
-  approval prompt for either call is `NEED-INPUT`, `answer: in this session only`. Turn the
-  monitor off (`auto_fix: false`) once the PR merges.
-- **After each round's push** the worker reports `DONE` to the coordinator: round number,
+  each round (§ 0); without it, a worker that reported `DONE` sleeps through the reviews.
+  - Any of these calls can raise an approval prompt, which blocks the call, so nothing can be sent
+    from inside it. Unless `get_session("self")` reports `permissionMode` `auto` or
+    `bypassPermissions`, send `NEED-INPUT` marked `answer: in this session only` BEFORE the calls.
+  - Before clearing your own context, turn the monitor off (`auto_fix: false`): a cleared worker
+    woken by anything but the resume carrying its brief hedges or invents. Turn it back on when
+    the resume arrives and the PR is still open.
+  - After `gh pr merge`, turn it off, and say so in the merge `DONE`.
+- **After each round's push** the worker reports `DONE`, with `checkpoint` in its first line, to
+  the coordinator: round number,
   commit sha, what was fixed and what was declined, CI state. That is a checkpoint, not an exit:
   when the next reviews land, the same worker runs the next round from § 0.
 - **The worker merges only on the coordinator's go**, never on its own reading of the PR (§
