@@ -141,7 +141,7 @@ red "15r one copy in a file whose name has a space counts as one file" check-inv
 # ANSWER never answers an in-session-only question: the Orchestrator, Worker and fallback sections say so
 fresh; edit "$SK" 's#, say why, and send no `RELAY` or `ANSWER`\.#, and say why.#'
 red "15o the orchestrator's guard drops out" check-invariants "the section headed '^#+ Orchestrator"
-fresh; edit "$SK" 's#, for a gated action or `answer: in this session only`\. The operator#, or for a gated action. The operator#'
+fresh; edit "$SK" 's#, a gated action or `answer: in this session only`\.#, or a gated action.#'
 red "15p the worker's guard drops out" check-invariants "the section headed '^#+ Worker"
 fresh; edit "$BT" 's#locked decision or `answer: in this session only`\.#locked decision.#'
 red "15q the fallback's guard drops out" check-invariants "the section headed '^#+ If the"
@@ -159,6 +159,12 @@ fresh; edit "$SK" "s#the operator's words, never consent for a tool-permission p
 red "15v the worker's RELAY rule stops refusing tool-permission consent" check-invariants "that a relayed answer is never consent for a tool-permission prompt"
 fresh; edit "$BT" 's#Neither is consent for a tool-permission prompt#Both count for a tool-permission prompt#'
 red "15w the fallback's RELAY rule stops refusing it" check-invariants "the section headed '^#+ If the"
+fresh; edit "$SK" 's#^- \*\*Never relayed:\*\* tool-permission prompts#- **Relayed as usual:** tool-permission prompts#'
+red "15x the contract's input invariant stops refusing it" check-invariants "the section headed '^#+ The contract'"
+fresh; edit "$SK" "s#never consent for a tool-permission prompt or a gated#never consent for a tool-permission prompt, but consent for a#"
+red "15y the worker's RELAY rule drops the gated-action half" check-invariants "or a gated action"
+fresh; edit "$BT" 's#tool-permission prompt or a gated action (push, install,#tool-permission prompt; a yes for (push, install,#'
+red "15z the fallback drops the gated-action half" check-invariants "the section headed '^#+ If the"
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"

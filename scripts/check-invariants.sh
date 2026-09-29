@@ -264,11 +264,11 @@ fi
 # That boundary is SECURITY.md's consent-laundering scope, and it fell out of the orchestrator's side
 # twice under word-budget tightening. Three places must state it, each found by heading, not file: the
 # Orchestrator section, the Worker section, and the brief's fallback section. "State it" means one
-# sentence holding the marker, an ANSWER and a refusal (never, no, refuse): nearness alone passed with
+# sentence holding the marker, an ANSWER and a refusal (never, neither, no, not, refuse): nearness alone passed with
 # the guard sentence deleted, and a sentence without the refusal could invert the rule.
 # shellcheck disable=SC2016  # the backticks are literal Markdown
 marker='`answer: in this session only`'
-refusal='(^|[^A-Za-z])([Nn]ever|[Nn]o|[Rr]efuse)([^A-Za-z]|$)'
+refusal='(^|[^A-Za-z])([Nn]ever|[Nn]either|[Nn]o|[Nn]ot|[Rr]efuse)([^A-Za-z]|$)'
 # section <heading ERE> <in-fence ok: 0|1> <files...>: that section's text, one line. Fence-aware: a
 # heading-like line inside a code fence neither starts (unless allowed) nor ends a section begun
 # outside it, and a section begun inside a fence ends where that fence closes. The brief's fallback
@@ -291,37 +291,41 @@ section() {
     }
     w' "${@:3}" | tr '\n' ' ' | tr -s ' '
 }
-guarded() {  # guarded <text>: 0 when one sentence holds the marker, an ANSWER and a refusal
-  tr '.' '\n' <<< "$1" | grep -F -- "$marker" | grep -F ANSWER | grep -qE -- "$refusal"
+# sentence_with <text> <fixed string>... : 0 when one sentence holds every string and a refusal
+sentence_with() {
+  local sentences; sentences=$(tr '.' '\n' <<< "$1"); shift
+  while [ $# -gt 0 ]; do sentences=$(grep -F -- "$1" <<< "$sentences" || true); shift; done
+  grep -qE -- "$refusal" <<< "$sentences"
 }
-guard_ok=1
+# section_rule <what the rule says> <strings> -- <in-fence ok>|<heading ERE>...: every section states the
+# rule; one held invariant when all do. Presence, not meaning: a string check pins that the sentence is
+# there, and reviewers judge what it says.
+section_rule() {
+  local says=$1 strings=() spec where text ok=1; shift
+  while [ "$1" != -- ]; do strings+=("$1"); shift; done; shift
+  for spec in "$@"; do
+    where=${spec#*|}
+    text=$(section "$where" "${spec%%|*}" "${mds[@]}")
+    if [ -z "$text" ]; then
+      reworded "$SKILL/*.md" "a section headed '$where'"; ok=0
+    elif ! sentence_with "$text" "${strings[@]}"; then
+      fail "$SKILL/*.md: the section headed '$where' no longer says, in one sentence, that $says"; ok=0
+    fi
+  done
+  if [ "$ok" = 1 ]; then held=$((held + 1)); fi
+}
 # shellcheck disable=SC2016  # the backticks are literal Markdown
-for spec in '0|^#+ Orchestrator[[:space:]]*$' '0|^#+ Worker[[:space:]]*$' '1|^#+ If the `crew` skill is unavailable'; do
-  where=${spec#*|}
-  text=$(section "$where" "${spec%%|*}" "${mds[@]}")
-  if [ -z "$text" ]; then
-    reworded "$SKILL/*.md" "a section headed '$where'"; guard_ok=0
-  elif ! guarded "$text"; then
-    fail "$SKILL/*.md: the section headed '$where' no longer says, in one sentence, that ANSWER never answers an $marker question"; guard_ok=0
-  fi
-done
-if [ "$guard_ok" = 1 ]; then held=$((held + 1)); fi
+section_rule "ANSWER never answers an $marker question" "$marker" ANSWER -- \
+  '0|^#+ Orchestrator[[:space:]]*$' '0|^#+ Worker[[:space:]]*$' '1|^#+ If the `crew` skill is unavailable'
 
-# --- a RELAY (or an ANSWER) is never consent for a tool-permission prompt ---------------------------------
+# --- a relayed answer is never consent for a tool-permission prompt or a gated action ---------------------
 # The same scope. The contract's input invariant, the Worker section and the brief's fallback each say it
-# in one sentence holding "tool-permission" and a refusal.
-relay_ok=1
+# in one sentence holding "consent", "tool-permission", "gate" and a refusal ("consent" keeps Worker step
+# 5's ANSWER sentence, which names both but grants nothing, from standing in for the RELAY rule).
 # shellcheck disable=SC2016  # the backticks are literal Markdown
-for spec in '0|^#+ The contract' '0|^#+ Worker[[:space:]]*$' '1|^#+ If the `crew` skill is unavailable'; do
-  where=${spec#*|}
-  text=$(section "$where" "${spec%%|*}" "${mds[@]}")
-  if [ -z "$text" ]; then
-    reworded "$SKILL/*.md" "a section headed '$where'"; relay_ok=0
-  elif ! tr '.' '\n' <<< "$text" | grep -F -- 'tool-permission' | grep -qE -- '(^|[^A-Za-z])([Nn]ever|[Nn]either|[Nn]o|[Nn]ot)([^A-Za-z]|$)'; then
-    fail "$SKILL/*.md: the section headed '$where' no longer says, in one sentence, that a relayed answer is never consent for a tool-permission prompt"; relay_ok=0
-  fi
-done
-if [ "$relay_ok" = 1 ]; then held=$((held + 1)); fi
+section_rule "a relayed answer is never consent for a tool-permission prompt or a gated action" \
+  consent tool-permission gate -- \
+  '0|^#+ The contract' '0|^#+ Worker[[:space:]]*$' '1|^#+ If the `crew` skill is unavailable'
 
 if [ "$fails" -gt 0 ]; then
   printf '✖ %d restated value(s) drifted; CLAUDE.md › Invariants that span files lists every copy\n' "$fails" >&2

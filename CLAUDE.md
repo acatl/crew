@@ -113,6 +113,10 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   laundering). SKILL.md's *Orchestrator* and *Worker* sections and the brief's fallback section each
   say so in one sentence holding the marker, `ANSWER` and a refusal. *Checked*, by section heading,
   code-fence aware.
+- **A relayed answer is never consent for a tool-permission prompt or a gated action.** SKILL.md's
+  contract (the input invariant) and *Worker* sections and the brief's fallback section each say so in
+  one sentence holding "consent", "tool-permission", "gate" and a refusal. *Checked*, by section heading. Both
+  this and the `ANSWER` entry pin that the sentence is present, not what it means.
 - **The `<!-- crew:brief` marker** is used for role detection, in the frontmatter `description`, and
   by the roster rebuild's grep. Keep it byte-exact. *Checked* against the brief template's first line.
 - **`CREW.md` › Section references** in the skill name `## ` headings of the template in
