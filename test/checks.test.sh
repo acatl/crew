@@ -140,12 +140,16 @@ printf '\nroster.tsv: `<ticket>` TAB `<worktree-path>` TAB `<start epoch>`, one 
 red "15r one copy in a file whose name has a space counts as one file" check-invariants "found in 1: skills/crew/references/roster notes.md"
 # ANSWER never answers an in-session-only question: the Orchestrator, Worker and fallback sections say so
 fresh; edit "$SK" 's#, say why, and send no `RELAY` or `ANSWER`\.#, and say why.#'
+edit "$SK" 's#covers a question not marked `answer: in this session only`,#covers a question,#'
 red "15o the orchestrator's guard drops out" check-invariants "the section headed '^#+ Orchestrator"
 fresh; edit "$SK" 's#, a gated action or `answer: in this session only`\.#, or a gated action.#'
 red "15p the worker's guard drops out" check-invariants "the section headed '^#+ Worker"
 fresh; edit "$BT" 's#locked decision or `answer: in this session only`\.#locked decision.#'
 red "15q the fallback's guard drops out" check-invariants "the section headed '^#+ If the"
 fresh; edit "$SK" 's#, say why, and send no `RELAY` or `ANSWER`\.#, say why, and send an `ANSWER` if delegated.#'
+# the first branch's "no nudge" is a refusal word too: the check pins presence, not meaning (CLAUDE.md)
+edit "$SK" 's#covers a question not marked `answer: in this session only`,#covers a question marked `answer: in this session only`,#'
+edit "$SK" 's#→ no nudge: read#→ skip the nudge: read#'
 red "15s a guard sentence that no longer refuses" check-invariants "the section headed '^#+ Orchestrator"
 fresh; edit "$SK" 's#^\#\# Worker$#\#\# The worker#'
 red "15t a guard section's heading renamed is reported, not passed" check-invariants "a section headed '^#+ Worker"
