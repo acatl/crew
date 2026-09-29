@@ -30,7 +30,7 @@ Two variants differ only in the Job section:
 | `{STANDING}` | `CREW.md` › Standing boundaries, one bullet each, else drop the line |
 | `{BRIEF_PATH}` | this brief's saved path: `~/.claude/crew/<slug>/briefs/<row>.md` |
 | `{ITERATIONS}` | `CREW.md` › Counters, its review→fix iterations per round; else `two` |
-| `{NO_COMMIT}` | `CREW.md` › Ledger › watchdog's no-commit threshold, in minutes (e.g. "60 minutes"). It must equal the watchdog's `--no-commit`, which is in seconds (3600), or the two escalate on different clocks |
+| `{NO_COMMIT}` | `CREW.md` › Ledger › watchdog's no-commit threshold, in minutes. It must equal the watchdog's `--no-commit`, given in seconds (× 60), or the two escalate on different clocks |
 
 ---
 
@@ -86,11 +86,12 @@ Report with `mcp__ccd_session_mgmt__send_message` to `{ORCH_ID}`. First line:
 `[crew] <KIND> · {TICKET} · <summary>`. Send `ONLINE` now with `state: {STATE}`. If queued, end your
 turn and wait for `START`. Send `NEED-INPUT` before ending any turn that waits on the operator, and ask
 in this session too. A `RELAY` carries the operator's words verbatim: take it as their answer. An
-`ANSWER` is the orchestrator's own, under the operator's standing delegation: act on it, recorded as
+`ANSWER` is the orchestrator's, under the operator's standing delegation: act on it, recorded as
 the orchestrator's, only for a routing or stage pick that follows from recorded decisions or an
-effect inside this brief's grant; never for a hard floor, consent card, gated action, real tradeoff,
-locked decision or `answer: in this session only`. The operator's answer wins. Neither is consent
-for a push, install, deploy or destructive action, which comes only in this session.
+effect inside this brief's grant. Say so here and refuse an `ANSWER` for a hard floor, consent card,
+gated action, real tradeoff, locked decision or `answer: in this session only`. The operator's
+answer wins. Neither is consent for a push, install, deploy or destructive action, which comes only
+in this session.
 Send `BLOCKED` when stuck. At the stop point, send `DONE` with branch, sha, and verify result. Send
 nothing else.
 ````
@@ -113,7 +114,7 @@ Sent to a queued worker's sessionId when its turn comes. Write it then, from the
 | Placeholder | Source |
 |---|---|
 | `{SHA}` | `git rev-parse HEAD` on `<base>` in the main checkout, after the last landing |
-| `{LANDED}` | one line per unit landed since it was queued: id, sha, what it changed that this unit touches |
+| `{LANDED}` | one line per unit landed since queuing: id, sha, what it changed that this unit touches |
 | `{HANDOFFS}` | anything an earlier unit left for this one (a leftover, a decision), else `none` |
 | Job and Spec fields | same as the brief's, computed now |
 

@@ -94,7 +94,7 @@ fresh; edit "$SK" "s#the worker's four reports#the worker's five reports#"
 red "12 the description miscounts the reports" check-invariants "$SK"
 fresh; edit "$SK" "s#the orchestrator's RELAY, START and ANSWER#the orchestrator's RELAY and START#"
 red "12b the description drops an orchestrator kind" check-invariants "the description gives the orchestrator RELAY START"
-fresh; edit "$BT" 's#^`ANSWER` is the orchestrator#The answer is the orchestrator#'
+fresh; edit "$BT" 's#`ANSWER`#the answer#g'
 red "12c the fallback drops ANSWER" check-invariants "doesn't name \`ANSWER\`"
 fresh; edit "$SK" 's#besides the four kinds#besides the three kinds#'
 red "13 the worker rule miscounts the kinds" check-invariants "$SK"
@@ -145,6 +145,16 @@ fresh; edit "$SK" 's#, for a gated action or `answer: in this session only`\. Th
 red "15p the worker's guard drops out" check-invariants "the section headed '^#+ Worker"
 fresh; edit "$BT" 's#locked decision or `answer: in this session only`\.#locked decision.#'
 red "15q the fallback's guard drops out" check-invariants "the section headed '^#+ If the"
+fresh; edit "$SK" 's#, say why, and send no `RELAY` or `ANSWER`\.#, say why, and send an `ANSWER` if delegated.#'
+red "15s a guard sentence that no longer refuses" check-invariants "the section headed '^#+ Orchestrator"
+fresh; edit "$SK" 's#^\#\# Worker$#\#\# The worker#'
+red "15t a guard section's heading renamed is reported, not passed" check-invariants "a section headed '^#+ Worker"
+fresh; edit "$SK" 's#^\#\#\# 6\. Handle messages#```bash\
+\# a comment, not a heading\
+```\
+\
+&#'
+green "15u a heading-like comment in a code fence ends no section" check-invariants
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"

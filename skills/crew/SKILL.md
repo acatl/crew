@@ -210,9 +210,8 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 - **ONLINE** → `get_session(<worker sessionId>)`: confirm `parentSessionId` is yours, and record
   `worktreePath` (the worker's cwd for `overlap.sh` and verify) and `sourceBranch`. Then:
   `state: ready` → status `running`, add its roster line, subscribe to its idle notice (*Subscribing*).
-  `state: queued` → status `queued`. **Don't subscribe yet:** it goes idle at once, so the notice would
-  mean nothing. Subscribe when you send its `START`. Either way, write the session id and worktree to
-  the row.
+  `state: queued` → status `queued`. **Don't subscribe yet:** it goes idle at once, so the notice means
+  nothing. Subscribe when you send its `START`. Either way, write the session id and worktree to the row.
 - **NEED-INPUT** → nudge the operator right away:
   > ⏸ **KINO-5 needs you** — <question, one line>
   > <options>
@@ -220,11 +219,11 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   > Answer here and I'll relay, or in [KINO-5 — Add export command](#<worker-sessionId>).
 
   For `answer: in this session only`, drop "answer here", say why, and send no `RELAY` or `ANSWER`.
-  Otherwise read the worker's tail first (`list_events`, limit 4); already answered there → say so.
-  The operator answers here → `RELAY` their words verbatim. Send `ANSWER` instead only under a
-  standing delegation and within its *Messages* row; write it to the ledger row and tell the
-  operator, whose `RELAY` overrides it. Ledger: `owed` holds the question verbatim while pending,
-  then the decision.
+  Otherwise, right before any `RELAY` or `ANSWER`, read the worker's tail (`list_events`, limit 4):
+  answered there already → say so, send nothing. The operator answers here → `RELAY` their words
+  verbatim. Send `ANSWER` instead only when a standing delegation covers the question, within the
+  `ANSWER` row's limits; write it to the ledger row and tell the operator, whose `RELAY` overrides
+  it. Ledger: `owed` holds the question verbatim while pending, then the decision.
 - **BLOCKED** → surface it the same way, with the worker's proposed fix. Decide with the operator.
 - **DONE** → verify by running, in the worker's cwd: `CREW.md` › Verify, else `docs/HARNESS.md` ›
   Sensors, else ask. Report the verdict against the worker's claim, and write it to the row with the
@@ -405,9 +404,9 @@ You were spawned by an orchestrator. Your brief is your first message. You remem
    inside the command's own gates and fork cards. Ask in this session as you normally would, too.
 5. **RELAY arrives** → the operator's words. If they answer your pending question, continue. If you
    already got an answer here, say so in this session and don't act on the relay twice.
-   **ANSWER arrives** → the orchestrator's own, recorded as "orchestrator, under the operator's
-   standing delegation", never as the operator's words: act on it, but refuse an `ANSWER` outside its
-   *Messages* row, for a gated action or `answer: in this session only`. The operator's answer wins.
+   **ANSWER arrives** → the orchestrator's own, never the operator's words: record it as "orchestrator,
+   under the operator's standing delegation", and act on it. Say so here and refuse an `ANSWER` outside
+   its *Messages* row, for a gated action or `answer: in this session only`. The operator's answer wins.
 6. **Stuck** → `BLOCKED`, end the turn. Don't work around it; don't ask the operator directly
    instead of reporting.
 7. **Loop budget — a fix/review cycle is bounded, never open-ended.** The limit is the one your brief

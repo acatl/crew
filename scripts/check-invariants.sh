@@ -243,15 +243,15 @@ if [ -z "$want" ]; then
 else
   roster_ok=1
   out=$(scan '<ticket>[^,]*,' "${mds[@]}")   # a failing scan aborts here (set -e), never reads as "reworded"
+  files=""   # one file per line, so a path with a space is still one file
   while IFS=$'\t' read -r loc got; do
     [ -n "$loc" ] || continue
+    files+="${loc%:*}"$'\n'
     if [ "$(cols <<< "$got")" != "$want" ]; then
       fail "$loc: the roster columns read '$(cols <<< "$got")', but $WATCHDOG's header makes them '$want'"; roster_ok=0
     fi
   done <<< "$out"
-  # one file per line, so a path with a space is still one file
-  files=$(while IFS=$'\t' read -r loc _; do if [ -n "$loc" ]; then printf '%s\n' "${loc%:*}"; fi; done <<< "$out" \
-          | LC_ALL=C sort -u)
+  files=$(LC_ALL=C sort -u <<< "$files" | grep . || true)
   nfiles=$(grep -c . <<< "$files" || true)
   if [ "$nfiles" -lt "$ROSTER_COPIES" ]; then
     reworded "$SKILL/*.md" "a roster format copy ('<ticket>' … up to a comma) in $ROSTER_COPIES files, found in $nfiles:$(tr '\n' ' ' <<< "$files" | sed 's/ $//;s/^./ &/')"
@@ -263,25 +263,46 @@ fi
 # --- ANSWER never answers an `answer: in this session only` question ---------------------------------
 # That boundary is SECURITY.md's consent-laundering scope, and it fell out of the orchestrator's side
 # twice under word-budget tightening. Three places must state it, each found by heading, not file: the
-# Orchestrator section, the Worker section, and the brief's fallback section. "State it" means the
-# marker and an ANSWER in one sentence: nearness alone passed with the guard sentence deleted, since
-# another ANSWER sits a line away.
+# Orchestrator section, the Worker section, and the brief's fallback section. "State it" means one
+# sentence holding the marker, an ANSWER and a refusal (never, no, refuse): nearness alone passed with
+# the guard sentence deleted, and a sentence without the refusal could invert the rule.
 # shellcheck disable=SC2016  # the backticks are literal Markdown
-guard_re='`answer: in this session only`[^.]*ANSWER|ANSWER[^.]*`answer: in this session only`'
-section() {  # section <heading ERE> <files...>: that section's text, one line, from every file holding it
-  LC_ALL=C awk -v h="$1" 'FNR == 1 {w = 0}
-    /^#+ / {n = index($0, " ") - 1; if (w && n <= lvl) w = 0
-            if ($0 ~ h) {w = 1; lvl = n; next}}
-    w' "${@:2}" | tr '\n' ' ' | tr -s ' '
+marker='`answer: in this session only`'
+refusal='(^|[^A-Za-z])([Nn]ever|[Nn]o|[Rr]efuse)([^A-Za-z]|$)'
+# section <heading ERE> <in-fence ok: 0|1> <files...>: that section's text, one line. Fence-aware: a
+# heading-like line inside a code fence neither starts (unless allowed) nor ends a section begun
+# outside it, and a section begun inside a fence ends where that fence closes. The brief's fallback
+# lives inside the template's ````markdown fence, and the template also embeds an "## Orchestrator".
+section() {
+  LC_ALL=C awk -v h="$1" -v ok="$2" '
+    FNR == 1 {w = 0; f = 0}
+    /^(```|~~~)/ {
+      match($0, /^(`+|~+)/); run = substr($0, 1, RLENGTH)
+      if (!f) {f = 1; frun = run}
+      else if (substr(run, 1, 1) == substr(frun, 1, 1) && length(run) >= length(frun)) {
+        f = 0; if (w && wf) {w = 0; next}
+      }
+      if (w) print; next
+    }
+    /^#+ / {
+      n = index($0, " ") - 1
+      if (w && f == wf && n <= lvl) w = 0
+      if (!w && $0 ~ h && (!f || ok)) {w = 1; lvl = n; wf = f; next}
+    }
+    w' "${@:3}" | tr '\n' ' ' | tr -s ' '
+}
+guarded() {  # guarded <text>: 0 when one sentence holds the marker, an ANSWER and a refusal
+  tr '.' '\n' <<< "$1" | grep -F -- "$marker" | grep -F ANSWER | grep -qE -- "$refusal"
 }
 guard_ok=1
 # shellcheck disable=SC2016  # the backticks are literal Markdown
-for where in '^#+ Orchestrator[[:space:]]*$' '^#+ Worker[[:space:]]*$' '^#+ If the `crew` skill is unavailable'; do
-  text=$(section "$where" "${mds[@]}")
+for spec in '0|^#+ Orchestrator[[:space:]]*$' '0|^#+ Worker[[:space:]]*$' '1|^#+ If the `crew` skill is unavailable'; do
+  where=${spec#*|}
+  text=$(section "$where" "${spec%%|*}" "${mds[@]}")
   if [ -z "$text" ]; then
     reworded "$SKILL/*.md" "a section headed '$where'"; guard_ok=0
-  elif ! grep -qE -- "$guard_re" <<< "$text"; then
-    fail "$SKILL/*.md: the section headed '$where' no longer says ANSWER never answers an \`answer: in this session only\` question"; guard_ok=0
+  elif ! guarded "$text"; then
+    fail "$SKILL/*.md: the section headed '$where' no longer says, in one sentence, that ANSWER never answers an $marker question"; guard_ok=0
   fi
 done
 if [ "$guard_ok" = 1 ]; then held=$((held + 1)); fi
