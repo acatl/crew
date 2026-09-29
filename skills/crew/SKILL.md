@@ -212,18 +212,18 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   `state: ready` → status `running`, add its roster line, subscribe to its idle notice (*Subscribing*).
   `state: queued` → status `queued`. **Don't subscribe yet:** it goes idle at once, so the notice means
   nothing. Subscribe when you send its `START`. Either way, write the session id and worktree to the row.
-- **NEED-INPUT** → a standing delegation covers a question not marked `answer: in this session only`,
-  within the `ANSWER` row's limits → no nudge: read the worker's tail (`list_events`, limit 4), then
-  `ANSWER`; write it to the ledger row and tell the operator, whose `RELAY` overrides it. Else nudge:
+- **NEED-INPUT** → never send `ANSWER` or `RELAY` for `answer: in this session only`: nudge without
+  "answer here", and say why. Before any `ANSWER` or `RELAY`, read the worker's tail (`list_events`,
+  limit 4): answered there already → say so, send nothing. A standing delegation covers the question
+  within the `ANSWER` row's limits → no nudge; send `ANSWER`, write it to the ledger row, and tell
+  the operator, whose `RELAY` overrides it. Else nudge:
   > ⏸ **KINO-5 needs you** — <question, one line>
   > <options>
   > <!-- markdownlint-disable-next-line MD051 -->
   > Answer here and I'll relay, or in [KINO-5 — Add export command](#<worker-sessionId>).
 
-  For `answer: in this session only`, drop "answer here", say why, and send no `RELAY` or `ANSWER`.
-  The operator answers here → read the worker's tail: answered there already → say so,
-  send nothing; else `RELAY` their words verbatim. Ledger: `owed` holds the question verbatim while
-  pending, then its decision.
+  The operator answers here → `RELAY` their words verbatim. Ledger: `owed` holds the question
+  verbatim while pending, then its decision.
 - **BLOCKED** → surface it the same way, with the worker's proposed fix. Decide with the operator.
 - **DONE** → verify by running, in the worker's cwd: `CREW.md` › Verify, else `docs/HARNESS.md` ›
   Sensors, else ask. Report the verdict against the worker's claim, and write it to the row with the
