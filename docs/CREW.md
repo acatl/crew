@@ -44,8 +44,9 @@ its PR).
 
 ## Integration
 
-- **Pull request**, always. The brief grants a push to the worker's OWN branch and opening its
-  own PR, nothing else. The worker merges only on the orchestrator's go, given under the
+- **Pull request**, always. The brief grants a push to the worker's OWN branch, opening its own
+  PR, and binding that PR in the app with its review monitor on (`set_monitor auto_fix`, which
+  wakes the worker for each round), nothing else. The worker merges only on the orchestrator's go, given under the
   operator's standing merge rule (`docs/pr-round-workflow.md` › Stopping › Merging); otherwise
   the operator merges. That go is the written rule being applied, not consent relayed from
   another session, so the worker acts on it.

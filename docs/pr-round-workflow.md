@@ -13,7 +13,8 @@ One push per round, and no round starts before the reviewers settle.
 ## What is consent, and what is a gate
 
 - **Consent already given:**
-  - a crew brief's grant covers a push to the worker's own branch and opening its own PR;
+  - a crew brief's grant covers a push to the worker's own branch, opening its own PR, and
+    binding that PR in the app with its review monitor on (§ Who runs the rounds);
   - the merge rule in § Stopping › Merging covers a merge that meets it;
   - `npm ci` from the committed lockfile installs declared dependencies;
   - writes to the PR the work belongs to (replies, comments, the labels this file names) are
@@ -35,6 +36,10 @@ A single owner (a crew worker, or the operator's own session) holds the PR from 
 opens until it merges, and runs **every** round on it. Each round's triage, sweep and declines
 are context the next round needs.
 
+- **At PR open, bind the PR and turn on its review monitor.** Right after `gh pr create`, call
+  the app's `get_status` and, if it doesn't report this PR, `bind_pr` with its URL. Then call
+  `set_monitor` with `auto_fix: true` and the PR's URL. The monitor is what wakes the owner for
+  each round (§ 0); without it, a worker that reported `DONE` sleeps through the reviews.
 - **After each round's push** the worker reports `DONE` to the coordinator: round number,
   commit sha, what was fixed and what was declined, CI state. That is a checkpoint, not an exit:
   when the next reviews land, the same worker runs the next round from § 0.
@@ -64,8 +69,9 @@ are context the next round needs.
 
 ## 0. Wait for the reviewers to settle — the round has not started yet
 
-**Being woken is the signal to start WAITING, not to start fixing.** The reviewers post minutes
-apart, and starting on the first one spends a push on a partial round.
+**Being woken is the signal to start WAITING, not to start fixing.** The app's
+`set_monitor auto_fix` fires on the first bot comment, and the reviewers post minutes apart.
+Starting on the first one spends a push on a partial round.
 
 Roster: `coderabbitai`, `copilot-pull-request-reviewer`, `chatgpt-codex-connector`. Settle
 window: 20 min. From round 4 the roster is Copilot and Codex only (CodeRabbit is paused by
