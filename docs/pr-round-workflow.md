@@ -39,7 +39,9 @@ are context the next round needs.
 - **At PR open, bind the PR and turn on its review monitor.** Right after `gh pr create`, call
   the app's `get_status` and, if it doesn't report this PR, `bind_pr` with its URL. Then call
   `set_monitor` with `auto_fix: true` and the PR's URL. The monitor is what wakes the owner for
-  each round (§ 0); without it, a worker that reported `DONE` sleeps through the reviews.
+  each round (§ 0); without it, a worker that reported `DONE` sleeps through the reviews. An
+  approval prompt for either call is `NEED-INPUT`, `answer: in this session only`. Turn the
+  monitor off (`auto_fix: false`) once the PR merges.
 - **After each round's push** the worker reports `DONE` to the coordinator: round number,
   commit sha, what was fixed and what was declined, CI state. That is a checkpoint, not an exit:
   when the next reviews land, the same worker runs the next round from § 0.

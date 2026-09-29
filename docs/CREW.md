@@ -45,9 +45,9 @@ its PR).
 ## Integration
 
 - **Pull request**, always. The brief grants a push to the worker's OWN branch, opening its own
-  PR, and binding that PR in the app with its review monitor on (`set_monitor auto_fix`, which
-  wakes the worker for each round), nothing else. The worker merges only on the orchestrator's go, given under the
-  operator's standing merge rule (`docs/pr-round-workflow.md` › Stopping › Merging); otherwise
+  PR, and binding that PR in the app with its review monitor on (Standing boundaries), nothing
+  else. The worker merges only on the orchestrator's go, given under the operator's standing merge
+  rule (`docs/pr-round-workflow.md` › Stopping › Merging); otherwise
   the operator merges. That go is the written rule being applied, not consent relayed from
   another session, so the worker acts on it.
 - **One PR in flight here at a time.** The CodeRabbit review pool is account-wide (about 5
@@ -72,6 +72,12 @@ Copied into every brief:
 - **Never run `scripts/link-skills.sh`, or repoint `~/.claude/skills/crew`, from a worktree.**
   Either would make every session on the machine load the worktree's unlanded skill.
 - **Push and PR only as the brief grants:** never `main`, never another worker's branch.
+- **At PR open, bind the PR and turn on its review monitor** (`docs/pr-round-workflow.md` › Who runs
+  the rounds): `get_status`, else `bind_pr`; then `set_monitor` with `auto_fix: true` and the PR's
+  URL. It wakes you for each review round, so a round's `DONE` is a checkpoint, not your stop. If
+  the app asks you to approve either call, send `NEED-INPUT` marked `answer: in this session only`.
+  Don't clear your context while it is on. Turn it off (`auto_fix: false`) once the PR merges. The
+  orchestrator records it in its ledger's Monitors while it runs.
 - **Hard Gates need the operator's yes in the worker's own session:** adding, removing or
   changing a dependency, CI and shared config, anything written outside the repo. Installing
   from the committed lockfile (`npm ci`) is not a gate.

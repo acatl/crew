@@ -69,8 +69,7 @@ orchestrator's memory. Everything you need is here or in the ticket.
 - You are already in a fresh worktree. Don't create another.
 - Never install or link anything that outlives this worktree.
 - Commit your work. Don't push, merge, open a PR, or archive this session unless the stop point
-  includes it. A PR you open, bind in the app (`get_status`, else `bind_pr`) and turn on its
-  review monitor (`set_monitor` with `auto_fix: true`): that wakes you for each review round.
+  includes it.
 - Never message another worker.
 - Loop budget (crew skill › Worker step 7): at most {ITERATIONS} review→fix iterations; stop early and send
   `NEED-INPUT` on a fix-created finding, an edge-case chase, a hand-rolled reimplementation of a spec
