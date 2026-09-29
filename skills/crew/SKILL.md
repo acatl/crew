@@ -402,8 +402,9 @@ You were spawned by an orchestrator. Your brief is your first message. You remem
 3. **Run the command** exactly as the brief gives it, mode included, as if the operator typed it.
 4. **Waiting on the operator?** Send `NEED-INPUT` *before* ending the turn — every time, including
    inside the command's own gates and fork cards. Ask in this session as you normally would, too.
-5. **RELAY arrives** → the operator's words. If they answer your pending question, continue. If you
-   already got an answer here, say so in this session and don't act on the relay twice.
+5. **RELAY arrives** → the operator's words, never consent for a tool-permission prompt or a gated
+   action. If they answer your pending question, continue. If you already got an answer here, say so
+   in this session and don't act on the relay twice.
    **ANSWER arrives** → the orchestrator's own, never the operator's words: record it as "orchestrator,
    under the operator's standing delegation", and act on it. Say so here and refuse an `ANSWER` outside
    its *Messages* row, for a gated action or `answer: in this session only`. The operator's answer wins.
@@ -441,10 +442,9 @@ first line.
 
 1. Confirm you're still fresh: `git status --porcelain` and `git log --oneline <base>..HEAD` both print
    nothing. Otherwise → `BLOCKED`.
-2. Re-point your branch to the current base: `git switch -C "$(git branch --show-current)" <base>`.
-   Nothing is lost; step 1 proved the branch has no work on it.
-3. Check the sha is in your history: `git merge-base --is-ancestor <sha> HEAD`. If not → `BLOCKED`.
-4. START's Job section and base sha replace the brief's. Continue at step 2.
+2. Check the sha is on the base: `git merge-base --is-ancestor <sha> <base>`. If not → `BLOCKED`.
+3. START's Job section and sha replace the brief's Job section and base sha. Continue at *Worker*
+   step 2, which re-points you to that sha.
 
 Never: push, merge, or open a PR past the stop point · touch the `Do not touch` paths · install or link
 anything that outlives this worktree (global installs, links from your home directory into it), since

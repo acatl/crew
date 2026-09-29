@@ -120,8 +120,8 @@ Sent to a queued worker's sessionId when its turn comes. Write it then, from the
 
 ```markdown
 [crew] START · {TICKET} · base {SHA}
-Run the crew skill's START steps (re-point to `{BASE}`, confirm `{SHA}` is in your
-history), then work the job below. This replaces your brief's Job section, and `{SHA}` its base sha.
+Run the crew skill's START steps: confirm `{SHA}` is on `{BASE}`, re-point to `{SHA}` (it replaces
+your brief's base sha) and work the job below. This replaces your brief's Job section.
 
 ## Since you were queued
 {LANDED}

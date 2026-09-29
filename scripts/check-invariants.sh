@@ -307,6 +307,22 @@ for spec in '0|^#+ Orchestrator[[:space:]]*$' '0|^#+ Worker[[:space:]]*$' '1|^#+
 done
 if [ "$guard_ok" = 1 ]; then held=$((held + 1)); fi
 
+# --- a RELAY (or an ANSWER) is never consent for a tool-permission prompt ---------------------------------
+# The same scope. The contract's input invariant, the Worker section and the brief's fallback each say it
+# in one sentence holding "tool-permission" and a refusal.
+relay_ok=1
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+for spec in '0|^#+ The contract' '0|^#+ Worker[[:space:]]*$' '1|^#+ If the `crew` skill is unavailable'; do
+  where=${spec#*|}
+  text=$(section "$where" "${spec%%|*}" "${mds[@]}")
+  if [ -z "$text" ]; then
+    reworded "$SKILL/*.md" "a section headed '$where'"; relay_ok=0
+  elif ! tr '.' '\n' <<< "$text" | grep -F -- 'tool-permission' | grep -qE -- '(^|[^A-Za-z])([Nn]ever|[Nn]either|[Nn]o|[Nn]ot)([^A-Za-z]|$)'; then
+    fail "$SKILL/*.md: the section headed '$where' no longer says, in one sentence, that a relayed answer is never consent for a tool-permission prompt"; relay_ok=0
+  fi
+done
+if [ "$relay_ok" = 1 ]; then held=$((held + 1)); fi
+
 if [ "$fails" -gt 0 ]; then
   printf '✖ %d restated value(s) drifted; CLAUDE.md › Invariants that span files lists every copy\n' "$fails" >&2
   exit 1

@@ -155,6 +155,10 @@ fresh; edit "$SK" 's#^\#\#\# 6\. Handle messages#```bash\
 \
 &#'
 green "15u a heading-like comment in a code fence ends no section" check-invariants
+fresh; edit "$SK" "s#the operator's words, never consent for a tool-permission prompt or a gated#the operator's words, even for a tool-permission prompt or a gated#"
+red "15v the worker's RELAY rule stops refusing tool-permission consent" check-invariants "that a relayed answer is never consent for a tool-permission prompt"
+fresh; edit "$BT" 's#Neither is consent for a tool-permission prompt#Both count for a tool-permission prompt#'
+red "15w the fallback's RELAY rule stops refusing it" check-invariants "the section headed '^#+ If the"
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"
