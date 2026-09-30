@@ -44,7 +44,11 @@ while IFS= read -r f; do workflows+=("$f"); done < <(
   { find skills/crew/references -name 'workflow-*.md' -type f
     if [ -d docs/crew/workflows ]; then find docs/crew/workflows -name '*.md' -type f; fi
   } | LC_ALL=C sort)
-if ! printf '%s\n' ${workflows[@]+"${workflows[@]}"} | grep -q '^skills/crew/references/workflow-'; then
+builtin=0
+for f in ${workflows[@]+"${workflows[@]}"}; do
+  case $f in skills/crew/references/workflow-*) builtin=1 ;; esac
+done
+if [ "$builtin" = 0 ]; then
   bad+="${bad:+$'\n'}✖ skills/crew/references: no workflow-*.md — the built-in is gone, or this check's lookup broke"
 fi
 for f in ${workflows[@]+"${workflows[@]}"}; do

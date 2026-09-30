@@ -111,7 +111,9 @@ fresh; edit "$SK" 's@^### 0\. Resume from the ledger@Track `CREW.md` › Workflo
 &@'
 green "15b the orchestrator's sections may cite CREW.md" check-invariants
 edit "$SK" "s#^7\. \*\*Loop budget:\*\* your workflow's Rules#7. **Loop budget:** your workflow's Rules (\`CREW.md\` › Workflows)#"   # same fixture
-red "15c the Worker section citing CREW.md" check-invariants "the Worker section cites a CREW.md section"
+red "15c the Worker section citing CREW.md" check-invariants "the Worker section cites CREW.md"
+fresh; edit "$SK" "s#^7\\. \\*\\*Loop budget:\\*\\* your workflow's Rules#7. **Loop budget:** your workflow's Rules (see CREW.md - Workflows)#"
+red "15c2 and so does any other spelling of the citation" check-invariants "the Worker section cites CREW.md"
 fresh; edit "$BT" 's#Read `{WORKFLOW_PATH}` in full#Read the workflow in full#g'
 red "15d the brief no longer pointing the worker at its workflow" check-invariants "$BT: the brief's Job no longer says"
 fresh; edit "$BT" 's#^| `{WORKFLOW_PATH}` | its file, absolute: its `CREW.md` › Workflows#|  `{WORKFLOW_PATH}`  |  its file: `docs/CREW.md` › Workflows#'

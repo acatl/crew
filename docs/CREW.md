@@ -49,10 +49,11 @@ its PR).
 
 - **Pull request** (`pr`). The brief grants a push to the worker's OWN branch, opening its own
   PR, and binding that PR in the app with its review monitor on (the workflow's `open`), nothing
-  else. A `standard` unit is landed by the operator. The worker merges only on the orchestrator's go, given under the operator's standing merge
+  else. The worker merges only on the orchestrator's go, given under the operator's standing merge
   rule (`docs/pr-round-workflow.md` › Stopping › Merging); otherwise
   the operator merges. That go is the written rule being applied, not consent relayed from
   another session, so the worker acts on it.
+- **`standard`** units push nothing; the operator lands them.
 - **A `pr` worker's PR review monitor** goes in the ledger's Monitors at its `checkpoint open`
   (stop: the worker turns `auto_fix` off after merging); drop the line at cleanup.
 - **One PR in flight here at a time.** The CodeRabbit review pool is account-wide (about 5

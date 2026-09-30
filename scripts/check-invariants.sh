@@ -302,7 +302,7 @@ section_rule "a relayed answer is never consent for a tool-permission prompt or 
 # --- the workflow reaches a worker through its brief ------------------------------------------------------
 # Workers never read CREW.md: the orchestrator resolves the workflow (CREW.md › Workflows) into the
 # brief's {WORKFLOW_PATH} and {PARAMETERS}, and the worker reads the file the brief names. So no Worker
-# section cites CREW.md (the orchestrator's may), the brief's Job line carries {WORKFLOW_PATH}, and its
+# section mentions CREW.md at all (the orchestrator's may), the brief's Job line carries {WORKFLOW_PATH}, and its
 # placeholder row sources it from Workflows. In-flight workers spawned before workflows re-read the
 # Worker section at every resume and their briefs name no workflow, so the Worker section keeps the
 # line that makes their brief the workflow. Both contract copies give DONE its stage form.
@@ -311,8 +311,8 @@ worker=$(section '^#+ Worker[[:space:]]*$' 0 "${mds[@]}")
 if [ -z "$worker" ]; then
   reworded "$SKILL/*.md" "a Worker section heading"; wf_ok=0
 else
-  if grep -qE 'CREW\.md`?[[:space:]]+›' <<< "$worker"; then
-    fail "$SKILL/*.md: the Worker section cites a CREW.md section, but workers never read CREW.md; it reaches them through the brief"; wf_ok=0
+  if grep -qF 'CREW.md' <<< "$worker"; then
+    fail "$SKILL/*.md: the Worker section cites CREW.md, but workers never read it; it reaches them through the brief"; wf_ok=0
   fi
   legacy='No workflow named in your brief → your brief'"'"'s Job/Spec, Boundaries and Checkpoints are the workflow; follow them as written.'
   if ! grep -qF -- "$legacy" <<< "$worker"; then
