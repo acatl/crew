@@ -48,6 +48,7 @@ its PR).
 ## Integration
 
 - mode: pr
+- merge rule: `docs/pr-round-workflow.md` › Stopping › Merging
 - **Pull request** (the `pr` workflow). The brief grants a push to the worker's OWN branch, opening
   its own PR, and binding that PR in the app with its review monitor on (the workflow's `open`),
   nothing else. The worker merges only on the orchestrator's go, given under the operator's standing

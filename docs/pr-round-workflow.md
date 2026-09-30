@@ -319,7 +319,7 @@ says `landing: operator`: then the coordinator reports the PR ready and the oper
 When all three hold and `reviewDecision` is blocked only by CodeRabbit's stale
 `CHANGES_REQUESTED`, the coordinator dismisses **that review only**, with a message naming the
 resolved threads and the head sha it checked. It then confirms `mergeStateStatus` is `CLEAN` and,
-landing delegated, tells the worker to merge. The worker runs `gh pr merge <N> --squash` with the PR's Conventional
+unless the card says `landing: operator`, tells the worker to merge. The worker runs `gh pr merge <N> --squash` with the PR's Conventional
 title and reports the merge sha.
 
 **`BEHIND` or a conflict is not a failure.** The worker merges `main` into its branch: at the

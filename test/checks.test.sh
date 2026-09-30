@@ -27,7 +27,7 @@ trap 'exit 143' TERM
 fresh() {
   rm -rf "$S"; mkdir -p "$S/test" "$S/docs"
   cp -R "$REPO/skills" "$REPO/scripts" "$REPO/baselines" "$S/"
-  cp -R "$REPO/docs/crew" "$S/docs/"
+  cp -R "$REPO/docs/crew" "$REPO/docs/pr-round-workflow.md" "$S/docs/"
   cp "$REPO/test/watchdog.test.sh" "$S/test/"
 }
 # edit <file> <sed expression>: in place through a temp file, since BSD and GNU sed -i disagree. An
@@ -184,10 +184,19 @@ fresh; edit "$BT" 's#tool-permission prompt or a gated action (push, install,#to
 red "15z the fallback drops the gated-action half" check-invariants "the section headed '^#+ If the"
 
 # a merge go names its delegation: a sentence that tells the worker to merge names `landing:`
-fresh; edit "$PR" 's#landing#gating#g'
-red "15da a workflow orders a merge without naming the delegation" check-invariants "$PR: tells the worker to merge without naming its delegation"
-fresh; edit "$PR" 's#^  worker to merge; else#  worker to go; else#'
-red "15db no merge sentence at all fails, never passes" check-invariants "a sentence that tells the worker to merge not found"
+fresh; edit "$PR" 's#says `landing: operator` (#says `landing: delegated` (#'
+red "15da a workflow gates the merge on the card's delegation alone" check-invariants "$PR: tells the worker to merge without naming"
+fresh; edit docs/pr-round-workflow.md 's#unless the card says `landing: operator`, tells#tells#'
+red "15db so does the round procedure" check-invariants "docs/pr-round-workflow.md: tells the worker to merge"
+fresh; edit "$PR" 's#  to merge; else tells#  to go; else tells#'
+edit docs/pr-round-workflow.md 's#, tells the worker to merge\.#, tells the worker to go.#'
+red "15dc no merge sentence at all fails, never passes" check-invariants "a sentence that tells the worker to merge not found"
+fresh; rm "$S/docs/pr-round-workflow.md"
+red "15dd a missing round procedure is reported, not skipped" check-invariants "docs/pr-round-workflow.md: the file not found"
+fresh; edit "$PR" 's#^- \*\*Orchestrator:\*\* verifies the sha\. When#- **Orchestrator:** verifies the sha. (See CREW.md › Integration.) When#'
+green "15de a dotted name inside the sentence doesn't split it" check-invariants
+edit "$PR" 's#says `landing: operator` (#says `landing: delegated` (#'                  # same fixture
+red "15df and the same fixture still fires on a missing withhold" check-invariants "$PR: tells the worker to merge without naming"
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"

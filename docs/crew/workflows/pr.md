@@ -74,9 +74,10 @@ sweep, fix, verify, `/code-review high` over the fix diff, one push, reply and r
 
 - **Ends:** the round's push is up and its threads are dispositioned.
 - **Report:** `checkpoint round`: round, sha, fixed, declined, CI state.
-- **Orchestrator:** verifies the sha. When the PR meets the written merge rule and landing is
-  delegated (`CREW.md` › Integration `mode: pr`, unless the card says `landing: operator`), tells the
-  worker to merge; else tells the operator it's ready.
+- **Orchestrator:** verifies the sha. When the PR meets the written merge rule, and unless the card
+  says `landing: operator` (`CREW.md` › Integration `mode: pr` delegates the rest), tells the worker
+  to merge; else tells the operator it's ready, and handles their merge (`prState: MERGED`) as
+  `stop merge`.
 - **Clears:** yes, monitor off first.
 
 ### merge

@@ -84,10 +84,10 @@ A queued worker waiting for `START` is waiting on the orchestrator, not the oper
 
 - **The trigger** authorizes its card and the spawns that card lists: one worker, or one sequence. Not
   a push, a branch deletion, or a spawn the card didn't list. Each of those is a separate ask.
-- **Landing** (bringing a worker's branch into the base) happens only when the operator delegates it on
-  the card (`landing: delegated`) *and* `docs/CREW.md` › Integration allows it. A plain `go` never
-  delegates landing, except Integration mode `pr`: its written merge rule delegates every card that
-  doesn't say `landing: operator`. Without delegation, the operator lands.
+- **Landing** (bringing a worker's branch into the base) happens only on delegation that
+  `docs/CREW.md` › Integration allows: the card's `landing: delegated`, or, under mode `pr`, its
+  written merge rule for a unit whose workflow merges a PR, unless the card says `landing: operator`.
+  A plain `go` never delegates. Without delegation, the operator lands.
 - **The worker** follows its workflow as if the operator directed it, mode included — `yolo` means
   yolo — up to the workflow's stop stage, and commits. Nothing past it. It never creates a worktree
   (it already has one), never installs or links anything that outlives its worktree, never archives
@@ -116,7 +116,7 @@ The mode is passed through untouched.
 
 **`<skill-dir>`** is this skill's own directory: the path Claude Code prints as "Base directory for this
 skill" when it loads the skill. The scripts below run from `<skill-dir>/scripts/`. Substitute that real
-path: the skill is installed per user or per project, so never assume either one.
+path; never assume where the skill is installed.
 
 ### 0. Resume from the ledger
 
@@ -194,9 +194,9 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 - **Scope**: whole ticket, or a slice described in one line.
 - **Cleanup** default by scope (`CREW.md` › Defaults, else whole ticket → `archive when merged`,
   slice → `keep`). Options: `archive when verified` · `archive when merged` · `keep`.
-- **Landing** is `operator decides` by default. Integration mode `ff-only`: add what `landing:
-  delegated` would run (`git merge --ff-only`, then Post-land); delegated only when the operator writes
-  it. Mode `pr`: `delegated` by its merge rule, and `landing: operator` withholds it.
+- **Landing** defaults to `operator decides`; under mode `pr`, a unit whose workflow merges a PR
+  shows `delegated (merge rule)`, and `landing: operator` withholds it. Mode `ff-only`: add what
+  `landing: delegated` would run (`git merge --ff-only`, then Post-land); only the operator writes it.
 - **Safety**: the step 3 result. On ⚠ overlap, recommend one of: wait for the overlapping worker,
   narrow this scope to avoid the shared paths, or proceed with those paths listed under `Do not touch`.
 
@@ -308,7 +308,7 @@ under them.
 
 **When unit N's DONE verifies:**
 
-1. **Land.** Mode `pr`: the PR is merged by now (its workflow says when); run Post-land, never
+1. **Land.** A merged PR (mode `pr`) → run Post-land, which pulls the merge into `<base>`; never
    ff-only. `ff-only`, delegated → in the main checkout, on a clean `<base>`, run
    `git merge --ff-only <worker-branch>`, then each `CREW.md` › Post-land command. If ff-only refuses
    (exit 128), the base moved under the worker: stop the sequence and tell the operator; never force,

@@ -347,21 +347,23 @@ done
 if [ "$wf_ok" = 1 ]; then held=$((held + 1)); fi
 
 # --- a merge go names its delegation -----------------------------------------------------------------------
-# Landing needs delegation (the contract's Authority). Every sentence that tells the worker to merge, in
-# a workflow file or the PR round procedure, names the `landing:` that permits it: a merge ordered on the
-# written merge rule alone would bypass a card's `landing: operator`.
-merge_ok=1 merge_seen=0
-for f in "$SKILL"/references/workflow-*.md docs/crew/workflows/*.md docs/pr-round-workflow.md; do
-  [ -f "$f" ] || continue
+# Landing needs delegation (the contract's Authority), and under Integration mode `pr` the written merge
+# rule delegates every card that doesn't say `landing: operator`. So every sentence that tells the worker
+# to merge, in a workflow file or the PR round procedure, names that withholding: a merge ordered on the
+# rule alone would bypass the card. The round procedure must exist, or half of this checks nothing.
+merge_ok=1 merge_seen=0 merge_files=("$SKILL"/references/workflow-*.md docs/crew/workflows/*.md docs/pr-round-workflow.md)
+for f in "${merge_files[@]}"; do
+  if [ ! -f "$f" ]; then reworded "$f" "the file"; merge_ok=0; continue; fi
   while IFS= read -r sentence; do
     merge_seen=1
-    if ! grep -qF 'landing' <<< "$sentence"; then
-      fail "$f: tells the worker to merge without naming its delegation (\`landing: …\`): '$sentence'"; merge_ok=0
+    # shellcheck disable=SC2016  # the backticks are literal Markdown
+    if ! grep -qiF '`landing: operator`' <<< "$sentence"; then
+      fail "$f: tells the worker to merge without naming \`landing: operator\`: '$sentence'"; merge_ok=0
     fi
-  done < <(tr '\n' ' ' < "$f" | tr -s ' ' | tr '.' '\n' | grep -E 'tells? the worker to merge' || true)
+  done < <(tr '\n' ' ' < "$f" | tr -s ' ' | sed 's/[.;] /\n/g' | grep -iE 'tells? the worker to merge' || true)
 done
 if [ "$merge_seen" = 0 ]; then
-  reworded "docs/crew/workflows/*.md" "a sentence that tells the worker to merge"; merge_ok=0
+  reworded "${merge_files[*]}" "a sentence that tells the worker to merge"; merge_ok=0
 fi
 if [ "$merge_ok" = 1 ]; then held=$((held + 1)); fi
 
