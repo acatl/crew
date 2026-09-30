@@ -76,7 +76,8 @@ silent too.
 
 ### The skill checks and their baselines
 
-`npm run skill` runs skill-validator's structure check, then three checks that compare the skill
+`npm run skill` runs skill-validator's structure check (which also checks every workflow file's
+shape), then three checks that compare the skill
 against itself or against a committed baseline:
 
 - the restated values agree (`check-invariants.sh`);

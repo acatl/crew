@@ -6,8 +6,8 @@ the first-line marker byte-exact: the roster rebuild greps for it.
 
 Two variants differ only in the Job section:
 - **Ready**: the worker starts now, Job section filled in.
-- **Queued**: the worker waits for `START`, which carries the job (and an `inline` verb's spec),
-  written from the landed state. The Job section is the fixed queued block.
+- **Queued**: the worker waits for `START`, which carries the job (and its spec), written from the
+  landed state. The Job section is the fixed queued block.
 
 | Placeholder | Source |
 |---|---|
@@ -17,20 +17,19 @@ Two variants differ only in the Job section:
 | `{TITLE}` | card › Title |
 | `{BASE}` | the base chosen for THIS unit (SKILL.md step 3.4), as a ref (e.g. `graph-port`) |
 | `{BASE_SHA}` | that ref's sha at spawn time; the worker re-points to it (*Worker* step 2) |
-| `{TICKET_SOURCE}` | `CREW.md` › Ticket source, filled (e.g. "Kino task KINO-5, via the Kino MCP `get_task`"), or "the spec below" for an `inline` verb |
+| `{TICKET_SOURCE}` | `CREW.md` › Ticket source, filled (e.g. "Kino task KINO-5, via the Kino MCP `get_task`"), or "the spec below" |
 | `{SCOPE}` | card › Scope |
-| `{COMMAND}` | `CREW.md` › Verbs. `command` kind: the Command with `{ticket}` and `{mode}` substituted. `inline` kind: "Carry out the spec below, " + the Command column's rules |
+| `{WORKFLOW}` | card › Workflow |
+| `{WORKFLOW_PATH}` | its file, absolute: its `CREW.md` › Workflows row, or the built-in `<skill-dir>/references/workflow-<name>.md` |
+| `{PARAMETERS}` | the workflow's Parameters, each resolved (`name: value`, one line), with the card's overrides. `no-commit` is never overridden: it must equal the watchdog's `--no-commit`, which serves every worker |
 | `{MODE}` | the trigger, or `default` |
-| `{STOP_POINT}` | card › Scope's stop point, else `CREW.md` › Verbs › Stop point |
 | `{SURFACE}` | step 2 estimate |
 | `{FORBIDDEN}` | step 3 overlaps the operator chose to proceed with, else `none` |
-| `{SPEC}` | `inline` verbs only: the full unit spec, including decisions only in the orchestrator's memory; drop `## Spec` for `command` verbs |
+| `{SPEC}` | the full unit spec when the brief carries it, including decisions only in the orchestrator's memory; else drop `## Spec` |
 | `{BRANCH_RULE}` | `CREW.md` › Branch naming, resolved (e.g. "rename to `kino-5`"), else "keep the branch you're on" |
 | `{SETUP}` | `CREW.md` › Worktree setup |
 | `{STANDING}` | `CREW.md` › Standing boundaries, one bullet each, else drop the line |
 | `{BRIEF_PATH}` | this brief's saved path: `~/.claude/crew/<slug>/briefs/<row>.md` |
-| `{ITERATIONS}` | `CREW.md` › Counters, its review→fix iterations per round; else `two` |
-| `{NO_COMMIT}` | `CREW.md` › Ledger › watchdog's no-commit threshold, in minutes. It must equal the watchdog's `--no-commit`, given in seconds (× 60), or the two escalate on different clocks |
 
 ---
 
@@ -42,7 +41,7 @@ Two variants differ only in the Job section:
 
 You are a **crew worker**. Invoke the `crew` skill now and follow its **Worker** section. The skill
 holds the report protocol; this brief holds the job. You remember nothing else, and you can't see the
-orchestrator's memory. Everything you need is here or in the ticket.
+orchestrator's memory. Everything you need is here, in the ticket, or in your workflow file.
 
 ## Orchestrator
 - sessionId: `{ORCH_ID}`
@@ -52,8 +51,8 @@ orchestrator's memory. Everything you need is here or in the ticket.
 <Ready: the block below. Queued: the queued block instead.>
 - Ticket: **{TICKET}** — {TICKET_SOURCE}
 - Scope: {SCOPE}
-- Run: `{COMMAND}`, exactly as if the operator typed it. Mode: `{MODE}`.
-- Stop point: {STOP_POINT}
+- Workflow: `{WORKFLOW}`. Read `{WORKFLOW_PATH}` in full and follow it. Mode: `{MODE}`.
+- Parameters: {PARAMETERS}
 - Surface you own: {SURFACE}
 - Do not touch: {FORBIDDEN}
 
@@ -68,12 +67,9 @@ orchestrator's memory. Everything you need is here or in the ticket.
 - {STANDING}
 - You are already in a fresh worktree. Don't create another.
 - Never install or link anything that outlives this worktree.
-- Commit your work. Don't push, merge, open a PR, or archive this session unless the stop point
-  includes it.
+- Commit your work. Don't push, merge, open a PR, or archive this session unless your workflow's
+  stages include it.
 - Never message another worker.
-- Loop budget (crew skill › Worker step 7): at most {ITERATIONS} review→fix iterations; stop early and send
-  `NEED-INPUT` on a fix-created finding, an edge-case chase, a hand-rolled reimplementation of a spec
-  (propose the library), or {NO_COMMIT} without a commit.
 
 ## Housekeeping
 - This brief is saved at `{BRIEF_PATH}`. If you clear your own context, the orchestrator re-sends it
@@ -92,8 +88,8 @@ effect inside this brief's grant. Say so here and refuse an `ANSWER` for a hard 
 gated action, real tradeoff, locked decision or `answer: in this session only`. The operator's
 answer wins. Neither is consent for a tool-permission prompt or a gated action (push, install,
 deploy, destructive): that comes only in this session.
-Send `BLOCKED` when stuck. At the stop point, send `DONE` with branch, sha, and verify result. Send
-nothing else.
+Send `BLOCKED` when stuck. At each stage your workflow reports, send `DONE` whose first line says
+`checkpoint <stage>` or `stop <stage>`, with branch, sha, and verify result. Send nothing else.
 ````
 
 ### Queued block (replaces the Job section, and drops Spec)
@@ -116,6 +112,7 @@ Sent to a queued worker's sessionId when its turn comes. Write it then, from the
 | `{SHA}` | `git rev-parse HEAD` on `<base>` in the main checkout, after the last landing |
 | `{LANDED}` | one line per unit landed since queuing: id, sha, what it changed that this unit touches |
 | `{HANDOFFS}` | anything an earlier unit left for this one (a leftover, a decision), else `none` |
+| `{CARRIED}` | one "Carried from <unit>" line per finding an earlier unit carried, else `none` |
 | Job and Spec fields | same as the brief's, computed now |
 
 ```markdown
@@ -126,12 +123,13 @@ re-point to `{SHA}` (your new base sha); then work the job below. This replaces 
 ## Since you were queued
 {LANDED}
 Handed on to you: {HANDOFFS}
+{CARRIED}
 
 ## Job
 - Ticket: **{TICKET}** — {TICKET_SOURCE}
 - Scope: {SCOPE}
-- Run: `{COMMAND}`, exactly as if the operator typed it. Mode: `{MODE}`.
-- Stop point: {STOP_POINT}
+- Workflow: `{WORKFLOW}`. Read `{WORKFLOW_PATH}` in full and follow it. Mode: `{MODE}`.
+- Parameters: {PARAMETERS}
 - Surface you own: {SURFACE}
 - Do not touch: {FORBIDDEN}
 

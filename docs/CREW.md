@@ -8,11 +8,14 @@ orchestrator reads this; workers get everything in their brief. Adapted from `ac
 what it may push, and when it stops are decided per unit by the orchestrator and written into
 that unit's brief.
 
-## Verbs
+## Workflows
 
-| Verb | Kind | Command | Stop point |
-|------|------|---------|------------|
-| unit | inline | The unit spec carried inline in the brief, run under the protocol the brief names (for a PR: `docs/pr-round-workflow.md`) | Whatever the brief states. Default when it is silent: committed on the worker's branch, verified, never pushed |
+| Name | File | Default |
+|------|------|---------|
+| pr | `docs/crew/workflows/pr.md` | ✓ |
+| standard | built-in | |
+
+`pr` is `standard` plus this repo's PR part; `standard` stops committed and verified, never pushed.
 
 ## Ticket source
 
@@ -44,16 +47,17 @@ its PR).
 
 ## Integration
 
-- **Pull request**, always. The brief grants a push to the worker's OWN branch, opening its own
-  PR, and binding that PR in the app with its review monitor on (Standing boundaries), nothing
-  else. The worker merges only on the orchestrator's go, given under the operator's standing merge
-  rule (`docs/pr-round-workflow.md` › Stopping › Merging); otherwise
-  the operator merges. That go is the written rule being applied, not consent relayed from
+- mode: pr
+- merge rule: `docs/pr-round-workflow.md` › Stopping › Merging
+- **Pull request** (the `pr` workflow). The brief grants a push to the worker's OWN branch, opening
+  its own PR, and binding that PR in the app with its review monitor on (the workflow's `open`),
+  nothing else. The worker merges only on the orchestrator's go, given under the operator's standing
+  merge rule (`docs/pr-round-workflow.md` › Stopping › Merging), unless the card says
+  `landing: operator`; otherwise the operator merges. That go is the written rule being applied, not consent relayed from
   another session, so the worker acts on it.
-- **A PR worker's round `DONE` is a checkpoint** (its first line says `checkpoint`): verify it and
-  write the verdict, but don't land, clean up, or `START` the next unit; that waits for the merge
-  `DONE`. On the first one, add the worker's PR review monitor to the ledger's Monitors (stop: the
-  worker turns `auto_fix` off after merging); drop the line at cleanup.
+- **`standard`** units push nothing; the operator lands them.
+- **A `pr` worker's PR review monitor** goes in the ledger's Monitors at its `checkpoint open`
+  (stop: the worker turns `auto_fix` off after merging); drop the line at cleanup.
 - **One PR in flight here at a time.** The CodeRabbit review pool is account-wide (about 5
   reviews an hour, shared with `acatl/hg` and `acatl/kino`), so a worker opens its PR only
   when the orchestrator says a slot is free.
@@ -70,33 +74,19 @@ lockfile write only inside the repo.
 
 Copied into every brief:
 
-- **Plan before changing anything.** The worker enters plan mode first. Before waiting on
-  approval it sends `NEED-INPUT` marked `answer: in this session only`. The operator approves
-  the plan in the worker's own session; the orchestrator only nudges with a link.
 - **Never run `scripts/link-skills.sh`, or repoint `~/.claude/skills/crew`, from a worktree.**
   Either would make every session on the machine load the worktree's unlanded skill.
 - **Push and PR only as the brief grants:** never `main`, never another worker's branch.
-- **At PR open, bind the PR and turn on its review monitor**, as `docs/pr-round-workflow.md` › Who
-  runs the rounds says, which also covers its approval prompt, clearing, and turning it off.
 - **Hard Gates need the operator's yes in the worker's own session:** adding, removing or
   changing a dependency, CI and shared config, anything written outside the repo. Installing
   from the committed lockfile (`npm ci`) is not a gate.
 - **Never `--no-verify`.**
-- **The loop budget** (crew skill › *Worker* step 7; `docs/pr-round-workflow.md` › The loop
-  budget).
 
 ## Defaults
 
 - title: `{UNIT} — {one-line goal}`
 - cleanup, whole unit: archive once its PR has merged
 - cleanup, slice or a unit with a planned follow-up: keep
-
-## Counters
-
-- review rounds: 1–4 planned; round 5 runs only for a valid defect on an ordinary path; the
-  worker stops before round 6 and the operator decides (`docs/pr-round-workflow.md` › Who runs
-  the rounds)
-- local review→fix iterations per round: 2
 
 ## Ledger
 

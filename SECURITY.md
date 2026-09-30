@@ -21,7 +21,8 @@ You should expect an initial response within 5 business days.
 - **Consent laundering.** The contract forbids relaying tool-permission answers or gated consent (push,
   deploy, install, destructive actions) from the orchestrator to a worker. Any wording in
   `skills/crew/**` that lets a relayed message, or the orchestrator's own `ANSWER`, stand in for the
-  operator's approval in the worker's own session is a vulnerability.
+  operator's approval in the worker's own session is a vulnerability. So is a workflow file that
+  loosens the contract: workflows sit on top of it and can't change it.
 - **Unsafe instructions.** Skill content that leads a session to merge, force, delete, or archive
   beyond what the operator agreed on the pre-spawn card.
 - **Scripts.** `watchdog.sh` and `overlap.sh` run on the operator's machine. They read git state and

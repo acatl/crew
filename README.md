@@ -6,6 +6,12 @@ verifies the result, lands it when the operator delegates that, and cleans up. `
 is the contract both sides follow. Per-project answers live in each repo's `docs/CREW.md`, which the
 skill interviews you for on first use.
 
+**Workflows** set how a worker works: one Markdown file of parameters, stages (each with its end, its
+report and what the orchestrator does then) and rules. The skill ships `standard`: plan, build,
+isolated review, hand off committed and verified. A project lists its own in `docs/CREW.md`, usually
+a copy of `standard` with stages added, like this repo's `docs/crew/workflows/pr.md`. Pick one per
+spawn: `spin up a pr worker for WF2`.
+
 ## Requirements
 
 - **The Claude desktop app (Code tab).** Sessions spawn, message and archive each other through the
@@ -18,7 +24,7 @@ skill interviews you for on first use.
 ```text
 skills/crew/                the skill: this directory is what gets installed
   SKILL.md                  the contract: messages, input invariant, authority, orchestrator + worker flows
-  references/               brief template, ledger format, docs/CREW.md interview
+  references/               brief template, ledger format, docs/CREW.md interview, the built-in workflow
   scripts/
     watchdog.sh             background poller that wakes the orchestrator when a looping worker stalls
     overlap.sh              parallel-safety check: does a candidate surface collide with in-flight workers?

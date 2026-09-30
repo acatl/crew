@@ -11,8 +11,8 @@ the ledger what `list_sessions` can answer — it goes stale and then lies.
 
 **Generic by construction:** the skill's rules read only the *spine* below. Everything else in a row is
 free-form text the orchestrator writes as a situation demands, and the skill carries it without
-interpreting it. Nothing here names a tool, a workflow stage, or a count. Those are project policy
-(`CREW.md`) or a row's own fields.
+interpreting it. Nothing here names a tool, a stage, or a count: those are the workflow's, the
+project's (`CREW.md`), or a row's own fields.
 
 ## Where
 
@@ -34,7 +34,7 @@ It fails loudly rather than returning a partial path; a silent fallback would sc
 ```text
 ~/.claude/crew/<slug>/
   ledger.md            live state only, bounded by work in flight
-  briefs/<row>.md      each brief exactly as sent, so a resume can re-attach it
+  briefs/<row>.md      each brief (and `<row>-start.md`, its START) exactly as sent, for a resume
   archive-YYYY-MM.md   evicted rows, append-only, never read in normal operation
   roster.tsv           the watchdog's input: <ticket> TAB <worktree-path> TAB <start epoch>, one per running worker
   reported.txt, active.tsv  what the watchdog reported, and each worker's clock; both outlive its one-shot runs
@@ -55,7 +55,7 @@ updated: <iso> · orchestrator: <sessionId>
 
 ### r3 · #9 · running
 - session: local_271f8174-… · brief: briefs/r3.md
-- stop point: its PR merged
+- workflow: pr · stage: round 3
 - owed: operator's merge go · review budget unspent
 - surface: hg/src/cli.ts, docs/CREW.md
 - verified: a762e48 green (2026-09-24) — tsc, 1274 tests, links, shellcheck
@@ -75,8 +75,8 @@ updated: <iso> · orchestrator: <sessionId>
 - #24 · landed 07ce872 · archived
 ```
 
-**Spine** (the only fields any rule reads): row id, unit, status, `session`, `brief`, `stop point`,
-`owed`. Row ids are stable and never reused; the unit may change (a unit gets folded or renumbered),
+**Spine** (the only fields any rule reads): row id, unit, status, `session`, `brief`, `workflow`,
+`stage`, `owed`. Row ids are stable and never reused; the unit may change (a unit gets folded or renumbered),
 which is why rows join on `session`, never on a unit or a title.
 
 **Status** is one of: `chip` (spawned, not yet clicked — `session` holds the `task_id` instead),
@@ -102,7 +102,7 @@ forget.
 
 ## Eviction
 
-A row leaves `Live` when its stop point is reached **and `owed` is empty**. Not when the worker is
+A row leaves `Live` when its workflow's stop stage is reached **and `owed` is empty**. Not when the worker is
 archived: a worker can be archived, or cleared and idle for hours, while its work is still owed.
 
 On eviction: append the row to `archive-YYYY-MM.md`, **copying anything the orchestrator may still
@@ -131,8 +131,8 @@ A worker that cleared its own context has no brief and will hedge or invent if a
 message, a monitor, a notification. This has happened repeatedly in practice.
 
 - A worker that reports it cleared gets status `cleared` and `owed: resume not sent`.
-- **Nothing may wake it except a resume carrying its brief** (`briefs/<row>.md`), sent at the moment
-  it clears, even when the next step is only "wait".
+- **Nothing may wake it except its resume** (SKILL.md step 6), sent at once, even when the next step
+  is only "wait".
 - The row is never evicted while that resume is owed.
 
 Note that the orchestrator generally **cannot** clear a worker for it: a chip-started worker counts as
