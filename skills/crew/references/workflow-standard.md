@@ -58,7 +58,7 @@ Update your ledger, report, and stop.
 
 - **Ends:** reported.
 - **Report:** `stop handoff`: branch, sha, verify result, fixed, declined, carried.
-- **Orchestrator:** verifies by running, lands per `CREW.md` › Integration, cleans up per the card,
+- **Orchestrator:** verifies by running, lands if delegated, cleans up per the card,
   and carries findings into the next unit.
 - **Clears:** no
 
