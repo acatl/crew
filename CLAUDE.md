@@ -136,8 +136,8 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   `{WORKFLOW_PATH}`, and its placeholder row sources it from Workflows.
 - **Briefs from before workflows still work.** In-flight workers re-read the Worker section at every
   resume, and their briefs name no workflow. The Worker section keeps the line that makes such a
-  brief its own workflow, and the orchestrator accepts the older `DONE · checkpoint: <boundary>`.
-  *Checked*: the line, verbatim; and DONE's `checkpoint <stage>` / `stop <stage>` forms in both
+  brief its own workflow, and the orchestrator reads the older `DONE · checkpoint: <boundary>` and
+  plain `DONE`. *Checked*: the line, verbatim; both older forms in the Orchestrator section; and DONE's `checkpoint <stage>` / `stop <stage>` forms in both
   copies of the contract (SKILL.md's *Messages* and the brief's fallback).
 - **Every workflow file has the orchestrator's shape** (frontmatter `name` = file name, and
   `description`; Parameters, Stages, Rules in order; each stage's Ends, Report, Orchestrator; exactly

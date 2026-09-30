@@ -10,7 +10,7 @@ to `docs/crew/workflows/<name>.md` and add to the copy.
 
 ## Parameters
 
-The orchestrator resolves each into the brief.
+The orchestrator resolves each into your brief; read the values there, never `CREW.md`.
 
 | Name | Meaning | Default |
 |---|---|---|

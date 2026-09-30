@@ -36,8 +36,9 @@ show the operator the diff, and write it only on their `go`.
 - each verb → `docs/crew/workflows/<verb>.md`. A `command` verb becomes one stage that runs the
   command, stopping at the verb's stop point. An `inline` verb becomes a copy of `standard` plus the
   verb's rules;
-- `## Counters` become Parameters (`iterations`, `rounds`); `## Checkpoints` become the stages'
-  Clears and the `clear` parameter;
+- each `## Counters` line becomes a parameter, its limit and at-limit action kept (review→fix
+  iterations → `iterations`). `## Checkpoints` become the stages' Clears; without one, `clear: never`,
+  so the migrated workers keep not clearing;
 - the Verbs table becomes a Workflows table.
 
 ## Template

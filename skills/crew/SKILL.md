@@ -186,7 +186,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 > | Landing | Operator decides |
 > | Safety | ✓ clear — 2 workers in flight, no shared paths; main checkout on `main` |
 >
-> **→ You:** `go`, or override a line or a workflow parameter (`workflow: pr`, `plan: skip`, `cleanup: keep`).
+> **→ You:** `go`, or override a line or a workflow parameter but `no-commit` (`workflow: pr`, `plan: skip`, `cleanup: keep`).
 
 - **Title** default: `CREW.md` › Defaults, else `{TICKET} — {ticket title}`. It becomes the chip label
   and the session title, so lead with the ticket id — the sidebar sorts, and the roster finds it.
@@ -232,9 +232,10 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   The operator answers here → `RELAY` their words verbatim. Ledger: `owed` holds the question
   verbatim while pending, then its decision.
 - **BLOCKED** → surface it the same way, with the worker's proposed fix. Decide with the operator.
-- **DONE `checkpoint <stage>`** (or the older `DONE · checkpoint: <boundary>`) → write `stage`, do
-  what that stage's Orchestrator line says. No landing, no cleanup.
-- **DONE `stop <stage>`** (or an older plain `DONE`) → verify by running, in the worker's cwd: `CREW.md` › Verify, else
+- **DONE `checkpoint <stage>`** → write `stage`, do what that stage's Orchestrator line says. No
+  landing, no cleanup. From an older brief, `DONE · checkpoint: <boundary>` or a plain `DONE` saying
+  it will clear is a checkpoint; any other plain `DONE` is a stop.
+- **DONE `stop <stage>`** → verify by running, in the worker's cwd: `CREW.md` › Verify, else
   `docs/HARNESS.md` › Sensors, else ask. Report the verdict against the worker's claim, and write it
   to the row with the sha it ran on. On pass: land if delegated (step 8), clean up per the card
   (step 7), and in a sequence start the next unit (step 8).

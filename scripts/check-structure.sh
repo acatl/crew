@@ -39,16 +39,13 @@ bad=$(jq -r ".results[] | select((.level == \"error\" or .level == \"warning\") 
              | \"✖ \(.file // \"skills/crew\"): \(.level): \(.message)\"" <<< "$json")
 
 # workflow files: the built-in must exist, or this pass would check nothing and pass
+builtins=$(find skills/crew/references -name 'workflow-*.md' -type f)
 workflows=()
 while IFS= read -r f; do workflows+=("$f"); done < <(
-  { find skills/crew/references -name 'workflow-*.md' -type f
+  { printf '%s\n' "$builtins"
     if [ -d docs/crew/workflows ]; then find docs/crew/workflows -name '*.md' -type f; fi
-  } | LC_ALL=C sort)
-builtin=0
-for f in ${workflows[@]+"${workflows[@]}"}; do
-  case $f in skills/crew/references/workflow-*) builtin=1 ;; esac
-done
-if [ "$builtin" = 0 ]; then
+  } | grep . | LC_ALL=C sort)
+if [ -z "$builtins" ]; then
   bad+="${bad:+$'\n'}✖ skills/crew/references: no workflow-*.md — the built-in is gone, or this check's lookup broke"
 fi
 for f in ${workflows[@]+"${workflows[@]}"}; do

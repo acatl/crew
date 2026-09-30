@@ -21,7 +21,7 @@ Two variants differ only in the Job section:
 | `{SCOPE}` | card › Scope |
 | `{WORKFLOW}` | card › Workflow |
 | `{WORKFLOW_PATH}` | its file, absolute: its `CREW.md` › Workflows row, or the built-in `<skill-dir>/references/workflow-<name>.md` |
-| `{PARAMETERS}` | the workflow's Parameters, each resolved (`name: value`, one line). A `no-commit` must equal the watchdog's `--no-commit` |
+| `{PARAMETERS}` | the workflow's Parameters, each resolved (`name: value`, one line), with the card's overrides. `no-commit` is never overridden: it must equal the watchdog's `--no-commit`, which serves every worker |
 | `{MODE}` | the trigger, or `default` |
 | `{SURFACE}` | step 2 estimate |
 | `{FORBIDDEN}` | step 3 overlaps the operator chose to proceed with, else `none` |

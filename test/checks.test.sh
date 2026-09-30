@@ -114,6 +114,12 @@ edit "$SK" "s#^7\. \*\*Loop budget:\*\* your workflow's Rules#7. **Loop budget:*
 red "15c the Worker section citing CREW.md" check-invariants "the Worker section cites CREW.md"
 fresh; edit "$SK" "s#^7\\. \\*\\*Loop budget:\\*\\* your workflow's Rules#7. **Loop budget:** your workflow's Rules (see CREW.md - Workflows)#"
 red "15c2 and so does any other spelling of the citation" check-invariants "the Worker section cites CREW.md"
+fresh; edit "$SK" "s#^7\\. \\*\\*Loop budget:\\*\\* your workflow's Rules#7. **Loop budget:** your workflow's Rules (docs/crew.md)#"
+red "15c3 or case" check-invariants "the Worker section cites CREW.md"
+fresh; edit "$SK" 's#any other plain `DONE` is a stop#any other is a stop#'
+red "15cd the orchestrator stops reading a legacy plain DONE" check-invariants "older brief's DONE: 'plain \`DONE\` is a stop'"
+fresh; edit "$SK" 's#From an older brief, `DONE · checkpoint: <boundary>` or#From an older brief,#'
+red "15ce or the legacy checkpoint form" check-invariants "older brief's DONE: '\`DONE · checkpoint: <boundary>\`'"
 fresh; edit "$BT" 's#Read `{WORKFLOW_PATH}` in full#Read the workflow in full#g'
 red "15d the brief no longer pointing the worker at its workflow" check-invariants "$BT: the brief's Job no longer says"
 fresh; edit "$BT" 's#^| `{WORKFLOW_PATH}` | its file, absolute: its `CREW.md` › Workflows#|  `{WORKFLOW_PATH}`  |  its file: `docs/CREW.md` › Workflows#'

@@ -311,7 +311,7 @@ worker=$(section '^#+ Worker[[:space:]]*$' 0 "${mds[@]}")
 if [ -z "$worker" ]; then
   reworded "$SKILL/*.md" "a Worker section heading"; wf_ok=0
 else
-  if grep -qF 'CREW.md' <<< "$worker"; then
+  if grep -qiF 'crew.md' <<< "$worker"; then
     fail "$SKILL/*.md: the Worker section cites CREW.md, but workers never read it; it reaches them through the brief"; wf_ok=0
   fi
   legacy='No workflow named in your brief → your brief'"'"'s Job/Spec, Boundaries and Checkpoints are the workflow; follow them as written.'
@@ -335,6 +335,14 @@ for spec in '0|^### Messages' '1|^#+ If the `crew` skill is unavailable'; do
       fail "$SKILL/*.md: the section headed '${spec#*|}' doesn't give DONE's $form form"; wf_ok=0
     fi
   done
+done
+# the orchestrator still reads an older brief's DONE: the boundary form is a checkpoint, a plain DONE a stop
+orch=$(section '^#+ Orchestrator[[:space:]]*$' 0 "${mds[@]}")
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+for form in '`DONE · checkpoint: <boundary>`' 'plain `DONE` is a stop'; do
+  if ! grep -qF -- "$form" <<< "$orch"; then
+    fail "$SKILL/*.md: the Orchestrator section lost its rule for an older brief's DONE: '$form'"; wf_ok=0
+  fi
 done
 if [ "$wf_ok" = 1 ]; then held=$((held + 1)); fi
 
