@@ -136,8 +136,8 @@ Workers never read `docs/CREW.md`; you resolve it into each brief.
 
 The workflow: the named one, else the ✓ row of `CREW.md` › Workflows, else `standard`. A name
 resolves to its Workflows row, else a built-in ([references/workflow-standard.md](references/workflow-standard.md)).
-Unknown → say so on the card; no spawn. Read the file: its Parameters fill the brief, and its
-stages tell you what each report means.
+Unknown → say so on the card; no spawn. Read the file: its Parameters fill the brief (ask on the
+card for a blank one); its stages say what each report means.
 
 ### 2. Read the ticket and estimate its surface
 
@@ -236,13 +236,13 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 - **DONE `checkpoint <stage>`** → write `stage`, do what that stage's Orchestrator line says. No
   landing, no cleanup. From an older brief, `DONE · checkpoint: <boundary>` or a plain `DONE` saying
   it will clear is a checkpoint; any other plain `DONE` is a stop.
-- **DONE `stop <stage>`** → verify by running, in the worker's cwd: `CREW.md` › Verify, else
-  `docs/HARNESS.md` › Sensors, else ask. Report the verdict against the worker's claim, and write it
-  to the row with the sha it ran on. On pass: land if delegated (step 8), clean up per the card
-  (step 7), and in a sequence start the next unit (step 8).
+- **DONE `stop <stage>`** → verify by running the brief's `verify` in the worker's cwd (none:
+  `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else ask). Write the verdict, against the
+  worker's claim, to the row with its sha. On pass: land if delegated, clean up, start any next unit
+  (steps 7, 8).
 - **A worker reports it cleared its own context** → status `cleared`, `owed: resume not sent`. Send the
-  resume **immediately**, even when the next step is only waiting: nothing else may wake it, and a
-  worker woken without its brief hedges or invents (seen repeatedly). First confirm the clear
+  resume **immediately**, even when the next step is only waiting: a worker woken by anything else,
+  without its brief, hedges or invents (seen repeatedly). First confirm the clear
   (`list_events`: idle, no messages; a resume sent earlier queues behind it). The resume carries the
   brief, any START (`briefs/<row>-start.md`), the approved plan's path, the worker's ledger path,
   facts learned since the brief (an environment quirk, a throttle, an operator call), and any message
@@ -290,11 +290,11 @@ deletes a branch and never runs `git worktree remove`; the pool is the app's to 
 
 > **Queue 3 workers** · in order · mode `default`
 >
-> | # | Unit | Title | Workflow | Landing | Cleanup |
-> |---|---|---|---|---|---|
-> | 1 | SK2b | `SK2b — short verb skills` | `standard` | operator decides | archive when merged |
-> | 2 | DR1 | `DR1 — restructure the driver` | `standard` | operator decides | archive when merged |
-> | 3 | SK3 | `SK3 — versioned install layer` | `standard` | operator decides | archive when merged |
+> | # | Unit | Title | Workflow | Scope | Landing | Cleanup |
+> |---|---|---|---|---|---|---|
+> | 1 | SK2b | `SK2b — short verb skills` | `standard` | whole | operator decides | archive when merged |
+> | 2 | DR1 | `DR1 — restructure the driver` | `standard` | whole | operator decides | archive when merged |
+> | 3 | SK3 | `SK3 — versioned install layer` | `standard` | whole | operator decides | archive when merged |
 >
 > `CREW.md` allows `delegated`: `git merge --ff-only`, then `cd hg && npm run build`
 > Safety: ✓ clear against 0 workers outside the sequence · main checkout on `graph-port` ✓

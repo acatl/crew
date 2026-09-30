@@ -384,20 +384,29 @@ else
 fi
 
 # --- a workflow's verify falls back as the orchestrator's does ------------------------------------------------
-# A worker's build ends on `verify` green, and the orchestrator verifies a stop with CREW.md › Verify, else
-# docs/HARNESS.md › Sensors. A `verify` default that stops at CREW.md leaves a project without that section
-# with nothing to run, and the two sides verifying different things.
+# A worker's build ends on `verify` green, and the orchestrator verifies a stop by the brief's `verify`, else
+# its own chain (SKILL.md's "DONE `stop <stage>`" bullet, the source). A workflow's `verify` default names
+# the same sources, or a project missing one leaves the two sides verifying different things. The built-in
+# must carry the row, so the check can't pass on finding none.
 v_ok=1
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+stop=$(section '^#+ Orchestrator[[:space:]]*$' 0 "${mds[@]}" | grep -oE '[*][*]DONE `stop <stage>`[*][*][^-]*' | head -n 1 || true)
+chain=$(grep -oE '(CREW\.md|docs/HARNESS\.md)` › [A-Z][a-z]+' <<< "$stop" | LC_ALL=C sort -u || true)
+if [ -z "$chain" ]; then
+  reworded "$SKILL/SKILL.md" "the Orchestrator's DONE \`stop <stage>\` verify chain"; v_ok=0
+fi
 for f in "$SKILL"/references/workflow-*.md docs/crew/workflows/*.md; do
   [ -f "$f" ] || continue
   # shellcheck disable=SC2016  # the backticks are literal Markdown
   row=$(grep -E '^\| `verify` \|' "$f" || true)
-  if [ -z "$row" ]; then continue; fi
-  for src in 'CREW.md` › Verify' 'docs/HARNESS.md` › Sensors'; do
-    if ! grep -qF -- "$src" <<< "$row"; then
-      fail "$f: the \`verify\` default doesn't fall back to \`$src, as the orchestrator's verify does"; v_ok=0
-    fi
-  done
+  if [ -z "$row" ]; then
+    case $f in "$SKILL"/references/*) reworded "$f" "the \`verify\` parameter row"; v_ok=0 ;; esac
+    continue
+  fi
+  got=$(grep -oE '(CREW\.md|docs/HARNESS\.md)` › [A-Z][a-z]+' <<< "$row" | LC_ALL=C sort -u || true)
+  if [ -n "$chain" ] && [ "$got" != "$chain" ]; then
+    fail "$f: the \`verify\` default falls back to '$(tr '\n' ',' <<< "$got" | sed 's/,$//')', but the orchestrator's verify falls back to '$(tr '\n' ',' <<< "$chain" | sed 's/,$//')'"; v_ok=0
+  fi
 done
 if [ "$v_ok" = 1 ]; then held=$((held + 1)); fi
 

@@ -142,6 +142,11 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
 - **A merge go names its delegation.** Landing needs delegation; Integration mode `pr` is the one
   standing delegation, withheld by a card's `landing: operator`. *Checked*: every sentence in a
   workflow file or `docs/pr-round-workflow.md` that tells the worker to merge names `landing`.
+- **The queue card shows each unit's Workflow and Landing** (under Integration mode `pr` landing is
+  per unit). *Checked*: SKILL.md's queue-card table header.
+- **A workflow's `verify` falls back as the orchestrator's does.** The source is SKILL.md's
+  ``DONE `stop <stage>` `` bullet; every workflow's `verify` default names the same sources. *Checked*,
+  and the built-in must carry the row.
 - **Every workflow file has the orchestrator's shape** (frontmatter `name` = file name, and
   `description`; Parameters, Stages, Rules in order; each stage's Ends, Report, Orchestrator; exactly
   one `stop`). *Checked* by `check-structure.sh`, over the built-in and `docs/crew/workflows/`.

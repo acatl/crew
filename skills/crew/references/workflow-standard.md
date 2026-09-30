@@ -16,9 +16,9 @@ The orchestrator resolves each into your brief; read the values there, never `CR
 |---|---|---|
 | `plan` | `required`: plan first · `skip`: start at `build` | `required` |
 | `iterations` | review→fix iterations | `2` |
-| `no-commit` | minutes with no commit before escalating; must equal the watchdog's | `CREW.md` › Ledger's; absent, 60 minutes |
+| `no-commit` | minutes without a commit; must equal the watchdog's | `CREW.md` › Ledger's; absent, 60 minutes |
 | `clear` | `checkpoints`: clear where a stage says so · `never` | `checkpoints` |
-| `verify` | what proves the work green | `CREW.md` › Verify, `docs/HARNESS.md` › Sensors, or asked |
+| `verify` | what proves the work green | `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else asked |
 
 ## Stages
 

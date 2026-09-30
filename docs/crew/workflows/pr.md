@@ -20,7 +20,7 @@ The orchestrator resolves each into the brief.
 | `iterations` | review→fix iterations per review | `2` |
 | `no-commit` | minutes without a commit before escalating; must equal the watchdog's | `CREW.md` › Ledger's; absent, 60 minutes |
 | `clear` | `checkpoints`: clear your context where a stage says so · `never` | `checkpoints` |
-| `verify` | what proves the work green | `CREW.md` › Verify, `docs/HARNESS.md` › Sensors, or asked |
+| `verify` | what proves the work green | `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else asked |
 | `rounds` | review rounds on the PR | 1–4 planned; 5 only for a valid defect on an ordinary path; stop before 6 |
 
 ## Stages

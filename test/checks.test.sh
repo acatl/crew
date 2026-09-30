@@ -199,15 +199,23 @@ edit "$PR" 's#says `landing: operator` (#says `landing: delegated` (#'          
 red "15df and the same fixture still fires on a missing withhold" check-invariants "$PR: tells the worker to merge without naming"
 
 # the queue card shows each unit's workflow and landing
-fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Landing | Cleanup |#> | \# | Unit | Title | Workflow | Cleanup |#'
+fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Scope | Landing | Cleanup |#> | \# | Unit | Title | Workflow | Scope | Cleanup |#'
 red "15dg the queue card loses its per-unit Landing" check-invariants "the queue card has no per-unit Landing column"
-fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Landing | Cleanup |#> | \# | Unit | Title | Landing | Cleanup |#'
+fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Scope | Landing | Cleanup |#> | \# | Unit | Title | Scope | Landing | Cleanup |#'
 red "15dh or its Workflow" check-invariants "the queue card has no per-unit Workflow column"
 # a workflow's verify falls back as the orchestrator's does
-fresh; edit "$WS" 's#| `CREW.md` › Verify, `docs/HARNESS.md` › Sensors, or asked |#| `CREW.md` › Verify |#'
-red "15di a verify default that stops at CREW.md" check-invariants "$WS: the \`verify\` default doesn't fall back"
-fresh; edit "$PR" 's#| `CREW.md` › Verify, `docs/HARNESS.md` › Sensors, or asked |#| `docs/HARNESS.md` › Sensors |#'
-red "15dj a project workflow's too" check-invariants "$PR: the \`verify\` default doesn't fall back"
+fresh; edit "$WS" 's#| `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else asked |#| `CREW.md` › Verify |#'
+red "15di a verify default that stops at CREW.md" check-invariants "$WS: the \`verify\` default falls back to"
+fresh; edit "$PR" 's#| `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else asked |#| `docs/HARNESS.md` › Sensors |#'
+red "15dj a project workflow's too" check-invariants "$PR: the \`verify\` default falls back to"
+fresh; edit "$SK" 's#^  `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else ask)\.#  `CREW.md` › Verify, else ask).#'
+red "15dk the orchestrator's chain changes and the workflows are named" check-invariants "$WS: the \`verify\` default falls back to"
+fresh; edit "$WS" '/^| `verify` |/d'
+red "15dl the built-in without a verify row is reported, not passed" check-invariants "the \`verify\` parameter row not found"
+fresh; edit "$PR" '/^| `verify` |/d'
+green "15dm a project workflow may leave verify out" check-invariants
+edit "$WS" '/^| `verify` |/d'                                                            # same fixture
+red "15dn but the same fixture fails once the built-in drops it" check-invariants "the \`verify\` parameter row not found"
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"
