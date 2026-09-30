@@ -14,7 +14,7 @@ continue the spawn: the brief carries everything, so workers don't need it commi
 | Workflows | `docs/crew/workflows/*.md`; a pipeline skill that takes a ticket id (→ a one-stage workflow that runs it) | `standard`, the default. Offer to copy it to `docs/crew/workflows/<name>.md` as a start for the project's own |
 | Ticket source | `docs/HARNESS.md` › Task tracker, a tracker MCP that's connected, `docs/tasks.md`, `gh` remote | the brief carries the task inline |
 | Base (usual default only: the orchestrator picks per unit) | `git symbolic-ref --short refs/remotes/origin/HEAD`, the main checkout's current branch | `main` |
-| Verify | `docs/HARNESS.md` › Sensors, `package.json` `check`/`test`, `Makefile` `test` | ask at the first DONE |
+| Verify | `docs/HARNESS.md` › Sensors, `package.json` `check`/`test`, `Makefile` `test` | ask now; `verify` needs it |
 | Worktree setup | a lockfile (`package-lock.json` → `npm ci`, `pnpm-lock.yaml` → `pnpm install`, …) in the root and in any workspace package, gitignored runtime files at the root (`.env`) | `none` |
 | Branch naming | — | keep the `claude/…` branch |
 | Integration mode | `docs/HARNESS.md` merge mode (workers merge PRs under a written rule → `pr`) | `operator` |

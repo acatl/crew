@@ -51,7 +51,7 @@ orchestrator's memory. Everything you need is here, in the ticket, or in your wo
 <Ready: the block below. Queued: the queued block instead.>
 - Ticket: **{TICKET}** — {TICKET_SOURCE}
 - Scope: {SCOPE}
-- Workflow: `{WORKFLOW}`. Read `{WORKFLOW_PATH}` in full and follow it from its first stage. Mode: `{MODE}`.
+- Workflow: `{WORKFLOW}`. Read `{WORKFLOW_PATH}` in full and follow it. Mode: `{MODE}`.
 - Parameters: {PARAMETERS}
 - Surface you own: {SURFACE}
 - Do not touch: {FORBIDDEN}
@@ -128,7 +128,7 @@ Handed on to you: {HANDOFFS}
 ## Job
 - Ticket: **{TICKET}** — {TICKET_SOURCE}
 - Scope: {SCOPE}
-- Workflow: `{WORKFLOW}`. Read `{WORKFLOW_PATH}` in full and follow it from its first stage. Mode: `{MODE}`.
+- Workflow: `{WORKFLOW}`. Read `{WORKFLOW_PATH}` in full and follow it. Mode: `{MODE}`.
 - Parameters: {PARAMETERS}
 - Surface you own: {SURFACE}
 - Do not touch: {FORBIDDEN}

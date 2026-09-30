@@ -290,21 +290,20 @@ deletes a branch and never runs `git worktree remove`; the pool is the app's to 
 
 > **Queue 3 workers** · in order · mode `default`
 >
-> | # | Unit | Title | Scope | Cleanup |
-> |---|---|---|---|---|
-> | 1 | SK2b | `SK2b — short verb skills` | whole | archive when merged |
-> | 2 | DR1 | `DR1 — restructure the driver` | whole | archive when merged |
-> | 3 | SK3 | `SK3 — versioned install layer` | whole | archive when merged |
+> | # | Unit | Title | Workflow | Scope | Cleanup |
+> |---|---|---|---|---|---|
+> | 1 | SK2b | `SK2b — short verb skills` | `standard` | whole | archive when merged |
+> | 2 | DR1 | `DR1 — restructure the driver` | `standard` | whole | archive when merged |
+> | 3 | SK3 | `SK3 — versioned install layer` | `standard` | whole | archive when merged |
 >
-> Landing: **operator decides** · `CREW.md` allows `delegated`: `git merge --ff-only`, then
-> `cd hg && npm run build`
+> Landing (step 4): **operator decides** · `CREW.md` allows `delegated`: `git merge --ff-only`,
+> then `cd hg && npm run build`
 > Safety: ✓ clear against 0 workers outside the sequence · main checkout on `graph-port` ✓
 >
 > **→ You:** `go`, or override (`2 title: …`, `landing: delegated`).
 
-**Spawn every unit now** so its chip is ready: unit 1 with a ready brief, the rest with the **queued
-variant** (no Job section). Don't write later units' specs yet: earlier units will have moved the base
-under them.
+**Spawn every unit now**: unit 1 with a ready brief, the rest with the **queued variant** (no Job
+section). Don't write later units' specs yet: earlier units will move the base under them.
 
 **When unit N's DONE verifies:**
 
@@ -413,8 +412,8 @@ You were spawned by an orchestrator. Your brief is your first message. You remem
    work, `BLOCKED`. Confirm `git rev-parse HEAD` is that sha. Then apply the brief's branch rule
    (`git branch -m <name>`) and worktree setup. You're already in a fresh worktree on a `claude/…`
    branch; never create another one.
-3. **Work your workflow.** Read the file your brief names, in full, and follow it from its first
-   stage (or the stage your resume names), with the brief's parameters. No workflow named in your
+3. **Work your workflow.** Read the file your brief names, in full, and follow it with your parameters;
+   a resume names where to pick up. No workflow named in your
    brief → your brief's Job/Spec, Boundaries and Checkpoints are the workflow; follow them as written.
 4. **Waiting on the operator?** Send `NEED-INPUT` *before* ending the turn — every time, including
    inside your workflow's own gates and fork cards. Ask in this session as you normally would, too.
