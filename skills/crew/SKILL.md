@@ -85,8 +85,8 @@ A queued worker waiting for `START` is waiting on the orchestrator, not the oper
 - **The trigger** authorizes its card and the spawns that card lists: one worker, or one sequence. Not
   a push, a branch deletion, or a spawn the card didn't list. Each of those is a separate ask.
 - **Landing** (bringing a worker's branch into the base) happens only on delegation that
-  `docs/CREW.md` › Integration allows: the card's `landing: delegated`, or, under mode `pr`, its
-  written merge rule for a unit whose workflow merges a PR, unless the card says `landing: operator`.
+  `docs/CREW.md` › Integration allows: the card's `landing: delegated`, or, under Integration mode
+  `pr`, its written merge rule for a PR-merging unit, unless the card says `landing: operator`.
   A plain `go` never delegates. Without delegation, the operator lands.
 - **The worker** follows its workflow as if the operator directed it, mode included — `yolo` means
   yolo — up to the workflow's stop stage, and commits. Nothing past it. It never creates a worktree
@@ -194,8 +194,8 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 - **Scope**: whole ticket, or a slice described in one line.
 - **Cleanup** default by scope (`CREW.md` › Defaults, else whole ticket → `archive when merged`,
   slice → `keep`). Options: `archive when verified` · `archive when merged` · `keep`.
-- **Landing** defaults to `operator decides`; under mode `pr`, a unit whose workflow merges a PR
-  shows `delegated (merge rule)`, and `landing: operator` withholds it. Mode `ff-only`: add what
+- **Landing** defaults to `operator decides`; under Integration mode `pr`, a PR-merging unit shows
+  `delegated (merge rule)`, which `landing: operator` withholds. `ff-only`: add what
   `landing: delegated` would run (`git merge --ff-only`, then Post-land); only the operator writes it.
 - **Safety**: the step 3 result. On ⚠ overlap, recommend one of: wait for the overlapping worker,
   narrow this scope to avoid the shared paths, or proceed with those paths listed under `Do not touch`.
@@ -290,24 +290,23 @@ deletes a branch and never runs `git worktree remove`; the pool is the app's to 
 
 > **Queue 3 workers** · in order · mode `default`
 >
-> | # | Unit | Title | Workflow | Scope | Cleanup |
+> | # | Unit | Title | Workflow | Landing | Cleanup |
 > |---|---|---|---|---|---|
-> | 1 | SK2b | `SK2b — short verb skills` | `standard` | whole | archive when merged |
-> | 2 | DR1 | `DR1 — restructure the driver` | `standard` | whole | archive when merged |
-> | 3 | SK3 | `SK3 — versioned install layer` | `standard` | whole | archive when merged |
+> | 1 | SK2b | `SK2b — short verb skills` | `standard` | operator decides | archive when merged |
+> | 2 | DR1 | `DR1 — restructure the driver` | `standard` | operator decides | archive when merged |
+> | 3 | SK3 | `SK3 — versioned install layer` | `standard` | operator decides | archive when merged |
 >
-> Landing (step 4): **operator decides** · `CREW.md` allows `delegated`: `git merge --ff-only`,
-> then `cd hg && npm run build`
+> `CREW.md` allows `delegated`: `git merge --ff-only`, then `cd hg && npm run build`
 > Safety: ✓ clear against 0 workers outside the sequence · main checkout on `graph-port` ✓
 >
-> **→ You:** `go`, or override (`2 title: …`, `landing: delegated`).
+> **→ You:** `go`, or override (`2 title: …`, `landing: delegated`, `1 landing: operator`).
 
-**Spawn every unit now**: unit 1 with a ready brief, the rest with the **queued variant** (no Job
+Follow step 4 for each Landing. **Spawn every unit now**: unit 1 with a ready brief, the rest with the **queued variant** (no Job
 section). Don't write later units' specs yet: earlier units will move the base under them.
 
 **When unit N's DONE verifies:**
 
-1. **Land.** A merged PR (mode `pr`) → run Post-land, which pulls the merge into `<base>`; never
+1. **Land.** A merged PR (Integration mode `pr`) → run Post-land, which pulls the merge into `<base>`; never
    ff-only. `ff-only`, delegated → in the main checkout, on a clean `<base>`, run
    `git merge --ff-only <worker-branch>`, then each `CREW.md` › Post-land command. If ff-only refuses
    (exit 128), the base moved under the worker: stop the sequence and tell the operator; never force,

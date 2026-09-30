@@ -198,6 +198,17 @@ green "15de a dotted name inside the sentence doesn't split it" check-invariants
 edit "$PR" 's#says `landing: operator` (#says `landing: delegated` (#'                  # same fixture
 red "15df and the same fixture still fires on a missing withhold" check-invariants "$PR: tells the worker to merge without naming"
 
+# the queue card shows each unit's workflow and landing
+fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Landing | Cleanup |#> | \# | Unit | Title | Workflow | Cleanup |#'
+red "15dg the queue card loses its per-unit Landing" check-invariants "the queue card has no per-unit Landing column"
+fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Landing | Cleanup |#> | \# | Unit | Title | Landing | Cleanup |#'
+red "15dh or its Workflow" check-invariants "the queue card has no per-unit Workflow column"
+# a workflow's verify falls back as the orchestrator's does
+fresh; edit "$WS" 's#| `CREW.md` › Verify, `docs/HARNESS.md` › Sensors, or asked |#| `CREW.md` › Verify |#'
+red "15di a verify default that stops at CREW.md" check-invariants "$WS: the \`verify\` default doesn't fall back"
+fresh; edit "$PR" 's#| `CREW.md` › Verify, `docs/HARNESS.md` › Sensors, or asked |#| `docs/HARNESS.md` › Sensors |#'
+red "15dj a project workflow's too" check-invariants "$PR: the \`verify\` default doesn't fall back"
+
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"
 red "16 a CREW.md section that doesn't exist" check-section-refs "CREW.md › Nosuch"

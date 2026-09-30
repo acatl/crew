@@ -6,7 +6,7 @@ description: The built-in workflow. Plan, build, review in isolation, hand off c
 # Workflow: standard
 
 The crew contract (SKILL.md) sits under this file; nothing here changes it. To build on it, copy it
-to `docs/crew/workflows/<name>.md` and add to the copy.
+to `docs/crew/workflows/<name>.md` and extend the copy.
 
 ## Parameters
 
@@ -14,11 +14,11 @@ The orchestrator resolves each into your brief; read the values there, never `CR
 
 | Name | Meaning | Default |
 |---|---|---|
-| `plan` | `required`: plan before code · `skip`: start at `build` | `required` |
-| `iterations` | review→fix iterations per review | `2` |
-| `no-commit` | minutes without a commit before escalating; must equal the watchdog's | `CREW.md` › Ledger's; absent, 60 minutes |
-| `clear` | `checkpoints`: clear your context where a stage says so · `never` | `checkpoints` |
-| `verify` | what proves the work green | `CREW.md` › Verify |
+| `plan` | `required`: plan first · `skip`: start at `build` | `required` |
+| `iterations` | review→fix iterations | `2` |
+| `no-commit` | minutes with no commit before escalating; must equal the watchdog's | `CREW.md` › Ledger's; absent, 60 minutes |
+| `clear` | `checkpoints`: clear where a stage says so · `never` | `checkpoints` |
+| `verify` | what proves the work green | `CREW.md` › Verify, `docs/HARNESS.md` › Sensors, or asked |
 
 ## Stages
 

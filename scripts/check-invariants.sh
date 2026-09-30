@@ -367,6 +367,40 @@ if [ "$merge_seen" = 0 ]; then
 fi
 if [ "$merge_ok" = 1 ]; then held=$((held + 1)); fi
 
+# --- the queue card shows each unit's workflow and landing ----------------------------------------------------
+# Under Integration mode `pr` landing is per unit (a PR-merging unit is delegated by the merge rule), so one
+# card-wide Landing line can show a delegated unit as "operator decides". The queue card's table carries both.
+qhead=$(grep -E '^> \| # \| Unit \|' "$SKILL/SKILL.md" | head -n 1 || true)
+if [ -z "$qhead" ]; then
+  reworded "$SKILL/SKILL.md" "the queue card's '> | # | Unit |' table header"
+else
+  q_ok=1
+  for col in Workflow Landing; do
+    if ! grep -qE "\\| $col \\|" <<< "$qhead"; then
+      fail "$SKILL/SKILL.md: the queue card has no per-unit $col column: '$qhead'"; q_ok=0
+    fi
+  done
+  if [ "$q_ok" = 1 ]; then held=$((held + 1)); fi
+fi
+
+# --- a workflow's verify falls back as the orchestrator's does ------------------------------------------------
+# A worker's build ends on `verify` green, and the orchestrator verifies a stop with CREW.md › Verify, else
+# docs/HARNESS.md › Sensors. A `verify` default that stops at CREW.md leaves a project without that section
+# with nothing to run, and the two sides verifying different things.
+v_ok=1
+for f in "$SKILL"/references/workflow-*.md docs/crew/workflows/*.md; do
+  [ -f "$f" ] || continue
+  # shellcheck disable=SC2016  # the backticks are literal Markdown
+  row=$(grep -E '^\| `verify` \|' "$f" || true)
+  if [ -z "$row" ]; then continue; fi
+  for src in 'CREW.md` › Verify' 'docs/HARNESS.md` › Sensors'; do
+    if ! grep -qF -- "$src" <<< "$row"; then
+      fail "$f: the \`verify\` default doesn't fall back to \`$src, as the orchestrator's verify does"; v_ok=0
+    fi
+  done
+done
+if [ "$v_ok" = 1 ]; then held=$((held + 1)); fi
+
 if [ "$fails" -gt 0 ]; then
   printf '✖ %d restated value(s) drifted; CLAUDE.md › Invariants that span files lists every copy\n' "$fails" >&2
   exit 1

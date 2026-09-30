@@ -2,4 +2,4 @@
 # scripts/check-content.sh. A metric may hold or rise; a drop fails. --update only raises;
 # accepting a drop is a hand edit of this file, and only the operator makes it.
 instruction_specificity	0.9159
-imperative_ratio	0.0847
+imperative_ratio	0.0867
