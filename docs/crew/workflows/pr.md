@@ -74,16 +74,17 @@ sweep, fix, verify, `/code-review high` over the fix diff, one push, reply and r
 
 - **Ends:** the round's push is up and its threads are dispositioned.
 - **Report:** `checkpoint round`: round, sha, fixed, declined, CI state.
-- **Orchestrator:** verifies the sha. When the PR meets the written merge rule: card says
-  `landing: delegated` → tells the worker to merge; else → tells the operator it's ready.
+- **Orchestrator:** verifies the sha. When the PR meets the written merge rule and landing is
+  delegated (`CREW.md` › Integration `mode: pr`, unless the card says `landing: operator`), tells the
+  worker to merge; else tells the operator it's ready.
 - **Clears:** yes, monitor off first.
 
 ### merge
 
 Merge only on the orchestrator's go (`docs/pr-round-workflow.md` › Stopping › Merging), then turn the
-monitor off.
+monitor off. Woken by a merge the operator made instead, confirm it and report the same.
 
-- **Ends:** merged.
+- **Ends:** merged, by you or the operator.
 - **Report:** `stop merge`: the merge sha, monitor off, carried.
 - **Orchestrator:** runs Post-land, cleans up per the card, and carries findings into the next unit.
 - **Clears:** no

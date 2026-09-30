@@ -183,6 +183,12 @@ red "15y the worker's RELAY rule drops the gated-action half" check-invariants "
 fresh; edit "$BT" 's#tool-permission prompt or a gated action (push, install,#tool-permission prompt; a yes for (push, install,#'
 red "15z the fallback drops the gated-action half" check-invariants "the section headed '^#+ If the"
 
+# a merge go names its delegation: a sentence that tells the worker to merge names `landing:`
+fresh; edit "$PR" 's#landing#gating#g'
+red "15da a workflow orders a merge without naming the delegation" check-invariants "$PR: tells the worker to merge without naming its delegation"
+fresh; edit "$PR" 's#^  worker to merge; else#  worker to go; else#'
+red "15db no merge sentence at all fails, never passes" check-invariants "a sentence that tells the worker to merge not found"
+
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"
 red "16 a CREW.md section that doesn't exist" check-section-refs "CREW.md › Nosuch"

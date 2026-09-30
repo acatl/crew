@@ -47,11 +47,12 @@ its PR).
 
 ## Integration
 
-- **Pull request** (`pr`). The brief grants a push to the worker's OWN branch, opening its own
-  PR, and binding that PR in the app with its review monitor on (the workflow's `open`), nothing
-  else. The worker merges only on the orchestrator's go, given on a `landing: delegated` card and
-  under the operator's standing merge rule (`docs/pr-round-workflow.md` › Stopping › Merging);
-  otherwise the operator merges. That go is the written rule being applied, not consent relayed from
+- mode: pr
+- **Pull request** (the `pr` workflow). The brief grants a push to the worker's OWN branch, opening
+  its own PR, and binding that PR in the app with its review monitor on (the workflow's `open`),
+  nothing else. The worker merges only on the orchestrator's go, given under the operator's standing
+  merge rule (`docs/pr-round-workflow.md` › Stopping › Merging), unless the card says
+  `landing: operator`; otherwise the operator merges. That go is the written rule being applied, not consent relayed from
   another session, so the worker acts on it.
 - **`standard`** units push nothing; the operator lands them.
 - **A `pr` worker's PR review monitor** goes in the ledger's Monitors at its `checkpoint open`

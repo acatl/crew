@@ -5,9 +5,9 @@ It's created at the first spawn. Nothing in it is required: every field has a wo
 
 ## Interview
 
-Detect first, then show **one** card with every detected value filled in. The operator replies `go` or
-overrides lines. Ask only what detection left blank. Write the file, tell the operator it's ready to
-commit, and continue the spawn. Workers don't need it committed; the brief carries everything.
+Detect first, then show **one** card with every detected value filled in; the operator replies `go` or
+overrides lines. Ask only what detection left blank. Write the file, say it's ready to commit, and
+continue the spawn: the brief carries everything, so workers don't need it committed.
 
 | Field | Detect from | Default when nothing is found |
 |---|---|---|
@@ -17,7 +17,7 @@ commit, and continue the spawn. Workers don't need it committed; the brief carri
 | Verify | `docs/HARNESS.md` › Sensors, `package.json` `check`/`test`, `Makefile` `test` | ask at the first DONE |
 | Worktree setup | a lockfile (`package-lock.json` → `npm ci`, `pnpm-lock.yaml` → `pnpm install`, …) in the root and in any workspace package, gitignored runtime files at the root (`.env`) | `none` |
 | Branch naming | — | keep the `claude/…` branch |
-| Integration mode | `docs/HARNESS.md` merge mode (single-merge via PR → `operator`) | `operator` |
+| Integration mode | `docs/HARNESS.md` merge mode (workers merge their PRs under a written rule → `pr`; other PRs → `operator`) | `operator` |
 | Post-land | anything the main checkout serves from a gitignored build (a CLI or skill linked globally from here → its build command) | `none` |
 | Standing boundaries | install or link commands that write outside the repo (`<tool> install`, `npm link`, home-dir symlinks) → "never run `<cmd>` from a worktree" | `none` |
 | Title / cleanup defaults | — | see template |
@@ -26,19 +26,15 @@ commit, and continue the spawn. Workers don't need it committed; the brief carri
 | Watchdog thresholds — cadence, no-commit, sub-agent step | how long this project's units normally run between commits, and how many sub-agents one normal review round spawns (the step is a sub-agent count, not a round count) | 20 min · 60 min · step 3 — hg's measured values and `watchdog.sh`'s own defaults; it fires when the count *exceeds* the step |
 
 A `.env` line in worktree setup copies secrets into another directory. Propose it; never add it
-without the operator's `go`. `ff-only` lets the orchestrator land work on the operator's per-card
-delegation. Propose it only when the project lands by local fast-forward, not through PRs.
+without the operator's `go`. Propose `ff-only` only when the project lands by local fast-forward.
 
 ## Migration
 
-A `CREW.md` that still has `## Verbs` predates workflows. Convert it on first use, before the spawn:
-show the operator the diff, and write it only on their `go`.
-- each verb → `docs/crew/workflows/<verb>.md`. A `command` verb becomes one stage that runs the
-  command, stopping at the verb's stop point. An `inline` verb becomes a copy of `standard` plus the
-  verb's rules;
-- each `## Counters` line becomes a parameter, its limit and at-limit action kept (review→fix
-  iterations → `iterations`). `## Checkpoints` become the stages' Clears; without one, `clear: never`,
-  so the migrated workers keep not clearing;
+A `CREW.md` with `## Verbs` predates workflows. Convert it on first use: show the diff, write on `go`.
+- each verb → `docs/crew/workflows/<verb>.md`: a `command` verb, one stage running the command to its
+  stop point; an `inline` verb, `standard` plus its rules;
+- each `## Counters` line → a parameter, limit and at-limit action kept (review→fix iterations →
+  `iterations`). `## Checkpoints` → the stages' Clears; none → `clear: never`, as before;
 - the Verbs table becomes a Workflows table.
 
 ## Template
@@ -83,7 +79,8 @@ keep
 
 `operator`: the operator lands every branch. `ff-only`: when the operator writes `landing: delegated`
 on a card, the orchestrator lands each verified branch with `git merge --ff-only <worker-branch>` in
-the main checkout. Never a merge commit, never a push.
+the main checkout. Never a merge commit, never a push. `pr`: the worker merges its PR on the
+orchestrator's go under the merge rule named here; a card's `landing: operator` withholds it.
 
 ## Post-land
 Run in the main checkout after each landing:

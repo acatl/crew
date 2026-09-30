@@ -86,7 +86,8 @@ A queued worker waiting for `START` is waiting on the orchestrator, not the oper
   a push, a branch deletion, or a spawn the card didn't list. Each of those is a separate ask.
 - **Landing** (bringing a worker's branch into the base) happens only when the operator delegates it on
   the card (`landing: delegated`) *and* `docs/CREW.md` › Integration allows it. A plain `go` never
-  delegates landing. Without delegation, the operator lands.
+  delegates landing, except Integration mode `pr`: its written merge rule delegates every card that
+  doesn't say `landing: operator`. Without delegation, the operator lands.
 - **The worker** follows its workflow as if the operator directed it, mode included — `yolo` means
   yolo — up to the workflow's stop stage, and commits. Nothing past it. It never creates a worktree
   (it already has one), never installs or links anything that outlives its worktree, never archives
@@ -193,9 +194,9 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 - **Scope**: whole ticket, or a slice described in one line.
 - **Cleanup** default by scope (`CREW.md` › Defaults, else whole ticket → `archive when merged`,
   slice → `keep`). Options: `archive when verified` · `archive when merged` · `keep`.
-- **Landing** is always `operator decides` by default. When `CREW.md` › Integration mode is `ff-only`,
-  add what `landing: delegated` would run (`git merge --ff-only`, then Post-land). It becomes delegated
-  only when the operator writes that override.
+- **Landing** is `operator decides` by default. Integration mode `ff-only`: add what `landing:
+  delegated` would run (`git merge --ff-only`, then Post-land); delegated only when the operator writes
+  it. Mode `pr`: `delegated` by its merge rule, and `landing: operator` withholds it.
 - **Safety**: the step 3 result. On ⚠ overlap, recommend one of: wait for the overlapping worker,
   narrow this scope to avoid the shared paths, or proceed with those paths listed under `Do not touch`.
 
@@ -279,10 +280,9 @@ Execute only what the card agreed, and name it as you do it.
   `reported.txt` and `active.tsv`. Both serve only the sequence that just ended: nothing truncates
   them, and a later worker reusing a ticket id would be deduped or clocked against them.
 
-Archiving detaches the worktree (the branch is released and kept, so it can be merged or checked out
-elsewhere) and hands the directory to the app's reuse pool. It's reversible (`unarchive_session`). The
-app may show its own approval card; that's expected. Cleanup never deletes a branch and never runs
-`git worktree remove`; the pool is the app's to reap.
+Archiving detaches the worktree (the branch is kept) and hands the directory to the app's reuse pool.
+It's reversible (`unarchive_session`), and the app may show its own approval card. Cleanup never
+deletes a branch and never runs `git worktree remove`; the pool is the app's to reap.
 
 ### 8. Sequences and landing
 
@@ -303,16 +303,16 @@ app may show its own approval card; that's expected. Cleanup never deletes a bra
 > **→ You:** `go`, or override (`2 title: …`, `landing: delegated`).
 
 **Spawn every unit now** so its chip is ready: unit 1 with a ready brief, the rest with the **queued
-variant** (no Job section). Don't write later units' specs yet. By the time their turn comes, earlier
-units will have changed the base under them, and a spec written now would be stale.
+variant** (no Job section). Don't write later units' specs yet: earlier units will have moved the base
+under them.
 
 **When unit N's DONE verifies:**
 
-1. **Land.** Delegated → in the main checkout, check the working tree is clean and on `<base>`, then run
+1. **Land.** Mode `pr`: the PR is merged by now (its workflow says when); run Post-land, never
+   ff-only. `ff-only`, delegated → in the main checkout, on a clean `<base>`, run
    `git merge --ff-only <worker-branch>`, then each `CREW.md` › Post-land command. If ff-only refuses
-   (`fatal: Not possible to fast-forward, aborting.`, exit 128), the base moved under the worker: stop
-   the sequence and tell the operator. Never force, rebase, or
-   make a merge commit to get past it. Not delegated → report the verdict and wait until the operator
+   (exit 128), the base moved under the worker: stop the sequence and tell the operator; never force,
+   rebase, or make a merge commit. Not delegated → report the verdict and wait until the operator
    has landed it (`git branch --merged <base>` lists it).
 2. **Clean up** unit N per its card.
 3. **Start** unit N+1: send `START` ([references/brief-template.md](references/brief-template.md) ›

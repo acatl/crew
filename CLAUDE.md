@@ -139,6 +139,9 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   brief its own workflow, and the orchestrator reads the older `DONE · checkpoint: <boundary>` and
   plain `DONE`. *Checked*: the line, verbatim; both older forms in the Orchestrator section; and DONE's `checkpoint <stage>` / `stop <stage>` forms in both
   copies of the contract (SKILL.md's *Messages* and the brief's fallback).
+- **A merge go names its delegation.** Landing needs delegation; Integration mode `pr` is the one
+  standing delegation, withheld by a card's `landing: operator`. *Checked*: every sentence in a
+  workflow file or `docs/pr-round-workflow.md` that tells the worker to merge names `landing`.
 - **Every workflow file has the orchestrator's shape** (frontmatter `name` = file name, and
   `description`; Parameters, Stages, Rules in order; each stage's Ends, Report, Orchestrator; exactly
   one `stop`). *Checked* by `check-structure.sh`, over the built-in and `docs/crew/workflows/`.
