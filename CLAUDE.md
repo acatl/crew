@@ -5,7 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this repo is
 
 The source of the `crew` Claude Code skill: one orchestrator session spawns, briefs, relays for,
-verifies and cleans up fresh worker sessions, one per ticket or slice. There is no build. The
+verifies and cleans up fresh worker sessions, one per ticket or slice. A **workflow** file sets how
+each worker works. There is no build. The
 deliverable is `skills/crew/`: Markdown instructions plus two bash scripts. The Node toolchain at the
 root only lints, spell-checks and runs the git hooks.
 
@@ -41,11 +42,19 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
 - **`SKILL.md` is the contract, and one file serves both roles.** A session reads *The contract* and
   then either *Orchestrator* (numbered steps 0–8) or *Worker*. A worker is identified by its first
   message starting with `<!-- crew:brief`.
+- **A workflow is how a worker works:** one self-contained file of Parameters, Stages and Rules. Each
+  stage names its end, its report (`checkpoint <stage>` or `stop <stage>`) and the orchestrator's
+  response, which is all the orchestrator needs to follow a workflow it has never seen. The contract
+  sits under every workflow. The one built-in, `standard`, is `references/workflow-standard.md`; a
+  project lists its own in `docs/CREW.md` › Workflows (this repo: `docs/crew/workflows/pr.md`).
 - **Sessions talk only through `send_message` by sessionId,** using seven message kinds: worker →
   orchestrator `ONLINE`/`NEED-INPUT`/`BLOCKED`/`DONE`, orchestrator → worker `RELAY`/`START`/`ANSWER`.
   Tool-permission prompts and gated consent are never relayed, and never answered by an `ANSWER`.
 - **`references/` holds what the orchestrator fills or persists:**
   - `brief-template.md`: the worker's first message, in a ready and a queued variant, plus `START`.
+    It names the workflow file and its resolved parameters.
+  - `workflow-standard.md`: the built-in workflow. Workers read it; it's flat in `references/`
+    because skill-validator warns on any other directory, or a nested one.
   - `crew-md.md`: the first-use interview that writes each consuming project's `docs/CREW.md`, the
     per-project config. Only the orchestrator reads it and resolves it into briefs; workers never do.
   - `ledger.md`: orchestrator state in `~/.claude/crew/<slug>/`. The app is authoritative for session
@@ -90,11 +99,11 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   five places, all *checked*:
   - the `watchdog.sh` defaults, the source;
   - SKILL.md's *Watchdog* section;
-  - SKILL.md *Worker* step 7 ("60 minutes");
+  - `workflow-standard.md`'s `no-commit` default ("absent, 60 minutes");
   - the `crew-md.md` interview table;
   - the `crew-md.md` template's `watchdog:` line.
 
-  The brief's `{NO_COMMIT}` must match what the watchdog is launched with.
+  A brief's resolved `no-commit` parameter must match what the watchdog is launched with.
 - **Exit codes.** `watchdog.sh`'s header defines 0 finding · 1 internal · 2 usage/roster/state · 3 lock
   held · 4 no `stat`, and SKILL.md's *Watchdog* section restates the launch-failure codes 2, 3 and 4.
   `overlap.sh`'s header defines 0 clear · 1 overlap · 2 usage or git error, and SKILL.md step 3
@@ -121,10 +130,18 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   by the roster rebuild's grep. Keep it byte-exact. *Checked* against the brief template's first line.
 - **`CREW.md` › Section references** in the skill name `## ` headings of the template in
   `crew-md.md`. *Checked*, as is every `references/<name>.md` the skill mentions.
-- **The loop limit reaches a worker through its brief.** Workers never read `CREW.md`: the
-  orchestrator resolves `CREW.md` › Counters into the brief's `{ITERATIONS}`, and SKILL.md reads the
-  limit from the brief. *Checked*: no Worker section cites Counters (the orchestrator's may), the
-  brief's Loop budget line carries `{ITERATIONS}`, and its placeholder row sources it from Counters.
+- **The workflow reaches a worker through its brief.** Workers never read `CREW.md`: the
+  orchestrator resolves `CREW.md` › Workflows into the brief's `{WORKFLOW_PATH}` and `{PARAMETERS}`.
+  *Checked*: no Worker section cites `CREW.md` (the orchestrator's may), the brief's Job line carries
+  `{WORKFLOW_PATH}`, and its placeholder row sources it from Workflows.
+- **Briefs from before workflows still work.** In-flight workers re-read the Worker section at every
+  resume, and their briefs name no workflow. The Worker section keeps the line that makes such a
+  brief its own workflow, and the orchestrator accepts the older `DONE · checkpoint: <boundary>`.
+  *Checked*: the line, verbatim; and DONE's `checkpoint <stage>` / `stop <stage>` forms in both
+  copies of the contract (SKILL.md's *Messages* and the brief's fallback).
+- **Every workflow file has the orchestrator's shape** (frontmatter `name` = file name, and
+  `description`; Parameters, Stages, Rules in order; each stage's Ends, Report, Orchestrator; exactly
+  one `stop`). *Checked* by `check-structure.sh`, over the built-in and `docs/crew/workflows/`.
 
 ## Conventions
 

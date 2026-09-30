@@ -25,8 +25,9 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 fresh() {
-  rm -rf "$S"; mkdir -p "$S/test"
+  rm -rf "$S"; mkdir -p "$S/test" "$S/docs"
   cp -R "$REPO/skills" "$REPO/scripts" "$REPO/baselines" "$S/"
+  cp -R "$REPO/docs/crew" "$S/docs/"
   cp "$REPO/test/watchdog.test.sh" "$S/test/"
 }
 # edit <file> <sed expression>: in place through a temp file, since BSD and GNU sed -i disagree. An
@@ -54,6 +55,8 @@ SK=skills/crew/SKILL.md
 CM=skills/crew/references/crew-md.md
 BT=skills/crew/references/brief-template.md
 LG=skills/crew/references/ledger.md
+WS=skills/crew/references/workflow-standard.md
+PR=docs/crew/workflows/pr.md
 WD=skills/crew/scripts/watchdog.sh
 OV=skills/crew/scripts/overlap.sh
 
@@ -66,8 +69,8 @@ done
 # --- check-invariants -----------------------------------------------------------------------------------
 fresh; edit "$SK" 's#(1200 / 3600 / 3)#(1200 / 1800 / 3)#'
 red "1  a watchdog-defaults copy drifts" check-invariants "$SK"
-fresh; edit "$SK" 's#absent, 60 minutes#absent, 30 minutes#'
-red "2  the minutes copy drifts" check-invariants "$SK"
+fresh; edit "$WS" 's#absent, 60 minutes#absent, 30 minutes#'
+red "2  the minutes copy drifts" check-invariants "$WS"
 fresh; edit "$CM" 's#20 min · 60 min · step 3#20 min · 60 min · step 4#'
 red "3  the interview-table copy drifts" check-invariants "$CM"
 fresh; edit "$CM" 's#push pass 3#push pass 5#'
@@ -102,19 +105,25 @@ fresh; edit "$LG" "s#sed 's\#/\#-\#g'#sed 's\#[/.]\#-\#g'#"
 red "14 the crew-dir slug is unified with the transcript one" check-invariants "$LG"
 fresh; edit test/watchdog.test.sh "s#^slug() { printf '%s' \"\$1\" | sed 's\#\[/.\]\#-\#g'; }#slug() { printf '%s' \"\$1\" | sed 's\#/\#-\#g'; }#"
 red "15 the test's slug drifts from the watchdog's" check-invariants "test/watchdog.test.sh"
-# the loop limit reaches a worker only through its brief: the Worker section never cites Counters
-fresh; edit "$SK" 's@^### 0\. Resume from the ledger@Track `CREW.md` › Counters per worker in the ledger.\
+# the workflow reaches a worker only through its brief: the Worker section never cites CREW.md
+fresh; edit "$SK" 's@^### 0\. Resume from the ledger@Track `CREW.md` › Workflows per worker in the ledger.\
 \
 &@'
-green "15b the orchestrator's sections may cite CREW.md › Counters" check-invariants
-edit "$SK" 's#absent one, \*\*two\*\*#absent one (`CREW.md` › Counters), **two**#'   # same fixture
-red "15c the Worker section citing CREW.md › Counters" check-invariants "the Worker section cites CREW.md › Counters"
-fresh; edit "$BT" 's#at most {ITERATIONS} review#at most two review#'
-red "15d the brief hard-coding the limit again" check-invariants "$BT: the brief's Loop budget line"
-fresh; edit "$BT" 's#^| `{ITERATIONS}` | `CREW.md` › Counters#|  `{ITERATIONS}`  |  `docs/CREW.md` › Counters#'
+green "15b the orchestrator's sections may cite CREW.md" check-invariants
+edit "$SK" "s#^7\. \*\*Loop budget:\*\* your workflow's Rules#7. **Loop budget:** your workflow's Rules (\`CREW.md\` › Workflows)#"   # same fixture
+red "15c the Worker section citing CREW.md" check-invariants "the Worker section cites a CREW.md section"
+fresh; edit "$BT" 's#Read `{WORKFLOW_PATH}` in full#Read the workflow in full#g'
+red "15d the brief no longer pointing the worker at its workflow" check-invariants "$BT: the brief's Job no longer says"
+fresh; edit "$BT" 's#^| `{WORKFLOW_PATH}` | its file, absolute: its `CREW.md` › Workflows#|  `{WORKFLOW_PATH}`  |  its file: `docs/CREW.md` › Workflows#'
 green "15e a padded placeholder row naming docs/CREW.md still counts" check-invariants
-edit "$BT" 's#`docs/CREW.md` › Counters#`docs/CREW.md` › Ledger#'                  # same fixture
-red "15f the row sourcing {ITERATIONS} from anything but Counters" check-invariants "$BT: no placeholder row sourcing"
+edit "$BT" 's#`docs/CREW.md` › Workflows#`docs/CREW.md` › Ledger#'                  # same fixture
+red "15f the row sourcing {WORKFLOW_PATH} from anything but Workflows" check-invariants "$BT: no placeholder row sourcing"
+fresh; edit "$SK" "s#^   brief → your brief's Job/Spec, Boundaries and Checkpoints are the workflow; follow them as written\.#   brief → ask the orchestrator.#"
+red "15ca the Worker section drops the line in-flight briefs rely on" check-invariants "lost the legacy line"
+fresh; edit "$SK" 's#first line `checkpoint <stage>` or `stop <stage>`; branch#first line `checkpoint <stage>`; branch#'
+red "15cb the Messages table drops DONE's stop form" check-invariants "the section headed '^### Messages' doesn't give DONE's \`stop <stage>\`"
+fresh; edit "$BT" 's#^`checkpoint <stage>` or `stop <stage>`, with branch#a checkpoint or a stop, with branch#'
+red "15cc the fallback drops DONE's stage form" check-invariants "the section headed '^#+ If the"
 # the roster format: watchdog.sh's header names the columns, and every copy names the same ones
 fresh; edit "$LG" 's#<worktree-path> TAB <start epoch>, one per#<worktree-path>, one per#'
 red "15g a roster copy drops the start column" check-invariants "$LG"
@@ -176,7 +185,7 @@ red "18 a references/ file that doesn't exist" check-section-refs "references/mi
 fresh; printf '\nRun `<skill-dir>/scripts/gone.sh`.\n' >> "$S/$SK"
 red "19 a skill script that doesn't exist" check-section-refs "<skill-dir>/scripts/gone.sh"
 
-fresh; for f in "$SK" "$BT" "$LG"; do edit "$f" 's#CREW\.md` ›#CREW.md` -#g'; done
+fresh; for f in "$SK" "$BT" "$LG" "$WS"; do edit "$f" 's#CREW\.md` ›#CREW.md` -#g'; done
 red "19b no CREW.md references at all fails, never passes" check-section-refs "found no 'CREW.md › Section' references"
 fresh; grep -rl 'references/' "$S/skills/crew" | while IFS= read -r f; do edit "${f#"$S"/}" 's#references/#refs/#g'; done
 red "19c no references/ mentions at all fails, never passes" check-section-refs "found no references/<name>.md mentions"
@@ -228,6 +237,33 @@ fresh; printf 'scratch\n' > "$S/skills/crew/notes.txt"
 red "29 a stray file at the skill root" check-structure "notes.txt"
 fresh; run check-structure
 if grep -qF "PR 3 removes this exemption" "$ROOT/out"; then ok "30 the exemption is printed on every run"; else bad "30 exemption" "$(cat "$ROOT/out")"; fi
+
+# --- check-structure: the workflow files' shape ----------------------------------------------------------
+fresh; edit "$WS" '/^- \*\*Ends:\*\* committed, `verify` green\.$/d'
+red "35 a stage that names no end" check-structure "$WS:"
+if grep -qF "stage build names no Ends" "$ROOT/out"; then ok "35b and the stage is named"; else bad "35b stage named" "$(cat "$ROOT/out")"; fi
+fresh; edit "$WS" 's#^- \*\*Report:\*\* `checkpoint build`#- **Report:** `checkpoint plan`#'
+red "36 a report naming another stage" check-structure "stage build: Report must be"
+fresh; edit "$WS" 's#^- \*\*Report:\*\* `checkpoint build`#- **Report:** `stop build`#'
+red "37 two stop stages" check-structure "2 stages report stop"
+fresh; edit "$WS" 's#^- \*\*Report:\*\* `stop handoff`#- **Report:** `checkpoint handoff`#'
+red "37b no stop stage" check-structure "0 stages report stop"
+fresh; edit "$WS" 's#^\#\# Parameters$#\#\# Settings#'
+red "38 a section missing" check-structure "needs ## Parameters, ## Stages, ## Rules"
+fresh; edit "$WS" 's#^name: standard$#name: std#'
+red "39 a name that isn't the file's" check-structure 'frontmatter name is "std"'
+fresh; edit "$PR" '/^- \*\*Orchestrator:\*\* runs Post-land/d'
+red "40 a project workflow is checked too" check-structure "$PR:"
+fresh; rm "$S/$WS"
+red "41 no built-in workflow fails, never passes" check-structure "no workflow-*.md"
+fresh; edit "$WS" 's#^\#\#\# review$#```text\
+\#\#\# not a stage\
+```\
+\
+&#'
+green "42 a heading-like line in a code fence is no stage" check-structure
+edit "$WS" '/^- \*\*Ends:\*\* every valid finding fixed/d'                         # same fixture
+red "42b the same fixture still fails on a stage with no end" check-structure "stage review names no Ends"
 
 # --- check-skill-frontmatter ----------------------------------------------------------------------------------
 fresh; edit "$SK" '/^license: MIT$/d'

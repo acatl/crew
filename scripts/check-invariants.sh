@@ -182,34 +182,6 @@ else
   if [ "$kinds_ok" = 1 ]; then held=$((held + 1)); fi
 fi
 
-# --- the loop limit reaches a worker through its brief ---------------------------------------------------
-# Workers never read CREW.md. The orchestrator resolves CREW.md › Counters into the brief's
-# {ITERATIONS}, and the Worker section reads the limit from the brief, so it never cites Counters
-# itself. The orchestrator's sections read CREW.md, so the ban is scoped to Worker sections, found by
-# heading in any skill file (PR 3 moves sections); one must exist, or the check would pass blind.
-limit_ok=1
-worker=$(LC_ALL=C awk 'FNR == 1 {w = 0}
-  /^#+ / {n = index($0, " ") - 1; if (w && n <= lvl) w = 0
-          if ($0 ~ /^#+ Worker[[:space:]]*$/) {w = 1; lvl = n; next}}
-  w {printf "%s:%d\t%s\n", FILENAME, FNR, $0}' "${mds[@]}")
-if [ -z "$worker" ]; then
-  reworded "$SKILL/*.md" "a Worker section heading"; limit_ok=0
-fi
-while IFS=$'\t' read -r loc _; do
-  [ -n "$loc" ] || continue
-  fail "$loc: the Worker section cites CREW.md › Counters, but workers never read CREW.md; the limit reaches them as the brief's {ITERATIONS}"
-  limit_ok=0
-done < <(grep -E 'CREW\.md`?[[:space:]]+›[[:space:]]+Counters' <<< "$worker" || true)
-if [ -z "$(scan "$(ws 'Loop budget [^:]*: at most [{]ITERATIONS[}] review→fix iterations')" "$BRIEF")" ]; then
-  fail "$BRIEF: the brief's Loop budget line no longer says 'at most {ITERATIONS} review→fix iterations'"; limit_ok=0
-fi
-# shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
-row_re='[|] `[{]ITERATIONS[}]` [|] `[^`|]*CREW\.md` › Counters'
-if [ -z "$(scan "$(ws "$row_re")" "$BRIEF")" ]; then
-  fail "$BRIEF: no placeholder row sourcing {ITERATIONS} from \`CREW.md\` › Counters"; limit_ok=0
-fi
-if [ "$limit_ok" = 1 ]; then held=$((held + 1)); fi
-
 # --- the two slug rules, different on purpose ----------------------------------------------------------
 # Transcript dirs mirror Claude Code's own naming (/ and . become -), and the test copies it. Crew
 # dirs replace only /. They must not be unified.
@@ -326,6 +298,45 @@ section_rule "ANSWER never answers an $marker question" "$marker" ANSWER -- \
 section_rule "a relayed answer is never consent for a tool-permission prompt or a gated action" \
   consent tool-permission gate -- \
   '0|^#+ The contract' '0|^#+ Worker[[:space:]]*$' '1|^#+ If the `crew` skill is unavailable'
+
+# --- the workflow reaches a worker through its brief ------------------------------------------------------
+# Workers never read CREW.md: the orchestrator resolves the workflow (CREW.md › Workflows) into the
+# brief's {WORKFLOW_PATH} and {PARAMETERS}, and the worker reads the file the brief names. So no Worker
+# section cites CREW.md (the orchestrator's may), the brief's Job line carries {WORKFLOW_PATH}, and its
+# placeholder row sources it from Workflows. In-flight workers spawned before workflows re-read the
+# Worker section at every resume and their briefs name no workflow, so the Worker section keeps the
+# line that makes their brief the workflow. Both contract copies give DONE its stage form.
+wf_ok=1
+worker=$(section '^#+ Worker[[:space:]]*$' 0 "${mds[@]}")
+if [ -z "$worker" ]; then
+  reworded "$SKILL/*.md" "a Worker section heading"; wf_ok=0
+else
+  if grep -qE 'CREW\.md`?[[:space:]]+›' <<< "$worker"; then
+    fail "$SKILL/*.md: the Worker section cites a CREW.md section, but workers never read CREW.md; it reaches them through the brief"; wf_ok=0
+  fi
+  legacy='No workflow named in your brief → your brief'"'"'s Job/Spec, Boundaries and Checkpoints are the workflow; follow them as written.'
+  if ! grep -qF -- "$legacy" <<< "$worker"; then
+    fail "$SKILL/*.md: the Worker section lost the legacy line for briefs that name no workflow: '$legacy'"; wf_ok=0
+  fi
+fi
+# shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
+if [ -z "$(scan "$(ws 'Read `[{]WORKFLOW_PATH[}]` in full')" "$BRIEF")" ]; then
+  fail "$BRIEF: the brief's Job no longer says 'Read \`{WORKFLOW_PATH}\` in full'"; wf_ok=0
+fi
+# shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
+if [ -z "$(scan "$(ws '[|] `[{]WORKFLOW_PATH[}]` [|] [^|]*`[^`|]*CREW\.md` › Workflows')" "$BRIEF")" ]; then
+  fail "$BRIEF: no placeholder row sourcing {WORKFLOW_PATH} from \`CREW.md\` › Workflows"; wf_ok=0
+fi
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+for spec in '0|^### Messages' '1|^#+ If the `crew` skill is unavailable'; do
+  text=$(section "${spec#*|}" "${spec%%|*}" "${mds[@]}")
+  for form in '`checkpoint <stage>`' '`stop <stage>`'; do
+    if ! grep -qF -- "$form" <<< "$text"; then
+      fail "$SKILL/*.md: the section headed '${spec#*|}' doesn't give DONE's $form form"; wf_ok=0
+    fi
+  done
+done
+if [ "$wf_ok" = 1 ]; then held=$((held + 1)); fi
 
 if [ "$fails" -gt 0 ]; then
   printf '✖ %d restated value(s) drifted; CLAUDE.md › Invariants that span files lists every copy\n' "$fails" >&2
