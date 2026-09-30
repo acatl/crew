@@ -20,7 +20,7 @@ Two variants differ only in the Job section:
 | `{TICKET_SOURCE}` | `CREW.md` › Ticket source, filled (e.g. "Kino task KINO-5, via the Kino MCP `get_task`"), or "the spec below" |
 | `{SCOPE}` | card › Scope |
 | `{WORKFLOW}` | card › Workflow |
-| `{WORKFLOW_PATH}` | its file, absolute: its `CREW.md` › Workflows row, or the built-in under this skill's `references/` |
+| `{WORKFLOW_PATH}` | its file, absolute: its `CREW.md` › Workflows row, or the built-in `<skill-dir>/references/workflow-<name>.md` |
 | `{PARAMETERS}` | the workflow's Parameters, each resolved (`name: value`, one line). A `no-commit` must equal the watchdog's `--no-commit` |
 | `{MODE}` | the trigger, or `default` |
 | `{SURFACE}` | step 2 estimate |

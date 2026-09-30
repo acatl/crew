@@ -9,9 +9,9 @@ description: >-
   parallel-safety, and who may do what. A workflow file sets how each worker works; the built-in is
   `standard`. Works in any repo; per-project answers live in docs/CREW.md, interviewed on first use.
   Triggers on "spin up a worker for", "spin up a <workflow> worker for", "spawn a worker", "start a
-  worker session", "dispatch KINO-5 to a worker", "queue workers for", "run these tickets in sequence", "crew
-  status", "what are my workers doing". Also loads in a worker whose first message starts with
-  `<!-- crew:brief`.
+  worker session", "dispatch KINO-5 to a worker", "queue workers for", "run these tickets in
+  sequence", "crew status", "what are my workers doing". Also loads in a worker whose first message
+  starts with `<!-- crew:brief`.
 argument-hint: "[<workflow>] <ticket-id>[ → <ticket-id>…] [mode]  |  status"
 license: MIT
 compatibility: >-
@@ -186,7 +186,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 > | Landing | Operator decides |
 > | Safety | ✓ clear — 2 workers in flight, no shared paths; main checkout on `main` |
 >
-> **→ You:** `go`, or override a line (`workflow: pr`, `scope: slice — only the parser`, `cleanup: keep`).
+> **→ You:** `go`, or override a line or a workflow parameter (`workflow: pr`, `plan: skip`, `cleanup: keep`).
 
 - **Title** default: `CREW.md` › Defaults, else `{TICKET} — {ticket title}`. It becomes the chip label
   and the session title, so lead with the ticket id — the sidebar sorts, and the roster finds it.
@@ -234,7 +234,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 - **BLOCKED** → surface it the same way, with the worker's proposed fix. Decide with the operator.
 - **DONE `checkpoint <stage>`** (or the older `DONE · checkpoint: <boundary>`) → write `stage`, do
   what that stage's Orchestrator line says. No landing, no cleanup.
-- **DONE `stop <stage>`** → verify by running, in the worker's cwd: `CREW.md` › Verify, else
+- **DONE `stop <stage>`** (or an older plain `DONE`) → verify by running, in the worker's cwd: `CREW.md` › Verify, else
   `docs/HARNESS.md` › Sensors, else ask. Report the verdict against the worker's claim, and write it
   to the row with the sha it ran on. On pass: land if delegated (step 8), clean up per the card
   (step 7), and in a sequence start the next unit (step 8).
