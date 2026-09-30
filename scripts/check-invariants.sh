@@ -153,11 +153,11 @@ else
     done
   fi
 
-  # the frontmatter description: "the worker's four reports (…), the orchestrator's X and Y"
+  # the frontmatter description: "the worker's four reports (…), the orchestrator's X, Y and Z"
   desc_w=$(sed -nE "s/.*the worker's ([a-z]+) reports \(([^)]*)\).*/\1|\2/p" <<< "$fm")
-  desc_o=$(sed -nE "s/.*the orchestrator's ([A-Z-]+) and ([A-Z-]+).*/\1 \2/p" <<< "$fm")
+  desc_o=$(sed -nE "s/.*the orchestrator's (([A-Z-]+, )*[A-Z-]+) and ([A-Z-]+).*/\1 \3/p" <<< "$fm" | tr -d ',')
   if [ -z "$desc_w" ] || [ -z "$desc_o" ]; then
-    reworded "$SKILL/SKILL.md" "the description's \"the worker's N reports (…), the orchestrator's X and Y\""; kinds_ok=0
+    reworded "$SKILL/SKILL.md" "the description's \"the worker's N reports (…), the orchestrator's X, Y and Z\""; kinds_ok=0
   else
     listed=$(tr -d ' ' <<< "${desc_w#*|}" | tr ',' '\n' | LC_ALL=C sort)
     if [ "${desc_w%%|*}" != "$(word "$nwk")" ] || [ "$listed" != "$wk" ]; then
@@ -228,6 +228,104 @@ if [ "$crew_slug" != "sed 's#/#-#g'" ]; then
   fail "$LEDGER: crewdir() slugs with '${crew_slug:-not found}', but crew dirs replace only / (sed 's#/#-#g'); don't unify it with the transcript slug"; slug_ok=0
 fi
 if [ "$slug_ok" = 1 ]; then held=$((held + 1)); fi
+
+# --- the roster format: watchdog.sh's header is the source ---------------------------------------------
+# Its roster.tsv line names the columns ("<ticket> <TAB> <worktree-path> [<TAB> <start epoch>]"). A
+# copy runs from `<ticket>` to the next comma and must name the same columns, in order. There are two
+# copies, in two files (SKILL.md's Watchdog section and ledger.md's file listing today), counted by
+# file rather than named, so a section that moves is still checked. A copy reworded out of the pattern
+# drops the count, so it can't pass on the strength of the other.
+ROSTER_COPIES=2
+cols() { grep -oE '<[a-z][a-z -]*>' | tr '\n' ' ' | sed 's/ $//'; }
+want=$(grep -E '^#[[:space:]]+roster\.tsv[[:space:]]+input:' "$WATCHDOG" | sed 's/,.*//' | cols || true)
+if [ -z "$want" ]; then
+  reworded "$WATCHDOG" "the header's 'roster.tsv    input:  <ticket> …' line"
+else
+  roster_ok=1
+  out=$(scan '<ticket>[^,]*,' "${mds[@]}")   # a failing scan aborts here (set -e), never reads as "reworded"
+  files=""   # one file per line, so a path with a space is still one file
+  while IFS=$'\t' read -r loc got; do
+    [ -n "$loc" ] || continue
+    files+="${loc%:*}"$'\n'
+    if [ "$(cols <<< "$got")" != "$want" ]; then
+      fail "$loc: the roster columns read '$(cols <<< "$got")', but $WATCHDOG's header makes them '$want'"; roster_ok=0
+    fi
+  done <<< "$out"
+  files=$(LC_ALL=C sort -u <<< "$files" | grep . || true)
+  nfiles=$(grep -c . <<< "$files" || true)
+  if [ "$nfiles" -lt "$ROSTER_COPIES" ]; then
+    reworded "$SKILL/*.md" "a roster format copy ('<ticket>' … up to a comma) in $ROSTER_COPIES files, found in $nfiles:$(tr '\n' ' ' <<< "$files" | sed 's/ $//;s/^./ &/')"
+    roster_ok=0
+  fi
+  if [ "$roster_ok" = 1 ]; then held=$((held + 1)); fi
+fi
+
+# --- ANSWER never answers an `answer: in this session only` question ---------------------------------
+# That boundary is SECURITY.md's consent-laundering scope, and it fell out of the orchestrator's side
+# twice under word-budget tightening. Three places must state it, each found by heading, not file: the
+# Orchestrator section, the Worker section, and the brief's fallback section. "State it" means one
+# sentence holding the marker, an ANSWER and a refusal (never, neither, no, not, refuse): nearness alone passed with
+# the guard sentence deleted, and a sentence without the refusal could invert the rule.
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+marker='`answer: in this session only`'
+refusal='(^|[^A-Za-z])([Nn]ever|[Nn]either|[Nn]o|[Nn]ot|[Rr]efuse)([^A-Za-z]|$)'
+# section <heading ERE> <in-fence ok: 0|1> <files...>: that section's text, one line. Fence-aware: a
+# heading-like line inside a code fence neither starts (unless allowed) nor ends a section begun
+# outside it, and a section begun inside a fence ends where that fence closes. The brief's fallback
+# lives inside the template's ````markdown fence, and the template also embeds an "## Orchestrator".
+section() {
+  LC_ALL=C awk -v h="$1" -v ok="$2" '
+    FNR == 1 {w = 0; f = 0}
+    /^(```|~~~)/ {
+      match($0, /^(`+|~+)/); run = substr($0, 1, RLENGTH)
+      if (!f) {f = 1; frun = run}
+      else if (substr(run, 1, 1) == substr(frun, 1, 1) && length(run) >= length(frun)) {
+        f = 0; if (w && wf) {w = 0; next}
+      }
+      if (w) print; next
+    }
+    /^#+ / {
+      n = index($0, " ") - 1
+      if (w && f == wf && n <= lvl) w = 0
+      if (!w && $0 ~ h && (!f || ok)) {w = 1; lvl = n; wf = f; next}
+    }
+    w' "${@:3}" | tr '\n' ' ' | tr -s ' '
+}
+# sentence_with <text> <fixed string>... : 0 when one sentence holds every string and a refusal
+sentence_with() {
+  local sentences; sentences=$(tr '.' '\n' <<< "$1"); shift
+  while [ $# -gt 0 ]; do sentences=$(grep -F -- "$1" <<< "$sentences" || true); shift; done
+  grep -qE -- "$refusal" <<< "$sentences"
+}
+# section_rule <what the rule says> <strings> -- <in-fence ok>|<heading ERE>...: every section states the
+# rule; one held invariant when all do. Presence, not meaning: a string check pins that the sentence is
+# there, and reviewers judge what it says.
+section_rule() {
+  local says=$1 strings=() spec where text ok=1; shift
+  while [ "$1" != -- ]; do strings+=("$1"); shift; done; shift
+  for spec in "$@"; do
+    where=${spec#*|}
+    text=$(section "$where" "${spec%%|*}" "${mds[@]}")
+    if [ -z "$text" ]; then
+      reworded "$SKILL/*.md" "a section headed '$where'"; ok=0
+    elif ! sentence_with "$text" "${strings[@]}"; then
+      fail "$SKILL/*.md: the section headed '$where' no longer says, in one sentence, that $says"; ok=0
+    fi
+  done
+  if [ "$ok" = 1 ]; then held=$((held + 1)); fi
+}
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+section_rule "ANSWER never answers an $marker question" "$marker" ANSWER -- \
+  '0|^#+ Orchestrator[[:space:]]*$' '0|^#+ Worker[[:space:]]*$' '1|^#+ If the `crew` skill is unavailable'
+
+# --- a relayed answer is never consent for a tool-permission prompt or a gated action ---------------------
+# The same scope. The contract's input invariant, the Worker section and the brief's fallback each say it
+# in one sentence holding "consent", "tool-permission", "gate" and a refusal ("consent" keeps Worker step
+# 5's ANSWER sentence, which names both but grants nothing, from standing in for the RELAY rule).
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+section_rule "a relayed answer is never consent for a tool-permission prompt or a gated action" \
+  consent tool-permission gate -- \
+  '0|^#+ The contract' '0|^#+ Worker[[:space:]]*$' '1|^#+ If the `crew` skill is unavailable'
 
 if [ "$fails" -gt 0 ]; then
   printf '✖ %d restated value(s) drifted; CLAUDE.md › Invariants that span files lists every copy\n' "$fails" >&2

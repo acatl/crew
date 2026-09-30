@@ -525,6 +525,33 @@ run --no-commit 2; rc=$?                         # positive control for 54g
 if [ "$rc" = 0 ] && grep -q "since it went active" "$ROOT/out"
 then ok "54h same fixture fires once it is past --no-commit"; else bad "54h re-dispatch control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 
+# The roster start (column 3) floors the clock. The stretch alone misses a clock an earlier worker on
+# the same ticket and worktree left in active.tsv: cleanup keeps that file, and a sighting inside
+# --interval + 15 min keeps the stretch, so a re-dispatch inherits it and fires minutes in.
+inherited() { n=$(date +%s); printf '#1\t%s\t%s\t%s\n' "$WT" $((n - 5400)) $((n - 60)) > "$CREW/active.tsv"; }
+started()   { printf '#1\t%s\t%s\n' "$WT" "$1" > "$CREW/roster.tsv"; }
+reset; active; inherited; started $((n - 30))
+if silent
+then ok "54i a worker started 30s ago doesn't inherit a stretch left in active.tsv"; else bad "54i start column" "fired: $(cat "$ROOT/out" "$ROOT/err")"; fi
+reset; inherited; roster1
+run; rc=$?                                       # control for 54i: without the start, it fires
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 9[0-9] min since it went active" "$ROOT/out"
+then ok "54j same fixture with no start fires on the inherited stretch"; else bad "54j no-start control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+reset; inherited; started $((n - 30))
+run --no-commit 2; rc=$?                         # control for 54i: with the start, once past it
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 0 min since it started" "$ROOT/out"
+then ok "54k same fixture fires once the started worker is past --no-commit"; else bad "54k start control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+seed_commit 10800; reset; started $(( $(date +%s) - 7200 ))
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 1[12][0-9] min since it started" "$ROOT/out"
+then ok "54l a worker started 2h ago on a 3h-old head is timed from its start"; else bad "54l start clock" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+seed_commit 7200; reset; started $(( $(date +%s) + 3600 ))
+run; rc=$?                                       # a future start would hold trigger 1 off forever
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: active but no commit for 12[0-9] min (head" "$ROOT/out" \
+   && [ "$(grep -c "roster start for #1 is not a past epoch" "$ROOT/err" | tr -d ' ')" = 1 ]
+then ok "54m a future start is ignored, warned once, and HEAD's clock fires"; else bad "54m future start" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+roster1
+
 # A ticket id with a backslash keeps its clock (awk -v would unescape it and never find the row).
 reset; printf 'T\\q\t%s\n' "$WT" > "$CREW/roster.tsv"
 run --no-commit 2; rc=$?

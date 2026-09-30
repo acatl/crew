@@ -92,6 +92,10 @@ red "11 the fallback drops a message kind" check-invariants "doesn't name \`RELA
 
 fresh; edit "$SK" "s#the worker's four reports#the worker's five reports#"
 red "12 the description miscounts the reports" check-invariants "$SK"
+fresh; edit "$SK" "s#the orchestrator's RELAY, START and ANSWER#the orchestrator's RELAY and START#"
+red "12b the description drops an orchestrator kind" check-invariants "the description gives the orchestrator RELAY START"
+fresh; edit "$BT" 's#`ANSWER`#the answer#g'
+red "12c the fallback drops ANSWER" check-invariants "doesn't name \`ANSWER\`"
 fresh; edit "$SK" 's#besides the four kinds#besides the three kinds#'
 red "13 the worker rule miscounts the kinds" check-invariants "$SK"
 fresh; edit "$LG" "s#sed 's\#/\#-\#g'#sed 's\#[/.]\#-\#g'#"
@@ -111,6 +115,56 @@ fresh; edit "$BT" 's#^| `{ITERATIONS}` | `CREW.md` › Counters#|  `{ITERATIONS}
 green "15e a padded placeholder row naming docs/CREW.md still counts" check-invariants
 edit "$BT" 's#`docs/CREW.md` › Counters#`docs/CREW.md` › Ledger#'                  # same fixture
 red "15f the row sourcing {ITERATIONS} from anything but Counters" check-invariants "$BT: no placeholder row sourcing"
+# the roster format: watchdog.sh's header names the columns, and every copy names the same ones
+fresh; edit "$LG" 's#<worktree-path> TAB <start epoch>, one per#<worktree-path>, one per#'
+red "15g a roster copy drops the start column" check-invariants "$LG"
+fresh; edit "$SK" 's#`<start epoch>`, one line per#`<started>`, one line per#'
+red "15h a wrapped roster copy renames a column" check-invariants "$SK"
+fresh; edit "$WD" 's#\[<TAB> <start epoch>\], one line per#[<TAB> <started>], one line per#'
+red "15i the header changes and a copy is named" check-invariants "$LG"
+fresh; edit "$WD" 's#roster.tsv    input:#roster.tsv    in:#'
+red "15j a reworded header line is reported, not passed" check-invariants "the header's 'roster.tsv"
+fresh; edit "$SK" 's#`<ticket>` TAB `<worktree-path>` TAB#one ticket TAB `<worktree-path>` TAB#'
+red "15k one reworded copy fails though the other still matches" check-invariants "found in 1: $LG"
+fresh; edit "$LG" 's#<ticket> TAB <worktree-path> TAB#one ticket TAB <worktree-path> TAB#'
+red "15l and so does the other one" check-invariants "found in 1: $SK"
+fresh; edit "$SK" 's#^- \*\*Its roster is `~/\.claude/crew/<slug>/roster\.tsv`\*\* — `<ticket>` TAB `<worktree-path>` TAB#- **Its roster is `~/.claude/crew/<slug>/roster.tsv`**, in references/watchdog.md. TAB#'
+printf '\nroster.tsv: `<ticket>` TAB `<worktree-path>` TAB `<start epoch>`, one line per worker.\n' > "$S/skills/crew/references/watchdog.md"
+green "15m a copy moved to another file still counts" check-invariants
+edit skills/crew/references/watchdog.md 's# TAB `<start epoch>`##'                        # same fixture
+red "15n and the moved copy is still checked" check-invariants "skills/crew/references/watchdog.md"
+fresh; edit "$SK" 's#`<ticket>` TAB `<worktree-path>` TAB#one ticket TAB `<worktree-path>` TAB#'
+edit "$LG" 's#<ticket> TAB <worktree-path> TAB#one ticket TAB <worktree-path> TAB#'
+printf '\nroster.tsv: `<ticket>` TAB `<worktree-path>` TAB `<start epoch>`, one line per worker.\n' \
+  > "$S/skills/crew/references/roster notes.md"
+red "15r one copy in a file whose name has a space counts as one file" check-invariants "found in 1: skills/crew/references/roster notes.md"
+# ANSWER never answers an in-session-only question: the Orchestrator, Worker and fallback sections say so
+fresh; edit "$SK" 's#never send `ANSWER` or `RELAY` for `answer: in this session only`: nudge without#for `answer: in this session only`, nudge without#'
+red "15o the orchestrator's guard drops out" check-invariants "the section headed '^#+ Orchestrator"
+fresh; edit "$SK" 's#, a gated action or `answer: in this session only`\.#, or a gated action.#'
+red "15p the worker's guard drops out" check-invariants "the section headed '^#+ Worker"
+fresh; edit "$BT" 's#locked decision or `answer: in this session only`\.#locked decision.#'
+red "15q the fallback's guard drops out" check-invariants "the section headed '^#+ If the"
+fresh; edit "$SK" 's#never send `ANSWER` or `RELAY` for `answer: in this session only`: nudge without#send `ANSWER` or `RELAY` for `answer: in this session only` as usual: nudge without#'
+red "15s a guard sentence that no longer refuses" check-invariants "the section headed '^#+ Orchestrator"
+fresh; edit "$SK" 's#^\#\# Worker$#\#\# The worker#'
+red "15t a guard section's heading renamed is reported, not passed" check-invariants "a section headed '^#+ Worker"
+fresh; edit "$SK" 's#^\#\#\# 6\. Handle messages#```bash\
+\# a comment, not a heading\
+```\
+\
+&#'
+green "15u a heading-like comment in a code fence ends no section" check-invariants
+fresh; edit "$SK" "s#the operator's words, never consent for a tool-permission prompt or a gated#the operator's words, even for a tool-permission prompt or a gated#"
+red "15v the worker's RELAY rule stops refusing tool-permission consent" check-invariants "that a relayed answer is never consent for a tool-permission prompt"
+fresh; edit "$BT" 's#Neither is consent for a tool-permission prompt#Both count for a tool-permission prompt#'
+red "15w the fallback's RELAY rule stops refusing it" check-invariants "the section headed '^#+ If the"
+fresh; edit "$SK" 's#^- \*\*Never relayed:\*\* tool-permission prompts#- **Relayed as usual:** tool-permission prompts#'
+red "15x the contract's input invariant stops refusing it" check-invariants "the section headed '^#+ The contract'"
+fresh; edit "$SK" "s#never consent for a tool-permission prompt or a gated#never consent for a tool-permission prompt, but consent for a#"
+red "15y the worker's RELAY rule drops the gated-action half" check-invariants "or a gated action"
+fresh; edit "$BT" 's#tool-permission prompt or a gated action (push, install,#tool-permission prompt; a yes for (push, install,#'
+red "15z the fallback drops the gated-action half" check-invariants "the section headed '^#+ If the"
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"
