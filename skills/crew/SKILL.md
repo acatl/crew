@@ -249,19 +249,19 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   re-subscribe. Check its tail on any other notice (`list_events`, limit 6), in order:
   - a final `waiting: <what>[, until <time>]` line → **waiting**, not stopped: no nudge. The watchdog
     can't see an idle worker: for an `until`, arm a background `sleep` to it plus 10 minutes
-    (*Monitors*). It ends → a later `until` in its tail: re-arm; no activity since: do what its
-    workflow's stage says, else tell the operator.
-  - a `send_message` in its last turn → the report is in flight (the notice can beat it): wait.
-  - neither → it stopped without reporting: tell the operator what it's sitting on.
+    (*Monitors*). Its end is an idle notice, but with no activity since: do what its workflow's stage
+    says, else tell the operator.
+  - a report in its last turn → not yet here: in flight (the notice can beat it), wait; here and
+    waiting on you (`NEED-INPUT`, `BLOCKED`, `DONE` `stop`, a clear): nothing more.
+  - else → it stopped without reporting: tell the operator what it's sitting on.
 
-**Subscribing.** Subscribe at `ONLINE`, after each message you send a worker, and at a stale notice,
-only while `ListAgents` shows it busy: an idle one fires at once. Yet to start on your message → arm a
-background `sleep 60` (*Monitors*, with its count), its end an idle notice; at the third, tell the
-operator. Idle otherwise → handle as an idle notice. Resolve its title fresh each time; never reuse
-one. Call `get_session(<worker sessionId>)`, then `SendMessage(to: "<title> [ref]", notify_when_idle: true)`
-with no message, the `[ref]` from its `ListAgents` row. "Not reachable" → the title changed: resolve
-again; still so (seen after a clear) → retry at its next activity. Use the title, never the id: it's
-refused (*Gotchas*).
+**Subscribing.** Subscribe at a ready `ONLINE`, after each message you send a worker, and at a stale
+notice, only while `ListAgents` shows it busy: an idle one fires at once. Run a background `sleep 60`
+(*Monitors*) for one yet to start on your message; still so at its end → tell the operator. Idle
+otherwise → handle as an idle notice. Resolve its title fresh; never reuse one. Call
+`get_session(<worker sessionId>)`, then `SendMessage(to: "<title> [ref]", notify_when_idle: true)` with
+no message, `[ref]` from `ListAgents`. "Not reachable" → resolve again; still so (seen after a clear) →
+retry at its next activity. Use the title, never the id: it's refused (*Gotchas*).
 
 **Monitors.** Record every watch you set (the *Watchdog* below, a CI poller, anything recurring) in the
 ledger's `Monitors` while it runs, and remove the line when it ends. A compacted orchestrator otherwise
@@ -415,8 +415,8 @@ You were spawned by an orchestrator. Your brief is your first message. You remem
    work, `BLOCKED`. Confirm `git rev-parse HEAD` is that sha. Then apply the brief's branch rule
    (`git branch -m <name>`) and worktree setup. You're already in a fresh worktree on a `claude/…`
    branch; never create another one. The app reuses worktree dirs, so a ledger already at
-   `$(git rev-parse --git-dir)/crew-ledger.md` before you write yours is an earlier worker's, even on
-   your ticket: `mv -n` it to `crew-ledger.$(date +%s).md`; never read it.
+   `$(git rev-parse --git-dir)/crew-ledger.md` is an earlier worker's unless a resume names it as
+   yours: `mv -n` it to `crew-ledger.$(date +%s).md`; never read it.
 3. **Work your workflow.** Read the file your brief names, in full, and follow it with your parameters;
    a resume names where to pick up. No workflow named in your
    brief → your brief's Job/Spec, Boundaries and Checkpoints are the workflow; follow them as written.
