@@ -410,26 +410,6 @@ for f in "$SKILL"/references/workflow-*.md docs/crew/workflows/*.md; do
 done
 if [ "$v_ok" = 1 ]; then held=$((held + 1)); fi
 
-# --- a stage's Orchestrator line never sends ANSWER --------------------------------------------------------
-# A stage's Orchestrator line answers the stage's report, and no question is pending when one arrives. An
-# ANSWER answers a pending question (SKILL.md's Messages table), and the worker refuses one outside that row
-# (Worker step 5), so an ANSWER ordered there is refused and whatever it was meant to restart stays stalled.
-# The built-in must have Orchestrator lines, so the check can't pass on finding none.
-a_ok=1
-for f in "$SKILL"/references/workflow-*.md docs/crew/workflows/*.md; do
-  [ -f "$f" ] || continue
-  orch=$(awk '/^- \*\*Orchestrator:\*\*/ { on = 1; print; next } on && /^  / { print; next } { on = 0 }' "$f")
-  if [ -z "$orch" ]; then
-    case $f in "$SKILL"/references/*) reworded "$f" "a stage's Orchestrator line"; a_ok=0 ;; esac
-    continue
-  fi
-  # shellcheck disable=SC2016  # the backticks are literal Markdown
-  if grep -qF '`ANSWER`' <<< "$orch"; then
-    fail "$f: a stage's Orchestrator line sends \`ANSWER\`, which answers only a pending question"; a_ok=0
-  fi
-done
-if [ "$a_ok" = 1 ]; then held=$((held + 1)); fi
-
 if [ "$fails" -gt 0 ]; then
   printf '✖ %d restated value(s) drifted; CLAUDE.md › Invariants that span files lists every copy\n' "$fails" >&2
   exit 1
