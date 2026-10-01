@@ -60,8 +60,8 @@ orchestrator's memory. Everything you need is here, in the ticket, or in your wo
 {SPEC}
 
 ## Boundaries
-- Base: `{BASE}` at `{BASE_SHA}`; the app may have cut you elsewhere. Unless this brief has a
-  `## Resume` section, re-point first (crew skill › *Worker* step 2).
+- Base: `{BASE}` at `{BASE_SHA}`. The app may have cut you elsewhere. Re-point first
+  (crew skill › *Worker* step 2), and confirm `git rev-parse HEAD` is `{BASE_SHA}`.
 - Branch: {BRANCH_RULE}
 - Worktree setup: {SETUP}
 - {STANDING}

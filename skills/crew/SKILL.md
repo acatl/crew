@@ -242,17 +242,18 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   without its brief, hedges or invents (seen repeatedly). First confirm the clear (`list_events`: idle,
   no messages; a resume sent earlier queues behind it). The resume carries the brief, any START
   (`briefs/<row>-start.md`), the approved plan's path, the worker's ledger path, facts learned since the
-  brief (an environment quirk, a throttle, an operator call), and any message still pending, under a
-  `## Resume` heading. Reset its roster start epoch.
+  brief (an environment quirk, a throttle, an operator call), and any message still pending. Reset
+  its roster start epoch.
 - **Idle notice** → ignore it for a worker that's queued, landed or archived (exits fire notices
   too). One busy now (`ListAgents`) or yet to start on your last message is stale (*Gotchas*): see
   *Subscribing*. Check its tail on any other notice (`list_events`, limit 6), in order:
   - a final `waiting: <what>[, until <time>]` line → **waiting**: no nudge. Keep one background
     `sleep` per worker (*Monitors*), since the watchdog can't see an idle one: to the `until` plus 10
     minutes, else 30, a later one replacing it. Check at its end for activity since you armed it: any
-    → an idle notice; none → tell the operator once what it still waits on, and arm none until it acts.
-  - a report in its last turn → not yet here: in flight (the notice can beat it), wait. Here: its kind's
-    handling covers the notice. Check it didn't idle after a `checkpoint` with no clear: tell the operator.
+    → an idle notice; none → tell the operator once what it waits on; re-arm at its next report.
+  - a report in its last turn → not yet here: in flight (the notice can beat it); wait, then judge it
+    as here. Here: its kind's handling covers the notice. Check it didn't idle after a `checkpoint`
+    with no clear: tell the operator.
   - else → it stopped without reporting: tell the operator what it's sitting on.
 
 **Subscribing.** Subscribe at a ready `ONLINE`, after each message you send a worker, and at a stale
@@ -410,11 +411,10 @@ You were spawned by an orchestrator. Your brief is your first message. You remem
 
    **Queued → end your turn now.** Don't set up, read the repo's docs, or look at the code: all of it
    will be stale by the time you start. When `START` arrives, run the *START steps* below.
-2. **Set up.** First the base, guarded, unless your brief has a `## Resume` section: if
-   `git status --porcelain` is empty and your branch carries no work of yours, run
-   `git switch -C "$(git branch --show-current)" <brief's base sha>`; if it carries work, `BLOCKED`.
-   Confirm `git rev-parse HEAD` is that sha. Then apply the brief's branch rule (`git branch -m <name>`)
-   and worktree setup; never create another worktree. Move a ledger already at
+2. **Set up.** First the base, guarded: if `git status --porcelain` is empty and your branch carries no
+   work of yours, run `git switch -C "$(git branch --show-current)" <brief's base sha>`; if it carries
+   work, `BLOCKED`. Confirm `git rev-parse HEAD` is that sha. Then apply the brief's branch rule
+   (`git branch -m <name>`) and worktree setup; never create another worktree. Move a ledger already at
    `$(git rev-parse --git-dir)/crew-ledger.md` onto `mktemp <that dir>/crew-ledger.XXXXXX` unless a
    resume names it as yours: the app reuses worktree dirs, so it's an earlier worker's. Never read it.
 3. **Work your workflow.** Read the file your brief names, in full, and follow it with your parameters;
