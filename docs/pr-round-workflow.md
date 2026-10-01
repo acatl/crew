@@ -54,7 +54,9 @@ are context the next round needs.
   worker runs the next round from § 0.
 - **A round with nothing to fix pushes nothing.** When § Stopping's conditions look met, the worker
   reports `merge bar met` with `verify` on the head after `git fetch origin main`, CI, open threads
-  and `mergeStateStatus`; otherwise a clean `checkpoint round`.
+  and `mergeStateStatus`; otherwise a clean `checkpoint round` naming the condition that fails,
+  which goes to the operator (§ Stopping). An unchanged head draws no new review, so the worker
+  never waits for one.
 - **The worker merges only on the coordinator's go**, never on its own reading of the PR (§
   Stopping › Merging).
 - **CodeRabbit reviews rounds 1–3 only; from round 4 it is paused by label.** Just BEFORE
@@ -326,6 +328,7 @@ itself, by running, never from the worker's report:
 2. **Enough review rounds.** At least **two** completed rounds (the opening review and the review
    of the round-1 push). CodeRabbit has reviewed the current head, or the PR carries
    `dont-review` and CodeRabbit reviewed every push before it. No valid finding is still open.
+   A clean opening round has no round-1 push, so it never reaches two: it goes to the operator.
 3. **Every thread dispositioned** (fixed, declined on the merits, deferred with the operator's
    yes, or merge-and-carry), each with its reply, and resolved.
 
