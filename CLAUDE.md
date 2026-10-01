@@ -147,6 +147,10 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
 - **A workflow's `verify` falls back as the orchestrator's does.** The source is SKILL.md's
   ``DONE `stop <stage>` `` bullet; every workflow's `verify` default names the same sources. *Checked*,
   and the built-in must carry the row.
+- **Every brief state is handled on both sides.** The brief's marker line carries `state=` (`ready`,
+  `queued`, or `resume` for a re-send after a clear); the brief template's `{STATE}` row is the source.
+  *Checked*: SKILL.md's Orchestrator and Worker sections each name every value (`state: <v>` or
+  `state=<v>`), and the brief's fallback section names every value but the first.
 - **Every workflow file has the orchestrator's shape** (frontmatter `name` = file name, and
   `description`; Parameters, Stages, Rules in order; each stage's Ends, Report, Orchestrator; exactly
   one `stop`). *Checked* by `check-structure.sh`, over the built-in and `docs/crew/workflows/`.

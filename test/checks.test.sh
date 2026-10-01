@@ -216,6 +216,22 @@ fresh; edit "$PR" '/^| `verify` |/d'
 green "15dm a project workflow may leave verify out" check-invariants
 edit "$WS" '/^| `verify` |/d'                                                            # same fixture
 red "15dn but the same fixture fails once the built-in drops it" check-invariants "the \`verify\` parameter row not found"
+# every brief state is handled on both sides: the brief template's {STATE} row is the source
+fresh; edit "$SK" 's#^A brief marked `state=resume` is a resume#A resumed brief is a resume#'
+red "15do the Worker section stops handling a resume" check-invariants "handles no brief state 'resume'"
+fresh; edit "$SK" 's#the saved brief with `state=resume` in its#the saved brief with a resume flag in its#'
+red "15dp so does the Orchestrator's resume" check-invariants "^#+ Orchestrator[[:space:]]*\$' handles no brief state 'resume'"
+fresh; edit "$BT" 's#unless `resume`: then#unless resumed: then#'
+red "15dq the brief's fallback stops telling a resume apart" check-invariants "the fallback section handles no brief state 'resume'"
+fresh; edit "$BT" 's#^| `{STATE}` |#| `{STATUS}` |#'
+red "15dr a reworded {STATE} row is reported, not passed" check-invariants "the {STATE} placeholder row not found"
+fresh; edit "$BT" 's#^| `{STATE}` | `ready`, `queued`, or#| `{STATE}` | `ready`, `queued`, `paused`, or#'
+edit "$SK" 's#^  `state: queued` → status `queued`\.#  `state: queued` or `state: paused` → status `queued`.#'
+edit "$SK" 's#^A brief marked `state=resume` is a resume#A brief marked `state=resume` (not `state=paused`) is a resume#'
+edit "$BT" 's#If queued, end your#If queued or paused, end your#'
+green "15ds a new state handled in all three places passes" check-invariants
+edit "$BT" 's#If queued or paused, end your#If queued, end your#'                           # same fixture
+red "15dt and the same fixture fails once the fallback drops it" check-invariants "the fallback section handles no brief state 'paused'"
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"

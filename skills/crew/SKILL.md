@@ -59,7 +59,7 @@ Orchestrator → worker, same tool, to the worker's sessionId:
 | `START` | a queued worker's turn has come | `base <sha>` in the first line, then the Job section its queued brief left out, written from the current landed state. It replaces the brief's Job section. Its authority is the operator's `go` on the queue card. |
 | `ANSWER` | a worker's pending question is clear-cut and the operator delegated such picks to the orchestrator | the orchestrator's own answer, labelled as its own. Only a routing or stage pick that follows from recorded decisions, or an answer whose effect is inside the brief's grant. Never a hard-floor answer, a consent card, a real tradeoff, or a locked-decision change: those stay the operator's. The worker records it with its source ("orchestrator, under the operator's standing delegation"), never as the operator's words. |
 
-Nothing else crosses. No progress narration, no "starting now", no worker-to-worker messages.
+Besides the brief and its resume (step 6), nothing else crosses. No progress narration, no "starting now", no worker-to-worker messages.
 
 ### The input invariant
 
@@ -240,10 +240,11 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 - **A worker reports it cleared (or is clearing) its own context** → status `cleared`,
   `owed: resume not sent`. Send the resume **immediately**, even when the next step is only waiting: a
   worker woken by anything else, without its brief, hedges or invents (seen repeatedly). First confirm
-  the clear (`list_events`: idle, no messages; a resume sent earlier queues behind it). The resume
-  carries the brief, any START (`briefs/<row>-start.md`), the approved plan's path, the worker's ledger
-  path, facts learned since the brief (an environment quirk, a throttle, an operator call), and any
-  message still pending. Reset its roster start epoch.
+  the clear (`list_events`: idle, no messages; a resume sent earlier queues behind it). The resume is
+  the saved brief with `state=resume` in its marker line and any START's Job (`briefs/<row>-start.md`)
+  in its Job section, ending in a `## Resume` section: where to pick up, the approved plan's path, the
+  worker's ledger path, facts learned since the brief (an environment quirk, a throttle, an operator
+  call), and any message still pending. Reset its roster start epoch.
 - **Idle notice** → ignore it for a worker that's queued, verified, landed or archived (exits fire
   notices too). One busy now (`ListAgents`), yet to start on your last message, or for a turn that
   ended before you sent it (`list_events` times) is stale (*Gotchas*): see *Subscribing*. Check its
@@ -406,6 +407,8 @@ don't message workers to ask.
 ## Worker
 
 You were spawned by an orchestrator. Your brief is your first message. You remember nothing else.
+A brief marked `state=resume` is a resume: you cleared earlier. Send no `ONLINE`, skip step 2's base
+step and the *START steps* (your commits are your work), and continue at step 3 where `## Resume` says.
 
 1. **ONLINE.** `mcp__ccd_session_mgmt__get_session("self")` → your sessionId. Send `ONLINE` to the
    orchestrator's sessionId with `state: ready` if your brief has a Job section, or `state: queued` if
