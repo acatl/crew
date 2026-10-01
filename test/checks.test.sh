@@ -193,7 +193,7 @@ edit docs/pr-round-workflow.md 's#, tells the worker to merge\.#, tells the work
 red "15dc no merge sentence at all fails, never passes" check-invariants "a sentence that tells the worker to merge not found"
 fresh; rm "$S/docs/pr-round-workflow.md"
 red "15dd a missing round procedure is reported, not skipped" check-invariants "docs/pr-round-workflow.md: the file not found"
-fresh; edit "$PR" 's#^  Met, with no#  (See CREW.md › Integration.) Met, with no#'
+fresh; edit "$PR" 's#on the card (#on the card, per docs/CREW.md (#'
 green "15de a dotted name inside the sentence doesn't split it" check-invariants
 edit "$PR" 's#with no `landing: operator` on#with no `landing: delegated` on#'              # same fixture
 red "15df and the same fixture still fires on a missing withhold" check-invariants "$PR: tells the worker to merge without naming"

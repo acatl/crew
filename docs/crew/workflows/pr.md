@@ -85,21 +85,23 @@ round 3's push. A round with nothing to fix is a clean round: no push, no label,
 it ends as `docs/pr-round-workflow.md` › Who runs the rounds says. Repeat when the next reviews wake
 you, within `rounds`, a late review on an unchanged head included.
 
-- **Ends:** the round's push is up and its threads are dispositioned, or the round settled clean.
+- **Ends:** the round's push is up and its threads are dispositioned, or the round settled clean
+  with its declines replied to and resolved.
 - **Report:** `checkpoint round`: round, sha, push time, fixed, declined, CI state, silent
-  reviewers. A clean round that meets `docs/pr-round-workflow.md` › Stopping › Merging's conditions
-  reports `merge bar met`, with `verify` on the head after `git fetch origin main`, CI, open threads
-  and `mergeStateStatus`, and ends its turn with `waiting: the merge`. One that misses them sends
-  `NEED-INPUT` marked `answer: in this session only` instead, naming the condition.
-- **Orchestrator:** verifies the sha. On `merge bar met` it checks the written merge rule itself.
+  reviewers. A clean round, once CI has concluded, checks `docs/pr-round-workflow.md` › Stopping ›
+  Merging's conditions itself and adds `merge bar met` or the one that fails, with `verify` on the
+  head after `git fetch origin main`, CI, open threads and `mergeStateStatus`. It ends its turn
+  with `waiting: the merge`.
+- **Orchestrator:** verifies the sha. On a clean round it checks the written merge rule itself.
   Met, with no `landing: operator` on the card (`CREW.md` › Integration `mode: pr` delegates the
   rest), it tells the worker to merge. Met under that override, it tells the operator the PR is
-  ready; missed, it tells the operator which condition fails. It handles the operator's merge
-  (`prState: MERGED`) as `stop merge`. When its timer for the worker's latest `until` fires
-  (SKILL.md › Idle notice) with no activity since, the worker still waiting on reviewers →
-  `ANSWER`: "the window passed, run the round", a stage pick from this written rule.
-- **Clears:** after a push, yes, monitor off first. Not after a clean round or at `merge bar met`:
-  one step from the stop.
+  ready; missed, it tells the operator which condition fails, and a merge despite it is the
+  operator's own (`docs/pr-round-workflow.md` › Merging), never relayed. It handles the
+  operator's merge (`prState: MERGED`) as `stop merge`. When its timer for the worker's latest
+  `until` fires (SKILL.md › Idle notice) with no activity since, the worker still waiting on
+  reviewers → `ANSWER`: "the window passed, run the round", a stage pick from this written rule.
+- **Clears:** after a push, yes, monitor off first. Not after a clean round: one step from the
+  stop.
 
 ### merge
 

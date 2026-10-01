@@ -53,17 +53,13 @@ are context the next round needs.
   the coordinator: round number, commit sha, push time, what was fixed and what was declined, CI
   state, silent reviewers. That is a checkpoint, not an exit: when the next reviews land, the same
   worker runs the next round from § 0.
-- **A round with nothing to fix pushes nothing.** The worker checks § Stopping › Merging's three
-  conditions and `mergeStateStatus` itself:
-  - all met → it reports `merge bar met` with `verify` on the head after `git fetch origin main`,
-    CI, open threads and `mergeStateStatus`, and ends the turn with `waiting: the merge`;
-  - `BEHIND` or a conflict → the sync push (§ Merging) is this round's push;
-  - any other condition fails (a clean opening round, for one, has no round-1 push) → `NEED-INPUT`
-    marked `answer: in this session only`, naming it: a merge outside the written rule is a Hard
-    Gate, and another review is the operator's call.
-
-  A review that lands later on the same head starts the next round at § 1: its reviewer has
-  posted, and its report supersedes any pending question.
+- **A round with nothing to fix pushes nothing**, but still replies to and resolves what it
+  declined (§ 8). Once CI has concluded, the worker checks § Stopping › Merging's three conditions
+  itself and reports a clean `checkpoint round`: `merge bar met` when all three hold, else the one
+  that fails (a clean opening round has no round-1 push). Either way it adds `verify` on the head
+  after `git fetch origin main`, CI, open threads and `mergeStateStatus`, and ends the turn with
+  `waiting: the merge`. A review that lands later on the same head starts the next round: § 0's
+  window has long passed.
 - **The worker merges only on the coordinator's go**, never on its own reading of the PR (§
   Stopping › Merging).
 - **CodeRabbit reviews rounds 1–3 only; from round 4 it is paused by label.** Just BEFORE
@@ -321,7 +317,7 @@ gh api graphql -f query='{repository(owner:"acatl",name:"crew"){pullRequest(numb
 ```
 
 Reviewers spent, threads dispositioned, CI green, and `reviewDecision` not blocking → the PR is
-ready. Report it and stop; the coordinator takes it from there.
+ready. Report it and wait (§ Who runs the rounds); the coordinator takes it from there.
 
 ### Merging — the operator's standing rule
 
@@ -352,4 +348,5 @@ start of the next round when one is due (never mid-round), otherwise as a sync p
 fixes. The conditions above are checked again on the new head.
 
 Any condition that fails, or any other reviewer's blocking verdict, goes to the operator. It is
-never a reason to dismiss more or to push again.
+never a reason to dismiss more or to push again. A merge despite it is the operator's own: by hand,
+or in the worker's session as a Hard Gate, never relayed.
