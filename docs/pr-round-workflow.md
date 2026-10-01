@@ -89,8 +89,9 @@ Starting on the first one spends a push on a partial round.
 acatl/crew#4 (2026-09-30) Codex and Copilot never reviewed the round-2 push, and the PR sat idle for
 12 hours. So on entering the round, after a resume too, arm a settle timer: a background command
 (the Bash tool's `run_in_background`) that exits when either condition below holds. Its exit starts
-the round, unless a reviewer says it is still working: then re-arm it and keep waiting. Record each
-push's time in the ledger and the `DONE`; after a resume the window is measured from it.
+the round, unless a reviewer says it is still working on the current head: then re-arm it once, to
+20 minutes from then. Record each push's time in the ledger and the `DONE`; after a resume the
+window is measured from it.
 
 Roster: `coderabbitai`, `copilot-pull-request-reviewer`, `chatgpt-codex-connector`. Settle
 window: 20 min. From round 4 the roster is Copilot and Codex only (CodeRabbit is paused by
@@ -115,7 +116,8 @@ Compare each roster login's latest review `commit.oid` against `headRefOid`.
   early; the window is the real bound.
 - **Window passed with no review → settled.** Triage what exists (threads, review bodies, CI) and
   name the silent reviewers in the `DONE`; never wait on one past the window.
-- **A reviewer saying it is still working keeps the window open past 20 minutes.**
+- **A reviewer saying it is still working on the current head keeps the window open 20 more
+  minutes, once.** A stale or repeated "still working" never holds the round past that.
 - **CI is outside this gate.** Judge CI separately; a red check stops the round rather than
   being fixed by it.
 - **An empty review is not a review.** A reviewer that pauses itself posts a zero-length review
