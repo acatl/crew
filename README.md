@@ -12,6 +12,29 @@ isolated review, hand off committed and verified. A project lists its own in `do
 a copy of `standard` with stages added, like this repo's `docs/crew/workflows/pr.md`. Pick one per
 spawn: `spin up a pr worker for WF2`.
 
+## Usage
+
+Say it to the session you want as the orchestrator:
+
+- `spin up a worker for <ticket>`: one worker, on the project's default workflow.
+- `spin up a <workflow> worker for <ticket>`: one worker, on a named workflow.
+- `queue workers for A → B → C`: a sequence, run one at a time in that order.
+- `crew status`: one row per worker, with any question waiting on you.
+
+The orchestrator answers with a card listing the title, workflow, scope, cleanup, landing and a
+parallel-safety check. Reply `go` to accept it, or override a line. Each worker appears as a chip;
+click it to start the session.
+
+The default workflow is the ✓ row of `docs/CREW.md` › Workflows, else the built-in `standard`.
+
+Landing follows `docs/CREW.md` › Integration's mode:
+
+- **`operator`** (the default): you land every branch.
+- **`ff-only`**: on a card's `landing: delegated`, the orchestrator fast-forwards the verified branch
+  into the base and runs Post-land.
+- **`pr`**: the worker opens a PR and merges it on the orchestrator's go, under the project's written
+  merge rule, unless the card says `landing: operator`.
+
 ## Requirements
 
 - **The Claude desktop app (Code tab).** Sessions spawn, message and archive each other through the

@@ -62,23 +62,40 @@ Push your own branch and open the PR, its body carrying what, why and risk. Bind
 review monitor (`docs/pr-round-workflow.md` › Who runs the rounds).
 
 - **Ends:** PR open, bound, monitor on.
-- **Report:** `checkpoint open`: PR URL, sha, the CLI pass's result.
+- **Report:** `checkpoint open`: PR URL, sha, push time, the CLI pass's result.
 - **Orchestrator:** records the PR and its monitor in the ledger.
 - **Clears:** yes, monitor off first and back on at the resume.
 
 ### round
 
-Wait for the reviewers to settle, then run one round per `docs/pr-round-workflow.md`: read, triage,
-sweep, fix, verify, `/code-review high` over the fix diff, one push, reply and resolve. Put
-`dont-review` on just before round 3's push. Repeat when the next reviews wake you, within `rounds`.
+**Start by arming a settle timer.** A post wakes you; a reviewer that stays silent (throttled,
+paused by label, or skipping the commit) wakes no one. So on entering the stage, after a resume too,
+start a background command (the Bash tool's `run_in_background`) that exits when every roster login
+has reviewed the head, or when the settle window measured from the push has passed (roster and
+window from `docs/pr-round-workflow.md` § 0). Its exit, not a post, starts the round. Woken by the
+monitor mid-settle → keep waiting. End each waiting turn with the line `waiting: settle timer, until
+<push time + window>`. **Window passed with no review → settled: triage what exists** (threads,
+review bodies, CI). A silent reviewer is named in the `DONE`, never waited on past the window; one
+saying it is still working keeps the window open (`docs/pr-round-workflow.md` § 0).
 
-- **Ends:** the round's push is up and its threads are dispositioned.
-- **Report:** `checkpoint round`: round, sha, fixed, declined, CI state.
+Then run one round per `docs/pr-round-workflow.md`: read, triage, sweep, fix, verify,
+`/code-review high` over the fix diff, one push, reply and resolve. Put `dont-review` on just before
+round 3's push. A round with nothing to fix is a clean round: no push, no label. Repeat when the
+next reviews wake you, within `rounds`.
+
+- **Ends:** the round's push is up and its threads are dispositioned, or the round settled clean.
+- **Report:** `checkpoint round`: round, sha, push time, fixed, declined, CI state, silent
+  reviewers. A clean round whose PR looks ready (`docs/pr-round-workflow.md` › Stopping) reports
+  `merge bar met`, with `verify` on the head after `git fetch origin main`, CI, open threads and
+  `mergeStateStatus`.
 - **Orchestrator:** verifies the sha. When the PR meets the written merge rule, and unless the card
   says `landing: operator` (`CREW.md` › Integration `mode: pr` delegates the rest), tells the worker
   to merge; else tells the operator it's ready, and handles their merge (`prState: MERGED`) as
-  `stop merge`.
-- **Clears:** yes, monitor off first.
+  `stop merge`. Its timer for the worker's `until` fires (SKILL.md › Idle notice) and the worker is
+  still waiting on reviewers past the window → `ANSWER`: "the window passed, run the round", a stage
+  pick from this written rule.
+- **Clears:** after a push, yes, monitor off first. Not after a clean round or at `merge bar met`:
+  one step from the stop.
 
 ### merge
 
