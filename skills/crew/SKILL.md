@@ -46,7 +46,7 @@ Worker → orchestrator, always with `mcp__ccd_session_mgmt__send_message` to th
 
 | Kind | Sent when | Body carries | Then the worker |
 |---|---|---|---|
-| `ONLINE` | first action after reading the brief | own sessionId, branch, mode, and `state: ready` (with its workflow and first stage) or `state: queued` | ready → proceeds · queued → ends its turn |
+| `ONLINE` | first action after reading the brief, unless it's a resume | own sessionId, branch, mode, and `state: ready` (with its workflow and first stage) or `state: queued` | ready → proceeds · queued → ends its turn |
 | `NEED-INPUT` | **before ending any turn that waits on the operator** — a gate, a fork card, a question, a plan approval | the question verbatim, the options, and `answer: here or relay` or `answer: in this session only` | ends its turn and waits |
 | `BLOCKED` | can't proceed and no answer to a question fixes it — a failure, missing setup, something the brief doesn't cover | what blocked it, where, what the fix likely needs | ends its turn and waits |
 | `DONE` | a workflow stage that reports ends | first line `checkpoint <stage>` or `stop <stage>`; branch, commit sha, verify result | checkpoint → goes on · stop → stops |
@@ -59,7 +59,7 @@ Orchestrator → worker, same tool, to the worker's sessionId:
 | `START` | a queued worker's turn has come | `base <sha>` in the first line, then the Job section its queued brief left out, written from the current landed state. It replaces the brief's Job section. Its authority is the operator's `go` on the queue card. |
 | `ANSWER` | a worker's pending question is clear-cut and the operator delegated such picks to the orchestrator | the orchestrator's own answer, labelled as its own. Only a routing or stage pick that follows from recorded decisions, or an answer whose effect is inside the brief's grant. Never a hard-floor answer, a consent card, a real tradeoff, or a locked-decision change: those stay the operator's. The worker records it with its source ("orchestrator, under the operator's standing delegation"), never as the operator's words. |
 
-Besides the brief and its resume (step 6), nothing else crosses. No progress narration, no "starting now", no worker-to-worker messages.
+Besides the brief and its resume (*Orchestrator* step 6), nothing else crosses. No progress narration, no "starting now", no worker-to-worker messages.
 
 ### The input invariant
 
@@ -241,28 +241,30 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   `owed: resume not sent`. Send the resume **immediately**, even when the next step is only waiting: a
   worker woken by anything else, without its brief, hedges or invents (seen repeatedly). First confirm
   the clear (`list_events`: idle, no messages; a resume sent earlier queues behind it). The resume is
-  the saved brief with `state=resume` in its marker line and any START's Job (`briefs/<row>-start.md`)
-  in its Job section, ending in a `## Resume` section: where to pick up, the approved plan's path, the
-  worker's ledger path, facts learned since the brief (an environment quirk, a throttle, an operator
-  call), and any message still pending. Reset its roster start epoch.
-- **Idle notice** → ignore it for a worker that's queued, verified, landed or archived (exits fire
-  notices too). One busy now (`ListAgents`), yet to start on your last message, or for a turn that
+  the saved brief re-filled as `state=resume` (every `{STATE}`), then any START
+  (`briefs/<row>-start.md`) whole, then a `## Resume` section: where to pick up, the approved plan's
+  path, the worker's ledger path, facts learned since the brief (an environment quirk, a throttle, an
+  operator call), and any message still pending. Once it's sent: status `running`, `owed` cleared,
+  roster start epoch reset.
+- **Idle notice** → ignore it for a worker that's queued, landed or archived, or verified with nothing
+  sent to it since (exits fire notices too). One busy now (`ListAgents`), yet to start on your last message, or for a turn that
   ended before you sent it (`list_events` times) is stale (*Gotchas*): see *Subscribing*. Check its
   tail on any other notice (`list_events`, limit 6), in order:
-  - a final `waiting: <what>[, until <time>]` line → **waiting**: no nudge; keep its wake (*Wakes*).
+  - a final `waiting: <what>[, until <time>]` line → **waiting**: no nudge; arm or keep its wake (*Wakes*).
   - a report in its last turn → not yet here: in flight (the notice can beat it); wait, then judge it
     as here. Here: its kind's handling covers the notice. Check it didn't idle after a `checkpoint`
     with no clear: tell the operator.
   - else → it stopped without reporting: tell the operator what it's sitting on.
 
-**Subscribing.** Subscribe at a ready `ONLINE`, after each message you send a worker, at each report,
-and at a stale notice, only while `ListAgents` shows it busy: an idle one fires at once (a stale
-"busy", seen live, costs one such notice: accept it). For one yet to start on your message, run a
-background `sleep 60` (*Monitors*); at its end, still so → tell the operator, busy → subscribe, idle →
-treat it as an idle notice. Resolve its title fresh; never reuse one. Call
-`get_session(<worker sessionId>)`, then `SendMessage(to: "<title> [ref]", notify_when_idle: true)` with
-no message, `[ref]` from `ListAgents`. "Not reachable" → resolve again; still so (seen after a clear) →
-retry when anything next wakes you (a report, a `sleep`, the watchdog). Use the title, never the id.
+**Subscribing.** Subscribe at a ready `ONLINE`, after each message you send a worker, at each report
+(idle by then → treat it as an idle notice), and at a stale notice, only while `ListAgents` shows it
+busy: an idle one fires at once (a stale "busy", seen live, costs one such notice: accept it). For one
+yet to start on your message, run a background `sleep 60` (*Monitors*); at its end, still so → tell the
+operator, busy → subscribe, idle → treat it as an idle notice. Resolve its title fresh; never reuse
+one. Call `get_session(<worker sessionId>)`, then
+`SendMessage(to: "<title> [ref]", notify_when_idle: true)` with no message, `[ref]` from `ListAgents`.
+"Not reachable" → resolve again; still so (seen after a clear) → retry when anything next wakes you (a
+report, a `sleep`, the watchdog). Use the title, never the id.
 
 **Wakes.** Keep one background `sleep` (*Monitors*) per worker whose last report or turn ends in a
 `waiting: <what>[, until <time>]` line, since the watchdog can't see an idle one: to the `until` plus
@@ -407,8 +409,8 @@ don't message workers to ask.
 ## Worker
 
 You were spawned by an orchestrator. Your brief is your first message. You remember nothing else.
-A brief marked `state=resume` is a resume: you cleared earlier. Send no `ONLINE`, skip step 2's base
-step and the *START steps* (your commits are your work), and continue at step 3 where `## Resume` says.
+A brief marked `state=resume` is a resume: you cleared earlier. Send no `ONLINE`, skip step 2 and the
+*START steps* (a START in it is your job), and continue at step 3 where `## Resume` says.
 
 1. **ONLINE.** `mcp__ccd_session_mgmt__get_session("self")` → your sessionId. Send `ONLINE` to the
    orchestrator's sessionId with `state: ready` if your brief has a Job section, or `state: queued` if
@@ -489,13 +491,11 @@ anything besides the four kinds.
   The brief states the base as a sha and the worker re-points itself (*Worker* step 2). Queued workers
   start stale too (seen live in hg, after an earlier unit landed): START re-points them.
 - **A message drains after the worker has moved — write re-points GUARDED, never unconditional.** Seen
-  live in hg: a START carrying `git switch -C <branch> <sha>` sat queued behind the worker's turn, and
-  by the time it drained the worker had re-pointed itself (`git merge --ff-only <base>` — same
-  destination, no history rewritten) and committed a whole round. The step was harmless when written
-  against an empty branch and would have discarded two commits when it ran; the worker refused it and
-  said so. Phrase it as a check that acts only if needed ("if `git log <base>..HEAD` is empty, re-point
-  with `switch -C`; if it prints commits, you are past this step — use `merge --ff-only <base>`"), and
-  never pair it with a freshness gate that reports `BLOCKED` on the worker's own finished work.
+  live in hg: a START's `git switch -C <branch> <sha>`, harmless when written, drained after the worker
+  had re-pointed itself and committed a round, and would have discarded two commits; the worker refused
+  it. Phrase it as a check ("if `git log <base>..HEAD` is empty, `switch -C`; else
+  `merge --ff-only <base>`"), and never pair it with a freshness gate that reports `BLOCKED` on the
+  worker's own finished work.
 - **Worker sessions don't share your memory.** A worktree session gets its own project folder under
   `~/.claude/projects/`, with no `memory/` in it (verified), so it most likely can't see memory the
   orchestrator saved (inferred). Put every decision a unit needs in its brief or START.

@@ -410,12 +410,33 @@ for f in "$SKILL"/references/workflow-*.md docs/crew/workflows/*.md; do
 done
 if [ "$v_ok" = 1 ]; then held=$((held + 1)); fi
 
+# --- a ready PR asks before it merges ----------------------------------------------------------------------
+# After `merge bar met` the worker waits on the merge, so it sends NEED-INPUT (SKILL.md Worker step 4), and
+# the merge go is an ANSWER to that question: no other kind can carry it. Every workflow file or round
+# procedure that names `merge bar met` holds a sentence naming NEED-INPUT and the merge. At least one must
+# name it, so the check can't pass on finding none.
+ask_ok=1 ask_seen=0
+for f in "${merge_files[@]}"; do
+  [ -f "$f" ] || continue
+  sentences=$(tr '\n' ' ' < "$f" | tr -s ' ' | sed 's/[.;] /\n/g')
+  grep -qF 'merge bar met' <<< "$sentences" || continue
+  ask_seen=1
+  if ! grep -F 'NEED-INPUT' <<< "$sentences" | grep -qi 'merge'; then
+    fail "$f: names \`merge bar met\` but no sentence sends the merge \`NEED-INPUT\`"; ask_ok=0
+  fi
+done
+if [ "$ask_seen" = 0 ]; then
+  reworded "${merge_files[*]}" "\`merge bar met\`"; ask_ok=0
+fi
+if [ "$ask_ok" = 1 ]; then held=$((held + 1)); fi
+
 # --- every brief state is handled on both sides ---------------------------------------------------------
 # A brief's marker line carries `state=`, and each value means a different first move: ready starts,
 # queued waits for START, resume (a re-send after a clear) skips ONLINE and the base step. The brief
 # template's {STATE} row is the source. SKILL.md's Orchestrator and Worker sections each name every value
-# (`state: <v>` or `state=<v>`), and the brief's fallback names every value but the first, the default
-# path, so a worker without the skill still tells a resume from a fresh start.
+# (`state: <v>` or `state=<v>`), and the brief's fallback names every value, so a worker without the
+# skill still tells a resume from a fresh start. Both ways: a state SKILL.md handles that the row doesn't
+# list fails too, so a template that drops `resume` can't pass while SKILL.md still sends it.
 st_ok=1
 # shellcheck disable=SC2016  # the backticks are literal Markdown
 states=$(grep -E '^\| `\{STATE\}` \|' "$BRIEF" | sed 's/^| `{STATE}` |//' | grep -oE '`[a-z]+`' | tr -d '`' || true)
@@ -429,10 +450,15 @@ else
         fail "$SKILL/SKILL.md: the section headed '$spec' handles no brief state '$v'"; st_ok=0
       fi
     done
+    while IFS= read -r v; do
+      if [ -n "$v" ] && ! grep -qxF "$v" <<< "$states"; then
+        fail "$SKILL/SKILL.md: the section headed '$spec' handles brief state '$v', which $BRIEF's {STATE} row doesn't list"; st_ok=0
+      fi
+    done < <(grep -oE 'state(: |=)[a-z]+' <<< "$text" | sed -E 's/^state(: |=)//' | LC_ALL=C sort -u || true)
   done
   # shellcheck disable=SC2016  # the backticks are literal Markdown
   text=$(section '^#+ If the `crew` skill is unavailable' 1 "$BRIEF")
-  for v in $(tail -n +2 <<< "$states"); do
+  for v in $states; do
     if ! grep -qE "(^|[^a-z])$v([^a-z]|\$)" <<< "$text"; then
       fail "$BRIEF: the fallback section handles no brief state '$v'"; st_ok=0
     fi

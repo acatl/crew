@@ -193,7 +193,7 @@ edit docs/pr-round-workflow.md 's#, tells the worker to merge\.#, tells the work
 red "15dc no merge sentence at all fails, never passes" check-invariants "a sentence that tells the worker to merge not found"
 fresh; rm "$S/docs/pr-round-workflow.md"
 red "15dd a missing round procedure is reported, not skipped" check-invariants "docs/pr-round-workflow.md: the file not found"
-fresh; edit "$PR" 's#on the card (#on the card, per docs/CREW.md (#'
+fresh; edit "$PR" 's#^  the card (#  the card, per docs/CREW.md (#'
 green "15de a dotted name inside the sentence doesn't split it" check-invariants
 edit "$PR" 's#with no `landing: operator` on#with no `landing: delegated` on#'              # same fixture
 red "15df and the same fixture still fires on a missing withhold" check-invariants "$PR: tells the worker to merge without naming"
@@ -219,9 +219,9 @@ red "15dn but the same fixture fails once the built-in drops it" check-invariant
 # every brief state is handled on both sides: the brief template's {STATE} row is the source
 fresh; edit "$SK" 's#^A brief marked `state=resume` is a resume#A resumed brief is a resume#'
 red "15do the Worker section stops handling a resume" check-invariants "handles no brief state 'resume'"
-fresh; edit "$SK" 's#the saved brief with `state=resume` in its#the saved brief with a resume flag in its#'
+fresh; edit "$SK" 's#re-filled as `state=resume`#re-filled as a resume#'
 red "15dp so does the Orchestrator's resume" check-invariants "^#+ Orchestrator[[:space:]]*\$' handles no brief state 'resume'"
-fresh; edit "$BT" 's#unless `resume`: then#unless resumed: then#'
+fresh; edit "$BT" 's#unless `resume`:#unless resumed:#'
 red "15dq the brief's fallback stops telling a resume apart" check-invariants "the fallback section handles no brief state 'resume'"
 fresh; edit "$BT" 's#^| `{STATE}` |#| `{STATUS}` |#'
 red "15dr a reworded {STATE} row is reported, not passed" check-invariants "the {STATE} placeholder row not found"
@@ -232,6 +232,19 @@ edit "$BT" 's#If queued, end your#If queued or paused, end your#'
 green "15ds a new state handled in all three places passes" check-invariants
 edit "$BT" 's#If queued or paused, end your#If queued, end your#'                           # same fixture
 red "15dt and the same fixture fails once the fallback drops it" check-invariants "the fallback section handles no brief state 'paused'"
+# the reverse: a state SKILL.md handles must be in the {STATE} row
+fresh; edit "$BT" 's#^| `{STATE}` | `ready`, `queued`, or `resume` when#| `{STATE}` | `ready` or `queued`, never#'
+red "15du a template that drops resume while SKILL.md still sends it" check-invariants "handles brief state 'resume', which"
+# a ready PR asks before it merges: `merge bar met` comes with a merge NEED-INPUT
+fresh; edit "$PR" 's#merge `NEED-INPUT`#merge question#g'
+red "15dv the workflow drops its merge NEED-INPUT" check-invariants "$PR: names \`merge bar met\` but no sentence"
+fresh; edit "$PR" 's#merge `NEED-INPUT`#merge question#g'
+edit "$PR" 's#`merge bar met`#the bar#g'
+green "15dw a workflow that never reaches merge bar met needs no merge NEED-INPUT" check-invariants
+edit docs/pr-round-workflow.md 's#so it sends `NEED-INPUT` marked#so it sends a question marked#'   # same fixture
+red "15dx and the same fixture fires once the round procedure drops it" check-invariants "docs/pr-round-workflow.md: names \`merge bar met\` but no sentence"
+edit docs/pr-round-workflow.md 's#`merge bar met`#the bar#g'
+red "15dy no file names merge bar met: reported, not passed" check-invariants "\`merge bar met\` not found"
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"

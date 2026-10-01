@@ -149,8 +149,12 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   and the built-in must carry the row.
 - **Every brief state is handled on both sides.** The brief's marker line carries `state=` (`ready`,
   `queued`, or `resume` for a re-send after a clear); the brief template's `{STATE}` row is the source.
-  *Checked*: SKILL.md's Orchestrator and Worker sections each name every value (`state: <v>` or
-  `state=<v>`), and the brief's fallback section names every value but the first.
+  *Checked*, both ways: SKILL.md's Orchestrator and Worker sections each name every value (`state: <v>`
+  or `state=<v>`) and no other, and the brief's fallback section names every value.
+- **A ready PR asks before it merges.** After `merge bar met` the worker waits on the merge, so it sends
+  `NEED-INPUT`, and the merge go is an `ANSWER` to it. *Checked*: every workflow file or
+  `docs/pr-round-workflow.md` that names `merge bar met` has a sentence naming `NEED-INPUT` and the
+  merge, and at least one names it.
 - **Every workflow file has the orchestrator's shape** (frontmatter `name` = file name, and
   `description`; Parameters, Stages, Rules in order; each stage's Ends, Report, Orchestrator; exactly
   one `stop`). *Checked* by `check-structure.sh`, over the built-in and `docs/crew/workflows/`.
