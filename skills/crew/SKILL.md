@@ -414,7 +414,7 @@ You were spawned by an orchestrator. Your brief is your first message. You remem
    (`git branch -m <name>`) and worktree setup. You're already in a fresh worktree on a `claude/…`
    branch; never create another one. Your ledger, `$(git rev-parse --git-dir)/crew-ledger.md`, names
    your ticket in its first line. The app reuses worktree dirs, so one there that doesn't is an
-   earlier unit's: `mv -n` it to `crew-ledger.<its ticket or epoch>.md`, never reading it as yours.
+   earlier unit's: `mv -n` it to `crew-ledger.<its ticket>.<epoch>.md`, never reading it as yours.
 3. **Work your workflow.** Read the file your brief names, in full, and follow it with your parameters;
    a resume names where to pick up. No workflow named in your
    brief → your brief's Job/Spec, Boundaries and Checkpoints are the workflow; follow them as written.

@@ -76,7 +76,7 @@ window from `docs/pr-round-workflow.md` § 0). Its exit, not a post, starts the 
 monitor mid-settle → keep waiting. End each waiting turn with the line `waiting: settle timer, until
 <push time + window>`. **Window passed with no review → settled: triage what exists** (threads,
 review bodies, CI). A silent reviewer is named in the `DONE`, never waited on past the window; one
-saying it is still working keeps the window open (`docs/pr-round-workflow.md` § 0).
+saying it is still working keeps the window open: re-arm the timer (`docs/pr-round-workflow.md` § 0).
 
 Then run one round per `docs/pr-round-workflow.md`: read, triage, sweep, fix, verify,
 `/code-review high` over the fix diff, one push, reply and resolve. Put `dont-review` on just before
@@ -92,8 +92,8 @@ next reviews wake you, within `rounds`.
   says `landing: operator` (`CREW.md` › Integration `mode: pr` delegates the rest), tells the worker
   to merge; else tells the operator it's ready, and handles their merge (`prState: MERGED`) as
   `stop merge`. Its timer for the worker's `until` fires (SKILL.md › Idle notice) and the worker is
-  still waiting on reviewers past the window → `ANSWER`: "the window passed, run the round", a stage
-  pick from this written rule.
+  still waiting on reviewers past the window, none of them saying it is still working → `ANSWER`:
+  "the window passed, run the round", a stage pick from this written rule.
 - **Clears:** after a push, yes, monitor off first. Not after a clean round or at `merge bar met`:
   one step from the stop.
 
