@@ -216,6 +216,17 @@ fresh; edit "$PR" '/^| `verify` |/d'
 green "15dm a project workflow may leave verify out" check-invariants
 edit "$WS" '/^| `verify` |/d'                                                            # same fixture
 red "15dn but the same fixture fails once the built-in drops it" check-invariants "the \`verify\` parameter row not found"
+# a stage's Orchestrator line never sends ANSWER: no question is pending when a stage reports
+fresh; edit "$PR" 's#as `stop merge`\.$#as `stop merge`. Stalled after that, it sends `ANSWER`.#'
+red "15do an Orchestrator line that sends ANSWER" check-invariants "$PR: a stage's Orchestrator line sends"
+fresh; edit "$WS" 's#^- \*\*Orchestrator:\*\*#- **Orchestrator:** sends `ANSWER`;#'
+red "15dp so does the built-in's" check-invariants "$WS: a stage's Orchestrator line sends"
+fresh; edit "$PR" 's#^- \*\*Clears:\*\* after a push#- **Clears:** (never an `ANSWER`) after a push#'
+green "15dq an ANSWER in the next bullet is not the Orchestrator line" check-invariants
+edit "$PR" 's#as `stop merge`\.$#as `stop merge`. Stalled after that, it sends `ANSWER`.#'   # same fixture
+red "15dr and the same fixture still fires on the Orchestrator line's own" check-invariants "$PR: a stage's Orchestrator line sends"
+fresh; edit "$WS" 's#^- \*\*Orchestrator:\*\*#- **Coordinator:**#'
+red "15ds a built-in with no Orchestrator lines is reported, not passed" check-invariants "a stage's Orchestrator line not found"
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"

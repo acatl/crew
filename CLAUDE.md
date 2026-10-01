@@ -147,6 +147,9 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
 - **A workflow's `verify` falls back as the orchestrator's does.** The source is SKILL.md's
   ``DONE `stop <stage>` `` bullet; every workflow's `verify` default names the same sources. *Checked*,
   and the built-in must carry the row.
+- **A stage's Orchestrator line never sends `ANSWER`.** It answers a report, so no question is
+  pending, and the worker refuses an `ANSWER` outside its *Messages* row. *Checked*, over the
+  built-in and `docs/crew/workflows/`; the built-in must have Orchestrator lines.
 - **Every workflow file has the orchestrator's shape** (frontmatter `name` = file name, and
   `description`; Parameters, Stages, Rules in order; each stage's Ends, Report, Orchestrator; exactly
   one `stop`). *Checked* by `check-structure.sh`, over the built-in and `docs/crew/workflows/`.

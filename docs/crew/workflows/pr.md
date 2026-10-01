@@ -97,11 +97,7 @@ you, within `rounds`, a late review on an unchanged head included.
   rest), it tells the worker to merge. Met under that override, it tells the operator the PR is
   ready; missed, it tells the operator which condition fails, and a merge despite it is the
   operator's own (`docs/pr-round-workflow.md` › Merging), never relayed. It handles the
-  operator's merge (`prState: MERGED`) as `stop merge`. When its timer for the worker's latest
-  `until` fires (SKILL.md › Idle notice) with no activity since, the worker still waiting on
-  reviewers → it tells the operator that the worker's own timer never woke it. The operator's
-  `RELAY` ("the window passed, run the round") restarts it; an `ANSWER` can't, with no question
-  pending.
+  operator's merge (`prState: MERGED`) as `stop merge`.
 - **Clears:** after a push, yes, monitor off first. Not after a clean round: one step from the
   stop.
 
