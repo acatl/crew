@@ -237,32 +237,37 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 - **DONE `stop <stage>`** → verify by running the brief's `verify` in the worker's cwd (none:
   `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else ask). Write the verdict and sha to the
   row, against the worker's claim. On pass: land if delegated, clean up, start any next unit (steps 7, 8).
-- **A worker reports it cleared its own context** → status `cleared`, `owed: resume not sent`. Send the
-  resume **immediately**, even when the next step is only waiting: a worker woken by anything else,
-  without its brief, hedges or invents (seen repeatedly). First confirm the clear (`list_events`: idle,
-  no messages; a resume sent earlier queues behind it). The resume carries the brief, any START
-  (`briefs/<row>-start.md`), the approved plan's path, the worker's ledger path, facts learned since the
-  brief (an environment quirk, a throttle, an operator call), and any message still pending. Reset
-  its roster start epoch.
-- **Idle notice** → ignore it for a worker that's queued, landed or archived (exits fire notices
-  too). One busy now (`ListAgents`) or yet to start on your last message is stale (*Gotchas*): see
-  *Subscribing*. Check its tail on any other notice (`list_events`, limit 6), in order:
-  - a final `waiting: <what>[, until <time>]` line → **waiting**: no nudge. Keep one background
-    `sleep` per worker (*Monitors*), since the watchdog can't see an idle one: to the `until` plus 10
-    minutes, else 30, a later one replacing it. Check at its end for activity since you armed it: any
-    → an idle notice; none → tell the operator once what it waits on; re-arm at its next report.
+- **A worker reports it cleared (or is clearing) its own context** → status `cleared`,
+  `owed: resume not sent`. Send the resume **immediately**, even when the next step is only waiting: a
+  worker woken by anything else, without its brief, hedges or invents (seen repeatedly). First confirm
+  the clear (`list_events`: idle, no messages; a resume sent earlier queues behind it). The resume
+  carries the brief, any START (`briefs/<row>-start.md`), the approved plan's path, the worker's ledger
+  path, facts learned since the brief (an environment quirk, a throttle, an operator call), and any
+  message still pending. Reset its roster start epoch.
+- **Idle notice** → ignore it for a worker that's queued, verified, landed or archived (exits fire
+  notices too). One busy now (`ListAgents`), yet to start on your last message, or for a turn that
+  ended before you sent it (`list_events` times) is stale (*Gotchas*): see *Subscribing*. Check its
+  tail on any other notice (`list_events`, limit 6), in order:
+  - a final `waiting: <what>[, until <time>]` line → **waiting**: no nudge; keep its wake (*Wakes*).
   - a report in its last turn → not yet here: in flight (the notice can beat it); wait, then judge it
     as here. Here: its kind's handling covers the notice. Check it didn't idle after a `checkpoint`
     with no clear: tell the operator.
   - else → it stopped without reporting: tell the operator what it's sitting on.
 
-**Subscribing.** Subscribe at a ready `ONLINE`, after each message you send a worker, and at a stale
-notice, only while `ListAgents` shows it busy: an idle one fires at once. For one yet to start on your
-message, run a background `sleep 60` (*Monitors*); at its end, still so → tell the operator, busy →
-subscribe, idle → treat it as an idle notice. Resolve its title fresh; never reuse one. Call
+**Subscribing.** Subscribe at a ready `ONLINE`, after each message you send a worker, at each report,
+and at a stale notice, only while `ListAgents` shows it busy: an idle one fires at once (a stale
+"busy", seen live, costs one such notice: accept it). For one yet to start on your message, run a
+background `sleep 60` (*Monitors*); at its end, still so → tell the operator, busy → subscribe, idle →
+treat it as an idle notice. Resolve its title fresh; never reuse one. Call
 `get_session(<worker sessionId>)`, then `SendMessage(to: "<title> [ref]", notify_when_idle: true)` with
 no message, `[ref]` from `ListAgents`. "Not reachable" → resolve again; still so (seen after a clear) →
 retry when anything next wakes you (a report, a `sleep`, the watchdog). Use the title, never the id.
+
+**Wakes.** Keep one background `sleep` (*Monitors*) per worker whose last report or turn ends in a
+`waiting: <what>[, until <time>]` line, since the watchdog can't see an idle one: to the `until` plus
+10 minutes, else 30. Each report replaces it, from its own `waiting:` line or not at all; the
+worker's stop ends it (step 7). Check at its end for activity since you armed it: any → an idle
+notice; none → tell the operator once what it waits on, and re-arm at its next report.
 
 **Monitors.** Record every watch you set (the *Watchdog* below, a CI poller, anything recurring) in the
 ledger's `Monitors` while it runs, and remove the line when it ends. A compacted orchestrator otherwise
@@ -280,10 +285,10 @@ Execute only what the card agreed, and name it as you do it.
 - `archive when merged` → once the branch is on `<base>` (landed by you or the operator, `git branch
   --merged <base>` lists it, or `list_sessions` shows `prState: MERGED`), archive.
 - `keep` → leave it running; follow-up work goes to it by `RELAY`.
-- **Roster and watchdog** → drop the worker's line from `roster.tsv` as it stops. When the last one
-  goes, stop the watchdog by the pid in `watchdog.pid`, clear its `Monitors` line, and delete
-  `reported.txt` and `active.tsv`. Both serve only the sequence that just ended: nothing truncates
-  them, and a later worker reusing a ticket id would be deduped or clocked against them.
+- **Roster and watchdog** → drop the worker's line from `roster.tsv`, and stop its wake, as it stops.
+  When the last one goes, stop the watchdog by the pid in `watchdog.pid`, clear its `Monitors` line,
+  and delete `reported.txt` and `active.tsv`. Both serve only the sequence that just ended: nothing
+  truncates them, and a later worker reusing a ticket id would be deduped or clocked against them.
 
 Archiving detaches the worktree (the branch is kept) and hands the directory to the app's reuse pool.
 It's reversible (`unarchive_session`), and the app may show its own approval card. Cleanup never
@@ -462,8 +467,6 @@ anything besides the four kinds.
   Remote Control copies show up as duplicate names. Seen live: the app prefixed `🌳 ` to a worktree
   session mid-turn (`DEMO-1 — …` → `🌳 DEMO-1 — …`), and a `SendMessage` to the old name failed as "not
   reachable" while `send_message` by id kept working. Names only as a fallback, resolved just in time.
-- **`spawn_task` hands back a task id**, and the session exists only after the operator clicks. That's
-  why `ONLINE` exists: it's the first moment the orchestrator can learn the worker's id and subscribe.
 - **Idle notices are one-shot and local, and they fire on exit too.** `notify_when_idle` fires once when
   the session is next idle *or exits*, only for sessions on this machine, and only from a main
   conversation, and at once on a session that's idle already. Seen live (crew LIVE1, 2026-09-28; hg
@@ -480,11 +483,8 @@ anything besides the four kinds.
 - **Never assume which commit the app cut a worker from.** In hg (2026-09-22) five spawns out of five
   were cut from the default branch `main` while the main checkout sat on `graph-port`; `get_session`
   reported `sourceBranch: main` each time. Another repo was seen cutting from the checkout's branch.
-  The brief states the base as a sha and the worker re-points itself (*Worker* step 2), so whichever
-  the app does, the worker starts where the unit needs it.
-- **Queued workers start stale.** Seen live in hg: two queued workers still sat at the sha their base
-  had at spawn time, after an earlier unit had landed and moved the base on. The START re-point exists
-  for this.
+  The brief states the base as a sha and the worker re-points itself (*Worker* step 2). Queued workers
+  start stale too (seen live in hg, after an earlier unit landed): START re-points them.
 - **A message drains after the worker has moved — write re-points GUARDED, never unconditional.** Seen
   live in hg: a START carrying `git switch -C <branch> <sha>` sat queued behind the worker's turn, and
   by the time it drained the worker had re-pointed itself (`git merge --ff-only <base>` — same
@@ -497,12 +497,10 @@ anything besides the four kinds.
   `~/.claude/projects/`, with no `memory/` in it (verified), so it most likely can't see memory the
   orchestrator saved (inferred). Put every decision a unit needs in its brief or START.
 - **Global installs from a worktree dangle.** Seen in hg: its skill installer, run from a worktree,
-  would point the operator's home skill links at a directory that gets archived. Global installs belong
-  in the main checkout, usually as a Post-land command.
+  would link the operator's home at an archived directory. Run them in the main checkout (Post-land).
 - **You can't clear a worker's context for it.** `clear_session` accepts "a session this session
   started", but a chip-started worker counts as started by the *operator's click*, so it's refused.
-  The worker clears itself as its last action, and you re-send its brief. *(Reported from a live run,
-  2026-09-23; not reproduced here.)*
+  The worker clears itself last, and you re-send its brief. *(Reported live 2026-09-23; not reproduced.)*
 - **A worker's own files live in git metadata that pruning deletes.** A worktree's `.git` dir is
   `<main>/.git/worktrees/<name>/`, which `git worktree prune` removes. Copy anything you'll still need
   into the archive when you evict the row; don't reference it.
@@ -519,5 +517,4 @@ anything besides the four kinds.
   "kept ready for new sessions", the app's reuse pool, not as a leak. Pooled worktrees are not workers:
   build the roster from `parentSessionId`, never from `git worktree list`.
 - **Uncommitted config doesn't reach workers.** A worktree is cut from committed state, so an
-  uncommitted `docs/CREW.md` or `.env` isn't there. The brief carries everything; `.env`-style files
-  belong in the worktree setup.
+  uncommitted `docs/CREW.md` or `.env` isn't there. The brief carries all; `.env` files go in setup.
