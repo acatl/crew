@@ -239,15 +239,14 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   row, against the worker's claim. On pass: land if delegated, clean up, start any next unit (steps 7, 8).
 - **A worker reports it cleared its own context** → status `cleared`, `owed: resume not sent`. Send the
   resume **immediately**, even when the next step is only waiting: a worker woken by anything else,
-  without its brief, hedges or invents (seen repeatedly). First confirm the clear
-  (`list_events`: idle, no messages; a resume sent earlier queues behind it). The resume carries the
-  brief, any START (`briefs/<row>-start.md`), the approved plan's path, the worker's ledger path,
-  facts learned since the brief (an environment quirk, a throttle, an operator call), and any message
-  still pending. Reset its roster start epoch. After a clear, message by id, subscribe by title.
+  without its brief, hedges or invents (seen repeatedly). First confirm the clear (`list_events`: idle,
+  no messages; a resume sent earlier queues behind it). The resume carries the brief, any START
+  (`briefs/<row>-start.md`), the approved plan's path, the worker's ledger path, facts learned since
+  the brief (an environment quirk, a throttle, an operator call), and any message still pending.
+  Reset its roster start epoch.
 - **Idle notice** → ignore it for a worker that's queued, landed or archived (exits fire notices
-  too), or that sent a message since the last notice. Treat one busy now (`ListAgents`), or yet to
-  start on your last message, as stale (*Gotchas*): re-subscribe; otherwise, only on a message since:
-  subscribing to an idle session fires at once. Check its tail on any other notice (`list_events`, limit 6):
+  too). Treat one that sent a message since the last notice, is busy now (`ListAgents`) or yet to
+  start on your last message as stale (*Gotchas*): re-subscribe. Check its tail on any other notice (`list_events`, limit 6):
   - a `send_message` in its last turn → the report is in flight (the notice can beat it): wait.
   - a final `waiting: <what>[, until <time>]` line → **waiting**, not stopped: no nudge. The watchdog
     can't see an idle worker: for an `until`, arm a background `sleep` to it plus 10 minutes
@@ -255,11 +254,13 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
     workflow's stage says, else tell the operator.
   - neither → it stopped without reporting: tell the operator what it's sitting on.
 
-**Subscribing.** Resolve the worker's name fresh every time; never reuse one. Call `get_session(<worker
-sessionId>)` for its current title, find the `ListAgents` row with that title, then call
-`SendMessage(to: "<title> [ref]", notify_when_idle: true)` with no message. If it says the agent isn't
-reachable, the title changed between those calls. Resolve again once. Still unreachable (seen after
-a clear) → retry at its next activity. Use the title, never the id, which is refused (*Gotchas*).
+**Subscribing.** Subscribe after each message you send a worker, and at a stale notice, only while
+`ListAgents` shows it busy: an idle one fires at once. Yet to start on your message → arm a background
+`sleep 60` (*Monitors*), its end an idle notice; at the third, tell the operator. Resolve its title
+fresh each time; never reuse one. Call `get_session(<worker sessionId>)`, then
+`SendMessage(to: "<title> [ref]", notify_when_idle: true)` with no message, the `[ref]` from its
+`ListAgents` row. "Not reachable" → the title changed: resolve again; still so (seen after a clear) →
+retry at its next activity. Use the title, never the id: it's refused (*Gotchas*).
 
 **Monitors.** Record every watch you set (the *Watchdog* below, a CI poller, anything recurring) in the
 ledger's `Monitors` while it runs, and remove the line when it ends. A compacted orchestrator otherwise
@@ -413,8 +414,8 @@ You were spawned by an orchestrator. Your brief is your first message. You remem
    work, `BLOCKED`. Confirm `git rev-parse HEAD` is that sha. Then apply the brief's branch rule
    (`git branch -m <name>`) and worktree setup. You're already in a fresh worktree on a `claude/…`
    branch; never create another one. Your ledger, `$(git rev-parse --git-dir)/crew-ledger.md`, names
-   your ticket in its first line. The app reuses worktree dirs, so one there that doesn't is an
-   earlier unit's: `mv -n` it to `crew-ledger.$(date +%s).md`, never reading it as yours.
+   your sessionId in its first line. The app reuses worktree dirs, so one there that doesn't is an
+   earlier worker's, even on your ticket: `mv -n` it to `crew-ledger.$(date +%s).md`; never read it.
 3. **Work your workflow.** Read the file your brief names, in full, and follow it with your parameters;
    a resume names where to pick up. No workflow named in your
    brief → your brief's Job/Spec, Boundaries and Checkpoints are the workflow; follow them as written.
@@ -462,13 +463,12 @@ anything besides the four kinds.
   reachable" while `send_message` by id kept working. Names only as a fallback, resolved just in time.
 - **`spawn_task` hands back a task id**, and the session exists only after the operator clicks. That's
   why `ONLINE` exists: it's the first moment the orchestrator can learn the worker's id and subscribe.
-- **Idle notices are one-shot and local, and they fire on exit too.** `notify_when_idle` fires once
-  when the session is next idle *or exits*, only for sessions on this machine, and only from a main
+- **Idle notices are one-shot and local, and they fire on exit too.** `notify_when_idle` fires once when
+  the session is next idle *or exits*, only for sessions on this machine, and only from a main
   conversation, and at once on a session that's idle already. Seen live (crew LIVE1, 2026-09-28; hg
   PR #63, 2026-09-30): a worker parked on its own timer drew a notice per re-subscribe all wait, and
-  was reported stopped. Archiving a subscribed worker produces a notice for a worker that's already
-  done. Across permission modes the notice is only logged, not delivered, unless you spawned that
-  session; crew workers always qualify.
+  was reported stopped. Across permission modes the notice is only logged, not delivered, unless you
+  spawned that session; crew workers always qualify.
 - **Subscribe by title; an id is refused.** Verified 2026-10-01: `SendMessage(to: "local_…",
   notify_when_idle: true)` returns "Nothing was subscribed: notify_when_idle is only supported for
   Claude sessions on this machine…". Seen live in hg (2026-09-30): right after a clear, the by-title
