@@ -245,23 +245,23 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   the brief (an environment quirk, a throttle, an operator call), and any message still pending.
   Reset its roster start epoch.
 - **Idle notice** → ignore it for a worker that's queued, landed or archived (exits fire notices
-  too). One busy now (`ListAgents`) or yet to start on your last message is stale (*Gotchas*):
-  re-subscribe. Check its tail on any other notice (`list_events`, limit 6), in order:
-  - a final `waiting: <what>[, until <time>]` line → **waiting**, not stopped: no nudge. The watchdog
-    can't see an idle worker: for an `until`, arm a background `sleep` to it plus 10 minutes
-    (*Monitors*). Its end is an idle notice, but with no activity since: do what its workflow's stage
-    says, else tell the operator.
-  - a report in its last turn → not yet here: in flight (the notice can beat it), wait; here and
-    waiting on you (`NEED-INPUT`, `BLOCKED`, `DONE` `stop`, a clear): nothing more.
+  too). One busy now (`ListAgents`) or yet to start on your last message is stale (*Gotchas*): see
+  *Subscribing*. Check its tail on any other notice (`list_events`, limit 6), in order:
+  - a final `waiting: <what>[, until <time>]` line → **waiting**: no nudge. Keep one background
+    `sleep` per worker (*Monitors*), since the watchdog can't see an idle one: to the `until` plus 10
+    minutes, else 30, a later one replacing it. Treat activity since you armed it as an idle notice;
+    with none, do what the stage's Orchestrator line says, else tell the operator.
+  - a report in its last turn → not yet here: in flight (the notice can beat it), wait; here: its
+    kind's handling above covers the notice, nothing more.
   - else → it stopped without reporting: tell the operator what it's sitting on.
 
 **Subscribing.** Subscribe at a ready `ONLINE`, after each message you send a worker, and at a stale
-notice, only while `ListAgents` shows it busy: an idle one fires at once. Run a background `sleep 60`
-(*Monitors*) for one yet to start on your message; still so at its end → tell the operator. Idle
-otherwise → handle as an idle notice. Resolve its title fresh; never reuse one. Call
+notice, only while `ListAgents` shows it busy: an idle one fires at once. For one yet to start on your
+message, run a background `sleep 60` (*Monitors*); at its end, still so → tell the operator, busy →
+subscribe, idle → treat it as an idle notice. Resolve its title fresh; never reuse one. Call
 `get_session(<worker sessionId>)`, then `SendMessage(to: "<title> [ref]", notify_when_idle: true)` with
 no message, `[ref]` from `ListAgents`. "Not reachable" → resolve again; still so (seen after a clear) →
-retry at its next activity. Use the title, never the id: it's refused (*Gotchas*).
+retry when anything next wakes you (a report, a `sleep`, the watchdog). Use the title, never the id.
 
 **Monitors.** Record every watch you set (the *Watchdog* below, a CI poller, anything recurring) in the
 ledger's `Monitors` while it runs, and remove the line when it ends. A compacted orchestrator otherwise
@@ -410,13 +410,13 @@ You were spawned by an orchestrator. Your brief is your first message. You remem
 
    **Queued → end your turn now.** Don't set up, read the repo's docs, or look at the code: all of it
    will be stale by the time you start. When `START` arrives, run the *START steps* below.
-2. **Set up.** First the base, guarded: if `git status --porcelain` is empty and your branch carries no
-   work of yours, run `git switch -C "$(git branch --show-current)" <brief's base sha>`; if it carries
-   work, `BLOCKED`. Confirm `git rev-parse HEAD` is that sha. Then apply the brief's branch rule
-   (`git branch -m <name>`) and worktree setup. You're already in a fresh worktree on a `claude/…`
-   branch; never create another one. The app reuses worktree dirs, so a ledger already at
-   `$(git rev-parse --git-dir)/crew-ledger.md` is an earlier worker's unless a resume names it as
-   yours: `mv -n` it to `crew-ledger.$(date +%s).md`; never read it.
+2. **Set up.** First the base, guarded, unless this is a resume: if `git status --porcelain` is empty
+   and your branch carries no work of yours, run `git switch -C "$(git branch --show-current)" <brief's
+   base sha>`; if it carries work, `BLOCKED`. Confirm `git rev-parse HEAD` is that sha. Then apply the
+   brief's branch rule (`git branch -m <name>`) and worktree setup. You're already in a fresh worktree on
+   a `claude/…` branch; never create another one. Move a ledger already at `$(git rev-parse
+   --git-dir)/crew-ledger.md` onto `mktemp <that dir>/crew-ledger.XXXXXX` unless a resume names it as
+   yours: the app reuses worktree dirs, so it's an earlier worker's. Never read it.
 3. **Work your workflow.** Read the file your brief names, in full, and follow it with your parameters;
    a resume names where to pick up. No workflow named in your
    brief → your brief's Job/Spec, Boundaries and Checkpoints are the workflow; follow them as written.

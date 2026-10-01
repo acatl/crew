@@ -54,7 +54,8 @@ are context the next round needs.
   state, silent reviewers. That is a checkpoint, not an exit: when the next reviews land, the same
   worker runs the next round from § 0.
 - **A round with nothing to fix pushes nothing**, but still replies to and resolves what it
-  declined (§ 8). Once CI has concluded, the worker checks § Stopping › Merging's three conditions
+  declined (§ 8). Once CI has concluded (still running → a background `gh pr checks <N> --watch`,
+  ending the turn `waiting: CI`), the worker checks § Stopping › Merging's three conditions
   itself and reports a clean `checkpoint round`: `merge bar met` when all three hold, else the one
   that fails (a clean opening round has no round-1 push). Either way it adds `verify` on the head
   after `git fetch origin main`, CI, open threads and `mergeStateStatus`, and ends the turn with
