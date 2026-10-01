@@ -1,5 +1,5 @@
 # Content metrics for skills/crew (SKILL.md plus references/*.md, totalled), checked by
 # scripts/check-content.sh. A metric may hold or rise; a drop fails. --update only raises;
 # accepting a drop is a hand edit of this file, and only the operator makes it.
-instruction_specificity	0.9245
-imperative_ratio	0.0888
+instruction_specificity	0.9259
+imperative_ratio	0.1013

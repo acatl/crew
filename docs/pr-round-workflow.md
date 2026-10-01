@@ -8,7 +8,9 @@ work the same way (operator, 2026-09-25). The operator's rulings quoted below we
 
 **Each round = settle → read → triage → sweep → fix → verify → review → push → reply**,
 with § 5's verify re-run after each review pass's fixes, before the push.
-One push per round, and no round starts before the reviewers settle.
+One push per round, and no round starts before the reviewers settle. A clean round, with nothing to
+fix, stops at triage: no push and no round number, so round N is always the one making the PR's
+N-th push after the opening one.
 
 ## What is consent, and what is a gate
 
@@ -48,11 +50,23 @@ are context the next round needs.
     the resume arrives and the PR is still open.
   - After `gh pr merge`, turn it off, and say so in the merge `DONE`.
 - **After each round's push** the worker reports `DONE`, with `checkpoint` in its first line, to
-  the coordinator: round number,
-  commit sha, what was fixed and what was declined, CI state. That is a checkpoint, not an exit:
-  when the next reviews land, the same worker runs the next round from § 0.
+  the coordinator: round number, commit sha, push time, what was fixed and what was declined, CI
+  state, silent reviewers. That is a checkpoint, not an exit: when the next reviews land, the same
+  worker runs the next round from § 0.
+- **A round with nothing to fix pushes nothing**, but still replies to and resolves what it
+  declined (§ 8). Once CI has concluded (still running → a background `gh pr checks <N> --watch`,
+  ending the turn `waiting: CI`), the worker checks § Stopping › Merging's three conditions
+  itself and reports a clean `checkpoint round`: `merge bar met` when all three hold, else the one
+  that fails (a clean opening round has no round-1 push). Either way it adds `verify` on the head
+  after `git fetch origin main`, CI, open threads and `mergeStateStatus`. It then waits on the merge,
+  so it sends `NEED-INPUT` marked `answer: here or relay` and ends the turn (crew's Worker step 4):
+  bar met → "merge?"; bar missed → the condition and the choices, another review or a merge anyway,
+  which is a Hard Gate only this session approves.
+  A review that lands later on the same head starts the next round: § 0's window has long passed.
 - **The worker merges only on the coordinator's go**, never on its own reading of the PR (§
-  Stopping › Merging).
+  Stopping › Merging): the coordinator's `ANSWER` to that "merge?" under the merge rule (a card's
+  `landing: operator` withholds it), the operator's go relayed to it, or the operator's yes in this
+  session to a merge outside the rule.
 - **CodeRabbit reviews rounds 1–3 only; from round 4 it is paused by label.** Just BEFORE
   pushing round 3's fixes, the worker applies the `dont-review` label
   (`gh pr edit <N> --repo acatl/crew --add-label dont-review`; `.coderabbit.yaml` excludes that
@@ -81,6 +95,14 @@ are context the next round needs.
 `set_monitor auto_fix` fires on the first bot comment, and the reviewers post minutes apart.
 Starting on the first one spends a push on a partial round.
 
+**Not being woken is no signal at all.** A reviewer that never posts never fires the monitor. On
+acatl/crew#4 (2026-09-30) Codex and Copilot never reviewed the round-2 push, and the PR sat idle for
+12 hours. So on entering the round, after a resume too, arm a settle timer: a background command
+(the Bash tool's `run_in_background`) that exits when either condition below holds. Its exit starts
+the round, unless a reviewer says it is still working on the current head: then re-arm it once, to
+20 minutes from then. Record each push's time in the ledger and the `DONE`; after a resume the
+window is measured from it.
+
 Roster: `coderabbitai`, `copilot-pull-request-reviewer`, `chatgpt-codex-connector`. Settle
 window: 20 min. From round 4 the roster is Copilot and Codex only (CodeRabbit is paused by
 label). **A roster login that never posts on the opening push may not be enabled on this repo.**
@@ -102,7 +124,10 @@ Compare each roster login's latest review `commit.oid` against `headRefOid`.
 
 - **A missing reviewer is normal, not an alarm.** The roster only ever lets a round start
   early; the window is the real bound.
-- **A reviewer saying it is still working keeps the window open past 20 minutes.**
+- **Window passed with no review → settled.** Triage what exists (threads, review bodies, CI) and
+  name the silent reviewers in the `DONE`; never wait on one past the window.
+- **A reviewer saying it is still working on the current head keeps the window open 20 more
+  minutes, once.** A stale or repeated "still working" never holds the round past that.
 - **CI is outside this gate.** Judge CI separately; a red check stops the round rather than
   being fixed by it.
 - **An empty review is not a review.** A reviewer that pauses itself posts a zero-length review
@@ -260,8 +285,9 @@ round cap. Deferring a valid finding instead of fixing it is the operator's call
 
 ## 7. One push
 
-Every fix batched. A PR gets three CodeRabbit-reviewed pushes (the opening push, then rounds 1
-and 2), drawn from an account-wide hourly pool: load each one heavily, and the last one hardest.
+Every fix batched; a clean round has none. A PR gets three CodeRabbit-reviewed pushes (the opening
+push, then rounds 1 and 2), drawn from an account-wide hourly pool: load each one heavily, and the
+last one hardest.
 Round 3's push is also where `dont-review` goes on: label first, then push. Conventional-Commit
 subject, **lowercase after the type**.
 
@@ -296,7 +322,7 @@ gh api graphql -f query='{repository(owner:"acatl",name:"crew"){pullRequest(numb
 ```
 
 Reviewers spent, threads dispositioned, CI green, and `reviewDecision` not blocking → the PR is
-ready. Report it and stop; the coordinator takes it from there.
+ready. Report it and wait (§ Who runs the rounds); the coordinator takes it from there.
 
 ### Merging — the operator's standing rule
 
@@ -327,4 +353,5 @@ start of the next round when one is due (never mid-round), otherwise as a sync p
 fixes. The conditions above are checked again on the new head.
 
 Any condition that fails, or any other reviewer's blocking verdict, goes to the operator. It is
-never a reason to dismiss more or to push again.
+never a reason to dismiss more or to push again. A merge despite it is the operator's own: by hand,
+or in the worker's session as a Hard Gate, never relayed.

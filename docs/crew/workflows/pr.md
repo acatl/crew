@@ -62,27 +62,51 @@ Push your own branch and open the PR, its body carrying what, why and risk. Bind
 review monitor (`docs/pr-round-workflow.md` › Who runs the rounds).
 
 - **Ends:** PR open, bound, monitor on.
-- **Report:** `checkpoint open`: PR URL, sha, the CLI pass's result.
+- **Report:** `checkpoint open`: PR URL, sha, push time, the CLI pass's result.
 - **Orchestrator:** records the PR and its monitor in the ledger.
 - **Clears:** yes, monitor off first and back on at the resume.
 
 ### round
 
-Wait for the reviewers to settle, then run one round per `docs/pr-round-workflow.md`: read, triage,
-sweep, fix, verify, `/code-review high` over the fix diff, one push, reply and resolve. Put
-`dont-review` on just before round 3's push. Repeat when the next reviews wake you, within `rounds`.
+**Start by arming a settle timer.** A post wakes you; a reviewer that stays silent (throttled,
+paused by label, or skipping the commit) wakes no one. So on entering the stage, after a resume too,
+start a background command (the Bash tool's `run_in_background`) that exits when every roster login
+has reviewed the head, or when the settle window measured from the push has passed (roster and
+window from `docs/pr-round-workflow.md` § 0). Its exit, not a post, starts the round. Woken by the
+monitor mid-settle → keep waiting. End each waiting turn with the line `waiting: settle timer, until
+<push time + window>`. **Window passed with no review → settled: triage what exists** (threads,
+review bodies, CI). A silent reviewer is named in the `DONE`, never waited on past the window; one
+saying it is still working on the current head extends the window once, to 20 minutes from then: re-arm the
+timer and end the turn with the new `until` (`docs/pr-round-workflow.md` § 0).
 
-- **Ends:** the round's push is up and its threads are dispositioned.
-- **Report:** `checkpoint round`: round, sha, fixed, declined, CI state.
-- **Orchestrator:** verifies the sha. When the PR meets the written merge rule, and unless the card
-  says `landing: operator` (`CREW.md` › Integration `mode: pr` delegates the rest), tells the worker
-  to merge; else tells the operator it's ready, and handles their merge (`prState: MERGED`) as
-  `stop merge`.
-- **Clears:** yes, monitor off first.
+Then run one round per `docs/pr-round-workflow.md`: read, triage, sweep, fix, verify,
+`/code-review high` over the fix diff, one push, reply and resolve. Put `dont-review` on just before
+round 3's push. A round with nothing to fix is a clean round: no push, no label, no round number;
+it ends as `docs/pr-round-workflow.md` › Who runs the rounds says. Repeat when the next reviews wake
+you, within `rounds`, a late review on an unchanged head included.
+
+- **Ends:** the round's push is up and its threads are dispositioned, or the round settled clean
+  with its declines replied to and resolved.
+- **Report:** `checkpoint round`: round, sha, push time, fixed, declined, CI state, silent
+  reviewers. A clean round, once CI has concluded, checks `docs/pr-round-workflow.md` › Stopping ›
+  Merging's conditions itself and adds `merge bar met` or the one that fails, with `verify` on the
+  head after `git fetch origin main`, CI, open threads and `mergeStateStatus`, then sends the
+  merge `NEED-INPUT` that `docs/pr-round-workflow.md` › Who runs the rounds describes.
+- **Orchestrator:** verifies the sha. On a clean round it checks the written merge rule itself and
+  answers only the worker's merge `NEED-INPUT`, once it lands. Met, with no `landing: operator` on the
+  card (`CREW.md` › Integration `mode: pr` delegates the rest), it tells the worker to merge by `ANSWER`
+  to its "merge?". Met under that override, it nudges the operator, who merges by hand or says go, which
+  it relays. Met while the worker asked as missed (CI concluded since, say), it `ANSWER`s "re-check the
+  bar", and the worker asks again. Missed by its own check, whatever the worker reported, it nudges with
+  the failing condition and relays no merge: a merge despite it is the operator's own, by hand or in the
+  worker's session (`docs/pr-round-workflow.md` › Merging). It handles the operator's merge
+  (`prState: MERGED`) as `stop merge`.
+- **Clears:** after a push, yes, monitor off first. Not after a clean round: one step from the
+  stop.
 
 ### merge
 
-Merge only on the orchestrator's go (`docs/pr-round-workflow.md` › Stopping › Merging), then turn the
+Merge only on a go to your "merge?" (`docs/pr-round-workflow.md` › Stopping › Merging), then turn the
 monitor off. Woken by a merge the operator made instead, confirm it and report the same.
 
 - **Ends:** merged, by you or the operator.

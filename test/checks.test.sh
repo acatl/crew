@@ -184,18 +184,18 @@ fresh; edit "$BT" 's#tool-permission prompt or a gated action (push, install,#to
 red "15z the fallback drops the gated-action half" check-invariants "the section headed '^#+ If the"
 
 # a merge go names its delegation: a sentence that tells the worker to merge names `landing:`
-fresh; edit "$PR" 's#says `landing: operator` (#says `landing: delegated` (#'
+fresh; edit "$PR" 's#with no `landing: operator` on#with no `landing: delegated` on#'
 red "15da a workflow gates the merge on the card's delegation alone" check-invariants "$PR: tells the worker to merge without naming"
 fresh; edit docs/pr-round-workflow.md 's#unless the card says `landing: operator`, tells#tells#'
 red "15db so does the round procedure" check-invariants "docs/pr-round-workflow.md: tells the worker to merge"
-fresh; edit "$PR" 's#  to merge; else tells#  to go; else tells#'
+fresh; edit "$PR" 's#it tells the worker to merge by#it tells the worker to go by#'
 edit docs/pr-round-workflow.md 's#, tells the worker to merge\.#, tells the worker to go.#'
 red "15dc no merge sentence at all fails, never passes" check-invariants "a sentence that tells the worker to merge not found"
 fresh; rm "$S/docs/pr-round-workflow.md"
 red "15dd a missing round procedure is reported, not skipped" check-invariants "docs/pr-round-workflow.md: the file not found"
-fresh; edit "$PR" 's#^- \*\*Orchestrator:\*\* verifies the sha\. When#- **Orchestrator:** verifies the sha. (See CREW.md › Integration.) When#'
+fresh; edit "$PR" 's#^  card (#  card, per docs/CREW.md (#'
 green "15de a dotted name inside the sentence doesn't split it" check-invariants
-edit "$PR" 's#says `landing: operator` (#says `landing: delegated` (#'                  # same fixture
+edit "$PR" 's#with no `landing: operator` on#with no `landing: delegated` on#'              # same fixture
 red "15df and the same fixture still fires on a missing withhold" check-invariants "$PR: tells the worker to merge without naming"
 
 # the queue card shows each unit's workflow and landing
@@ -216,6 +216,37 @@ fresh; edit "$PR" '/^| `verify` |/d'
 green "15dm a project workflow may leave verify out" check-invariants
 edit "$WS" '/^| `verify` |/d'                                                            # same fixture
 red "15dn but the same fixture fails once the built-in drops it" check-invariants "the \`verify\` parameter row not found"
+# every brief state is handled on both sides: the brief template's {STATE} row is the source
+fresh; edit "$SK" 's#^A brief marked `state=resume` is a resume#A resumed brief is a resume#'
+red "15do the Worker section stops handling a resume" check-invariants "handles no brief state 'resume'"
+fresh; edit "$SK" 's#marker line set to `state=resume`#marker line set to resume#'
+red "15dp so does the Orchestrator's resume" check-invariants "^#+ Orchestrator[[:space:]]*\$' handles no brief state 'resume'"
+fresh; edit "$BT" 's#unless marked `state=resume`:#unless resumed:#'
+red "15dq the brief's fallback stops telling a resume apart" check-invariants "the fallback section handles no brief state 'resume'"
+fresh; edit "$BT" 's#^| `{STATE}` |#| `{STATUS}` |#'
+red "15dr a reworded {STATE} row is reported, not passed" check-invariants "the {STATE} placeholder row not found"
+fresh; edit "$BT" 's#^| `{STATE}` | `ready`, `queued`, or#| `{STATE}` | `ready`, `queued`, `paused`, or#'
+edit "$SK" 's#^  `state: queued` → status `queued`\.#  `state: queued` or `state: paused` → status `queued`.#'
+edit "$SK" 's#^A brief marked `state=resume` is a resume#A brief marked `state=resume` (not `state=paused`) is a resume#'
+edit "$BT" 's#If queued, end your#If queued or paused, end your#'
+green "15ds a new state handled in all three places passes" check-invariants
+edit "$BT" 's#If queued or paused, end your#If queued, end your#'                           # same fixture
+red "15dt and the same fixture fails once the fallback drops it" check-invariants "the fallback section handles no brief state 'paused'"
+fresh; edit "$BT" 's#(`ready` or `queued`)#(`queued`)#'
+red "15dz the fallback stops naming the first state too" check-invariants "the fallback section handles no brief state 'ready'"
+# the reverse: a state SKILL.md handles must be in the {STATE} row
+fresh; edit "$BT" 's#^| `{STATE}` | `ready`, `queued`, or `resume` when#| `{STATE}` | `ready` or `queued`, never#'
+red "15du a template that drops resume while SKILL.md still sends it" check-invariants "handles brief state 'resume', which"
+# a ready PR asks before it merges: `merge bar met` comes with a merge NEED-INPUT
+fresh; edit "$PR" 's#^  merge `NEED-INPUT` that#  merge question that#'
+red "15dv the workflow drops its merge NEED-INPUT" check-invariants "$PR: names \`merge bar met\` but no sentence"
+fresh; edit "$PR" 's#merge `NEED-INPUT`#merge question#g'
+edit "$PR" 's#`merge bar met`#the bar#g'
+green "15dw a workflow that never reaches merge bar met needs no merge NEED-INPUT" check-invariants
+edit docs/pr-round-workflow.md 's#so it sends `NEED-INPUT` marked#so it sends a question marked#'   # same fixture
+red "15dx and the same fixture fires once the round procedure drops it" check-invariants "docs/pr-round-workflow.md: names \`merge bar met\` but no sentence"
+edit docs/pr-round-workflow.md 's#`merge bar met`#the bar#g'
+red "15dy no file names merge bar met: reported, not passed" check-invariants "\`merge bar met\` not found"
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"

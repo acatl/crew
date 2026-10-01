@@ -12,7 +12,7 @@ Two variants differ only in the Job section:
 | Placeholder | Source |
 |---|---|
 | `{TICKET}` | the trigger |
-| `{STATE}` | `ready` or `queued` |
+| `{STATE}` | `ready`, `queued`, or `resume` when re-sent after a clear (SKILL.md step 6) |
 | `{ORCH_ID}`, `{ORCH_TITLE}` | `get_session("self")` |
 | `{TITLE}` | card › Title |
 | `{BASE}` | the base chosen for THIS unit (SKILL.md step 3.4), as a ref (e.g. `graph-port`) |
@@ -60,8 +60,8 @@ orchestrator's memory. Everything you need is here, in the ticket, or in your wo
 {SPEC}
 
 ## Boundaries
-- Base: `{BASE}` at `{BASE_SHA}`. The app may have cut you from another commit. Re-point first
-  (crew skill › *Worker* step 2), and confirm `git rev-parse HEAD` is `{BASE_SHA}`.
+- Base: `{BASE}` at `{BASE_SHA}`. Unless `state=resume`, re-point first (crew skill › *Worker* step 2)
+  and confirm `git rev-parse HEAD` is `{BASE_SHA}`: the app may have cut you elsewhere.
 - Branch: {BRANCH_RULE}
 - Worktree setup: {SETUP}
 - {STANDING}
@@ -79,8 +79,9 @@ orchestrator's memory. Everything you need is here, in the ticket, or in your wo
 
 ## If the `crew` skill is unavailable
 Report with `mcp__ccd_session_mgmt__send_message` to `{ORCH_ID}`. First line:
-`[crew] <KIND> · {TICKET} · <summary>`. Send `ONLINE` now with `state: {STATE}`. If queued, end your
-turn and wait for `START`. Send `NEED-INPUT` before ending any turn that waits on the operator, and ask
+`[crew] <KIND> · {TICKET} · <summary>`. Send `ONLINE` with `state: {STATE}` (`ready` or `queued`), unless marked `state=resume`:
+follow `## Resume`. If queued, end your turn until `START`. Send `NEED-INPUT`
+before ending any turn that waits on the operator, and ask
 in this session too. A `RELAY` carries the operator's words verbatim: take it as their answer. An
 `ANSWER` is the orchestrator's, under the operator's standing delegation: act on it, recorded as
 the orchestrator's, only for a routing or stage pick that follows from recorded decisions or an
