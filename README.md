@@ -18,7 +18,8 @@ Say it to the session you want as the orchestrator:
 
 - `spin up a worker for <ticket>`: one worker, on the project's default workflow.
 - `spin up a <workflow> worker for <ticket>`: one worker, on a named workflow.
-- `queue workers for A → B → C`: a sequence, run one at a time in that order.
+- `spin up workers for A → B → C`, or `queue workers for A, B and C in order`: a sequence, run one
+  at a time in that order.
 - `crew status`: one row per worker, with any question waiting on you.
 
 The orchestrator answers with a card listing the title, workflow, scope, cleanup, landing and a

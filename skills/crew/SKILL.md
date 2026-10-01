@@ -217,7 +217,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   `worktreePath` (the worker's cwd for `overlap.sh` and verify) and `sourceBranch`. Then:
   `state: ready` → status `running`, add its roster line, subscribe to its idle notice (*Subscribing*).
   `state: queued` → status `queued`. **Don't subscribe yet:** it goes idle at once, so the notice means
-  nothing. Subscribe when you send its `START`. Either way, write the session id and worktree to the row.
+  nothing. Subscribe once its `START` turn is running. Either way, write the session id and worktree to the row.
 - **NEED-INPUT** → never send `ANSWER` or `RELAY` for `answer: in this session only`: nudge without
   "answer here", and say why. Otherwise, a standing delegation covers the question within the
   `ANSWER` row's limits → no nudge; send `ANSWER`, write it to the ledger row, and tell the operator,
@@ -245,9 +245,9 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   facts learned since the brief (an environment quirk, a throttle, an operator call), and any message
   still pending. Reset its roster start epoch. After a clear, message by id, subscribe by title.
 - **Idle notice** → ignore it for a worker that's queued, landed or archived (exits fire notices
-  too), or that sent a message since the last notice. Re-subscribe only once it shows activity since
-  (a message, or `ListAgents` busy): subscribing to an idle session fires at once. Check its tail for
-  any other notice (`list_events`, limit 6):
+  too), that sent a message since the last notice, or whose noticed turn predates its resume (a
+  pre-clear subscription). Re-subscribe only on activity since (a message, or `ListAgents` busy):
+  subscribing to an idle session fires at once. Check its tail on any other notice (`list_events`, limit 6):
   - a `send_message` in its last turn → the report is in flight (the notice can beat it): wait.
   - a final `waiting: <what>[, until <time>]` line → **waiting**, not stopped: no nudge. The watchdog
     can't see an idle worker: for an `until`, arm a background `sleep` to it plus 10 minutes
@@ -319,7 +319,7 @@ section). Don't write later units' specs yet: earlier units will move the base u
    START) with the new base sha and its Job section, written now from the landed state. Include what
    earlier units changed and handed on, and each finding unit N carried as a "Carried from N" line
    (also a checklist line on N+1's ticket). Save it as `briefs/<row>-start.md`. Then add its roster
-   line and subscribe to its idle notice.
+   line and subscribe once its `START` turn is running (*Idle notice*).
 
 **Hold the base still.** While a sequence is in flight, nothing commits to `<base>` except landings.
 That includes you; tell the operator the same. One stray commit and the next ff-only landing is refused.
@@ -473,9 +473,9 @@ anything besides the four kinds.
   notify_when_idle: true)` returns "Nothing was subscribed: notify_when_idle is only supported for
   Claude sessions on this machine…". Seen live in hg (2026-09-30): right after a clear, the by-title
   subscribe was "not reachable" three times while `get_session` showed that title.
-- **The idle notice can beat the report.** Seen live twice out of two: the worker sent `NEED-INPUT` (and
-  later `DONE`) and ended its turn, and the idle notice reached the orchestrator first. The report was
-  queued behind the orchestrator's own turn. Check the worker's tail before calling it silent.
+- **The idle notice can beat the report, or trail a resume.** Seen live twice out of two: a worker's
+  `NEED-INPUT` (later `DONE`) queued behind the orchestrator's turn, its notice first. Seen live (crew
+  FIX2, 2026-10-01): a pre-clear subscription fired for the clearing turn after the resume. Check the tail.
 - **Never assume which commit the app cut a worker from.** In hg (2026-09-22) five spawns out of five
   were cut from the default branch `main` while the main checkout sat on `graph-port`; `get_session`
   reported `sourceBranch: main` each time. Another repo was seen cutting from the checkout's branch.
