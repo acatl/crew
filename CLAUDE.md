@@ -153,8 +153,8 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   or `state=<v>`) and no other, and the brief's fallback section names every value.
 - **A ready PR asks before it merges.** After `merge bar met` the worker waits on the merge, so it sends
   `NEED-INPUT`, and the merge go is an `ANSWER` to it. *Checked*: every workflow file or
-  `docs/pr-round-workflow.md` that names `merge bar met` has a sentence naming `NEED-INPUT` and the
-  merge, and at least one names it.
+  `docs/pr-round-workflow.md` that names `merge bar met` has a sentence that sends `NEED-INPUT` for the
+  merge (the orchestrator's answering sentence doesn't count), and at least one names it.
 - **Every workflow file has the orchestrator's shape** (frontmatter `name` = file name, and
   `description`; Parameters, Stages, Rules in order; each stage's Ends, Report, Orchestrator; exactly
   one `stop`). *Checked* by `check-structure.sh`, over the built-in and `docs/crew/workflows/`.

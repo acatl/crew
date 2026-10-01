@@ -79,8 +79,8 @@ orchestrator's memory. Everything you need is here, in the ticket, or in your wo
 
 ## If the `crew` skill is unavailable
 Report with `mcp__ccd_session_mgmt__send_message` to `{ORCH_ID}`. First line:
-`[crew] <KIND> · {TICKET} · <summary>`. Send `ONLINE` with `state: {STATE}` (`ready` or `queued`), unless `resume`:
-continue where `## Resume` says. If queued, end your turn until `START`. Send `NEED-INPUT`
+`[crew] <KIND> · {TICKET} · <summary>`. Send `ONLINE` with `state: {STATE}` (`ready` or `queued`), unless marked `state=resume`:
+follow `## Resume`. If queued, end your turn until `START`. Send `NEED-INPUT`
 before ending any turn that waits on the operator, and ask
 in this session too. A `RELAY` carries the operator's words verbatim: take it as their answer. An
 `ANSWER` is the orchestrator's, under the operator's standing delegation: act on it, recorded as

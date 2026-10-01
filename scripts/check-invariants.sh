@@ -413,7 +413,8 @@ if [ "$v_ok" = 1 ]; then held=$((held + 1)); fi
 # --- a ready PR asks before it merges ----------------------------------------------------------------------
 # After `merge bar met` the worker waits on the merge, so it sends NEED-INPUT (SKILL.md Worker step 4), and
 # the merge go is an ANSWER to that question: no other kind can carry it. Every workflow file or round
-# procedure that names `merge bar met` holds a sentence naming NEED-INPUT and the merge. At least one must
+# procedure that names `merge bar met` holds a sentence that sends NEED-INPUT for the merge (the worker's;
+# the orchestrator's "answers only the worker's merge NEED-INPUT" doesn't count). At least one must
 # name it, so the check can't pass on finding none.
 ask_ok=1 ask_seen=0
 for f in "${merge_files[@]}"; do
@@ -421,7 +422,7 @@ for f in "${merge_files[@]}"; do
   sentences=$(tr '\n' ' ' < "$f" | tr -s ' ' | sed 's/[.;] /\n/g')
   grep -qF 'merge bar met' <<< "$sentences" || continue
   ask_seen=1
-  if ! grep -F 'NEED-INPUT' <<< "$sentences" | grep -qi 'merge'; then
+  if ! grep -F 'NEED-INPUT' <<< "$sentences" | grep -E '(^|[^a-z])sends ' | grep -qiE 'merge([^a-z]|$)'; then
     fail "$f: names \`merge bar met\` but no sentence sends the merge \`NEED-INPUT\`"; ask_ok=0
   fi
 done

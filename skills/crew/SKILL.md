@@ -241,11 +241,11 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   `owed: resume not sent`. Send the resume **immediately**, even when the next step is only waiting: a
   worker woken by anything else, without its brief, hedges or invents (seen repeatedly). First confirm
   the clear (`list_events`: idle, no messages; a resume sent earlier queues behind it). The resume is
-  the saved brief re-filled as `state=resume` (every `{STATE}`), then any START
-  (`briefs/<row>-start.md`) whole, then a `## Resume` section: where to pick up, the approved plan's
-  path, the worker's ledger path, facts learned since the brief (an environment quirk, a throttle, an
-  operator call), and any message still pending. Once it's sent: status `running`, `owed` cleared,
-  roster start epoch reset.
+  the saved brief with its marker line set to `state=resume` and any queued Job block swapped for its
+  START (`briefs/<row>-start.md`) whole, then a `## Resume` section: where to pick up, the approved
+  plan's path, the worker's ledger path, facts learned since the brief (an environment quirk, a
+  throttle, an operator call), and any message still pending. Once it's sent: drop `resume not sent`
+  from `owed`, status `running` unless `owed` still holds a question, roster start epoch reset.
 - **Idle notice** → ignore it for a worker that's queued, landed or archived, or verified with nothing
   sent to it since (exits fire notices too). One busy now (`ListAgents`), yet to start on your last message, or for a turn that
   ended before you sent it (`list_events` times) is stale (*Gotchas*): see *Subscribing*. Check its
@@ -425,8 +425,8 @@ A brief marked `state=resume` is a resume: you cleared earlier. Send no `ONLINE`
    work of yours, run `git switch -C "$(git branch --show-current)" <brief's base sha>`; if it carries
    work, `BLOCKED`. Confirm `git rev-parse HEAD` is that sha. Then apply the brief's branch rule
    (`git branch -m <name>`) and worktree setup; never create another worktree. Move a ledger already at
-   `$(git rev-parse --git-dir)/crew-ledger.md` onto `mktemp <that dir>/crew-ledger.XXXXXX` unless a
-   resume names it as yours: the app reuses worktree dirs, so it's an earlier worker's. Never read it.
+   `$(git rev-parse --git-dir)/crew-ledger.md` onto `mktemp <that dir>/crew-ledger.XXXXXX`: the app
+   reuses worktree dirs, so it's an earlier worker's. Never read it.
 3. **Work your workflow.** Read the file your brief names, in full, and follow it with your parameters;
    a resume names where to pick up. No workflow named in your
    brief → your brief's Job/Spec, Boundaries and Checkpoints are the workflow; follow them as written.

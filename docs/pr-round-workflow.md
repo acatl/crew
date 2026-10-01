@@ -64,9 +64,9 @@ are context the next round needs.
   which is a Hard Gate only this session approves.
   A review that lands later on the same head starts the next round: § 0's window has long passed.
 - **The worker merges only on the coordinator's go**, never on its own reading of the PR (§
-  Stopping › Merging): the coordinator's `ANSWER` to that "merge?" under the merge rule, unless the
-  card says `landing: operator` (then the operator merges), or the operator's yes in this session to a
-  merge outside the rule.
+  Stopping › Merging): the coordinator's `ANSWER` to that "merge?" under the merge rule (a card's
+  `landing: operator` withholds it), the operator's go relayed to it, or the operator's yes in this
+  session to a merge outside the rule.
 - **CodeRabbit reviews rounds 1–3 only; from round 4 it is paused by label.** Just BEFORE
   pushing round 3's fixes, the worker applies the `dont-review` label
   (`gh pr edit <N> --repo acatl/crew --add-label dont-review`; `.coderabbit.yaml` excludes that

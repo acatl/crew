@@ -93,20 +93,21 @@ you, within `rounds`, a late review on an unchanged head included.
   head after `git fetch origin main`, CI, open threads and `mergeStateStatus`, then sends the
   merge `NEED-INPUT` that `docs/pr-round-workflow.md` › Who runs the rounds describes.
 - **Orchestrator:** verifies the sha. On a clean round it checks the written merge rule itself and
-  answers only the worker's merge `NEED-INPUT`, once it lands. Met, with no `landing: operator` on
-  the card (`CREW.md` › Integration `mode: pr` delegates the rest), it tells the worker to merge by
-  `ANSWER` to it. Met under that override, it nudges the operator to merge by hand and sends no go.
-  Missed by its own check, whatever the worker reported, it nudges with the failing condition and
-  relays no merge: a merge despite it is the operator's own, by hand or in the worker's session
-  (`docs/pr-round-workflow.md` › Merging). It handles the
-  operator's merge (`prState: MERGED`) as `stop merge`.
+  answers only the worker's merge `NEED-INPUT`, once it lands. Met, with no `landing: operator` on the
+  card (`CREW.md` › Integration `mode: pr` delegates the rest), it tells the worker to merge by `ANSWER`
+  to its "merge?". Met under that override, it nudges the operator, who merges by hand or says go, which
+  it relays. Met while the worker asked as missed (CI concluded since, say), it `ANSWER`s "re-check the
+  bar", and the worker asks again. Missed by its own check, whatever the worker reported, it nudges with
+  the failing condition and relays no merge: a merge despite it is the operator's own, by hand or in the
+  worker's session (`docs/pr-round-workflow.md` › Merging). It handles the operator's merge
+  (`prState: MERGED`) as `stop merge`.
 - **Clears:** after a push, yes, monitor off first. Not after a clean round: one step from the
   stop.
 
 ### merge
 
-Merge only on a go to your "merge?" (`docs/pr-round-workflow.md` › Stopping › Merging; a card's
-`landing: operator` withholds it), then turn the monitor off. Woken by a merge the operator made instead, confirm it and report the same.
+Merge only on a go to your "merge?" (`docs/pr-round-workflow.md` › Stopping › Merging), then turn the
+monitor off. Woken by a merge the operator made instead, confirm it and report the same.
 
 - **Ends:** merged, by you or the operator.
 - **Report:** `stop merge`: the merge sha, monitor off, carried.
