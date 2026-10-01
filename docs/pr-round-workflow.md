@@ -9,7 +9,8 @@ work the same way (operator, 2026-09-25). The operator's rulings quoted below we
 **Each round = settle → read → triage → sweep → fix → verify → review → push → reply**,
 with § 5's verify re-run after each review pass's fixes, before the push.
 One push per round, and no round starts before the reviewers settle. A clean round, with nothing to
-fix, stops at triage: no push.
+fix, stops at triage: no push and no round number, so round N is always the one making the PR's
+N-th push after the opening one.
 
 ## What is consent, and what is a gate
 
@@ -52,11 +53,17 @@ are context the next round needs.
   the coordinator: round number, commit sha, push time, what was fixed and what was declined, CI
   state, silent reviewers. That is a checkpoint, not an exit: when the next reviews land, the same
   worker runs the next round from § 0.
-- **A round with nothing to fix pushes nothing.** When § Stopping's conditions look met, the worker
-  reports `merge bar met` with `verify` on the head after `git fetch origin main`, CI, open threads
-  and `mergeStateStatus`; otherwise a clean `checkpoint round` naming the condition that fails,
-  which goes to the operator (§ Stopping). An unchanged head draws no new review, so the worker
-  never waits for one.
+- **A round with nothing to fix pushes nothing.** The worker checks § Stopping › Merging's three
+  conditions and `mergeStateStatus` itself:
+  - all met → it reports `merge bar met` with `verify` on the head after `git fetch origin main`,
+    CI, open threads and `mergeStateStatus`, and ends the turn with `waiting: the merge`;
+  - `BEHIND` or a conflict → the sync push (§ Merging) is this round's push;
+  - any other condition fails (a clean opening round, for one, has no round-1 push) → `NEED-INPUT`
+    marked `answer: in this session only`, naming it: a merge outside the written rule is a Hard
+    Gate, and another review is the operator's call.
+
+  A review that lands later on the same head starts the next round at § 1: its reviewer has
+  posted, and its report supersedes any pending question.
 - **The worker merges only on the coordinator's go**, never on its own reading of the PR (§
   Stopping › Merging).
 - **CodeRabbit reviews rounds 1–3 only; from round 4 it is paused by label.** Just BEFORE
@@ -328,7 +335,6 @@ itself, by running, never from the worker's report:
 2. **Enough review rounds.** At least **two** completed rounds (the opening review and the review
    of the round-1 push). CodeRabbit has reviewed the current head, or the PR carries
    `dont-review` and CodeRabbit reviewed every push before it. No valid finding is still open.
-   A clean opening round has no round-1 push, so it never reaches two: it goes to the operator.
 3. **Every thread dispositioned** (fixed, declined on the merits, deferred with the operator's
    yes, or merge-and-carry), each with its reply, and resolved.
 

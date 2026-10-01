@@ -184,18 +184,18 @@ fresh; edit "$BT" 's#tool-permission prompt or a gated action (push, install,#to
 red "15z the fallback drops the gated-action half" check-invariants "the section headed '^#+ If the"
 
 # a merge go names its delegation: a sentence that tells the worker to merge names `landing:`
-fresh; edit "$PR" 's#says `landing: operator` (#says `landing: delegated` (#'
+fresh; edit "$PR" 's#with no `landing: operator` on#with no `landing: delegated` on#'
 red "15da a workflow gates the merge on the card's delegation alone" check-invariants "$PR: tells the worker to merge without naming"
 fresh; edit docs/pr-round-workflow.md 's#unless the card says `landing: operator`, tells#tells#'
 red "15db so does the round procedure" check-invariants "docs/pr-round-workflow.md: tells the worker to merge"
-fresh; edit "$PR" 's#  to merge; else tells#  to go; else tells#'
+fresh; edit "$PR" 's#it tells the worker to merge\. Met#it tells the worker to go. Met#'
 edit docs/pr-round-workflow.md 's#, tells the worker to merge\.#, tells the worker to go.#'
 red "15dc no merge sentence at all fails, never passes" check-invariants "a sentence that tells the worker to merge not found"
 fresh; rm "$S/docs/pr-round-workflow.md"
 red "15dd a missing round procedure is reported, not skipped" check-invariants "docs/pr-round-workflow.md: the file not found"
-fresh; edit "$PR" 's#^- \*\*Orchestrator:\*\* verifies the sha\. When#- **Orchestrator:** verifies the sha. (See CREW.md › Integration.) When#'
+fresh; edit "$PR" 's#^  Met, with no#  (See CREW.md › Integration.) Met, with no#'
 green "15de a dotted name inside the sentence doesn't split it" check-invariants
-edit "$PR" 's#says `landing: operator` (#says `landing: delegated` (#'                  # same fixture
+edit "$PR" 's#with no `landing: operator` on#with no `landing: delegated` on#'              # same fixture
 red "15df and the same fixture still fires on a missing withhold" check-invariants "$PR: tells the worker to merge without naming"
 
 # the queue card shows each unit's workflow and landing

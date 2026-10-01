@@ -81,23 +81,23 @@ timer and end the turn with the new `until` (`docs/pr-round-workflow.md` § 0).
 
 Then run one round per `docs/pr-round-workflow.md`: read, triage, sweep, fix, verify,
 `/code-review high` over the fix diff, one push, reply and resolve. Put `dont-review` on just before
-round 3's push. A round with nothing to fix is a clean round: no push, no label. Repeat when the
-next reviews wake you, within `rounds`. A clean round draws no next review: it reports and waits
-on the orchestrator, never on reviewers.
+round 3's push. A round with nothing to fix is a clean round: no push, no label, no round number;
+it ends as `docs/pr-round-workflow.md` › Who runs the rounds says. Repeat when the next reviews wake
+you, within `rounds`, a late review on an unchanged head included.
 
 - **Ends:** the round's push is up and its threads are dispositioned, or the round settled clean.
 - **Report:** `checkpoint round`: round, sha, push time, fixed, declined, CI state, silent
-  reviewers. A clean round whose PR looks ready (`docs/pr-round-workflow.md` › Stopping) reports
-  `merge bar met`, with `verify` on the head after `git fetch origin main`, CI, open threads and
-  `mergeStateStatus`; one that misses the bar (a clean opening round has no round-1 push) names
-  the condition that fails.
-- **Orchestrator:** verifies the sha. When the PR meets the written merge rule, and unless the card
-  says `landing: operator` (`CREW.md` › Integration `mode: pr` delegates the rest), tells the worker
-  to merge; else tells the operator it's ready, and handles their merge (`prState: MERGED`) as
-  `stop merge`. A clean round that misses the rule goes to the operator. Its timer for the
-  worker's latest `until` fires (SKILL.md › Idle notice) with no activity since, the worker still
-  waiting on reviewers → `ANSWER`: "the window passed, run the round", a stage pick from this
-  written rule.
+  reviewers. A clean round that meets `docs/pr-round-workflow.md` › Stopping › Merging's conditions
+  reports `merge bar met`, with `verify` on the head after `git fetch origin main`, CI, open threads
+  and `mergeStateStatus`, and ends its turn with `waiting: the merge`. One that misses them sends
+  `NEED-INPUT` marked `answer: in this session only` instead, naming the condition.
+- **Orchestrator:** verifies the sha. On `merge bar met` it checks the written merge rule itself.
+  Met, with no `landing: operator` on the card (`CREW.md` › Integration `mode: pr` delegates the
+  rest), it tells the worker to merge. Met under that override, it tells the operator the PR is
+  ready; missed, it tells the operator which condition fails. It handles the operator's merge
+  (`prState: MERGED`) as `stop merge`. When its timer for the worker's latest `until` fires
+  (SKILL.md › Idle notice) with no activity since, the worker still waiting on reviewers →
+  `ANSWER`: "the window passed, run the round", a stage pick from this written rule.
 - **Clears:** after a push, yes, monitor off first. Not after a clean round or at `merge bar met`:
   one step from the stop.
 
