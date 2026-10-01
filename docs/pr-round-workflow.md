@@ -58,11 +58,14 @@ are context the next round needs.
   ending the turn `waiting: CI`), the worker checks § Stopping › Merging's three conditions
   itself and reports a clean `checkpoint round`: `merge bar met` when all three hold, else the one
   that fails (a clean opening round has no round-1 push). Either way it adds `verify` on the head
-  after `git fetch origin main`, CI, open threads and `mergeStateStatus`, and ends the turn with
-  `waiting: the merge`. A review that lands later on the same head starts the next round: § 0's
-  window has long passed.
+  after `git fetch origin main`, CI, open threads and `mergeStateStatus`. It then waits on the merge,
+  so it sends `NEED-INPUT` and ends the turn (crew's Worker step 4): bar met → "merge?", marked
+  `answer: here or relay`; bar missed → the condition and the choices (merge anyway, another
+  review), marked `answer: in this session only`, since a merge outside the rule is a Hard Gate.
+  A review that lands later on the same head starts the next round: § 0's window has long passed.
 - **The worker merges only on the coordinator's go**, never on its own reading of the PR (§
-  Stopping › Merging).
+  Stopping › Merging): the coordinator's `ANSWER` to that "merge?", under the merge rule, or the
+  operator's words.
 - **CodeRabbit reviews rounds 1–3 only; from round 4 it is paused by label.** Just BEFORE
   pushing round 3's fixes, the worker applies the `dont-review` label
   (`gh pr edit <N> --repo acatl/crew --add-label dont-review`; `.coderabbit.yaml` excludes that

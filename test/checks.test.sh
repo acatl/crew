@@ -188,7 +188,7 @@ fresh; edit "$PR" 's#with no `landing: operator` on#with no `landing: delegated`
 red "15da a workflow gates the merge on the card's delegation alone" check-invariants "$PR: tells the worker to merge without naming"
 fresh; edit docs/pr-round-workflow.md 's#unless the card says `landing: operator`, tells#tells#'
 red "15db so does the round procedure" check-invariants "docs/pr-round-workflow.md: tells the worker to merge"
-fresh; edit "$PR" 's#it tells the worker to merge\. Met#it tells the worker to go. Met#'
+fresh; edit "$PR" 's#it tells the worker to merge by#it tells the worker to go by#'
 edit docs/pr-round-workflow.md 's#, tells the worker to merge\.#, tells the worker to go.#'
 red "15dc no merge sentence at all fails, never passes" check-invariants "a sentence that tells the worker to merge not found"
 fresh; rm "$S/docs/pr-round-workflow.md"
