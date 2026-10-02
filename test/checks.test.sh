@@ -275,9 +275,14 @@ red "15eh its heading renamed is reported, not passed" check-invariants "a secti
 
 # the integration reaches a worker through its brief: every Job block names {INTEGRATION_PATH}
 fresh; edit "$BT" '/^## START/,$ s#^- Integration: `{INTEGRATION_PATH}`\.#- Integration: none.#'
-red "15ec START drops the integration line its brief carries" check-invariants "2 Job block(s) name {WORKFLOW_PATH} but 1 carry"
+red "15ec START drops the integration line its brief carries" check-invariants "the Job block naming {WORKFLOW_PATH} carries 0"
 fresh; edit "$BT" 's#^- Integration: `{INTEGRATION_PATH}`\.#- Integration: none.#'
-red "15ed both Job blocks drop it" check-invariants "but 0 carry"
+red "15ed both Job blocks drop it" check-invariants "the Job block naming {WORKFLOW_PATH} carries 0"
+fresh; edit "$BT" '/^## START/,$ s#^- Integration: `{INTEGRATION_PATH}`\.#- Integration: none.#'
+edit "$BT" 's#^\(- Integration: `{INTEGRATION_PATH}`.*\)$#\1\
+\1#'                       # START's line is gone, so only the brief's doubles
+red "15ec2 one block's duplicate line doesn't cover another block's missing one" check-invariants "the Job block naming {WORKFLOW_PATH} carries 0"
+if grep -qF "the Job block naming {WORKFLOW_PATH} carries 2" "$ROOT/out"; then ok "15ec3 and the doubled block is named too"; else bad "15ec3 doubled block" "$(cat "$ROOT/out")"; fi
 fresh; edit "$BT" 's#its file, absolute: `CREW.md` › Integration.s `file:`#its file, absolute: `CREW.md` › Workflows row#'
 red "15ee the row sourcing {INTEGRATION_PATH} from anything but Integration" check-invariants "no placeholder row sourcing {INTEGRATION_PATH}"
 

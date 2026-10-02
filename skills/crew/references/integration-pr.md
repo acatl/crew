@@ -6,10 +6,10 @@ description: The built-in integration. Land a workflow's work by GitHub pull req
 # Integration: pr
 
 How finished work lands: a pull request, its review rounds and its merge. Your workflow's `handoff`
-continues into these stages when your brief names this file. It needs `gh` and the app's PR binding,
-nothing else. The crew contract (SKILL.md) and your workflow's Rules sit under it; nothing here
-changes them. To adapt it (a reviewer roster, labels, a review budget), copy it to
-`docs/crew/integrations/pr.md` and edit the copy.
+continues into these stages when your brief names this file. It needs `gh` and the app's PR binding.
+The crew contract (SKILL.md) and your workflow's Rules sit under it; nothing here changes them.
+To adapt it (a reviewer roster, labels, a review budget), copy it to `docs/crew/integrations/pr.md`
+and edit the copy.
 
 ## Parameters
 
@@ -29,7 +29,7 @@ The orchestrator resolves each into your brief; read the values there, never `CR
 Run `git fetch origin <base>`, then `verify` on a clean tree; fix anything red first. Push your own
 branch and run `gh pr create`: a Conventional Commits title, and a body saying what changed, why,
 and the risk. Call the app's `get_status`; if it doesn't report this PR, call `bind_pr` with its URL;
-then call `set_monitor` with `auto_fix: true`. Each of these calls raises an approval prompt in some
+then `set_monitor` with `auto_fix: true`. Each of these calls raises an approval prompt in some
 permission modes, and a prompt blocks the call. Send `NEED-INPUT` marked `answer: in this session
 only` before them, unless `get_session("self")` reports `permissionMode` `auto` or
 `bypassPermissions`.
@@ -43,11 +43,11 @@ only` before them, unless `get_session("self")` reports `permissionMode` `auto` 
 
 Arm a settle timer first, on entering and after a resume too: a background command (the Bash tool's
 `run_in_background`) that exits once `settle` minutes have passed since the push, or earlier once
-every reviewer that reviewed this PR before has reviewed the head. A silent reviewer wakes no one;
-the timer does. End each waiting turn with `waiting: settle timer, until <push time + settle>`.
+every reviewer of an earlier push has reviewed the head (none yet: the full window). A silent
+reviewer wakes no one; the timer does. End each waiting turn with `waiting: settle timer, until <push time + settle>`.
 Woken by the monitor mid-settle → keep waiting.
 
-Read every review thread and every review body: some reviewers file findings with no thread.
+Read every review thread and review body: some reviewers file findings with no thread.
 Triage each finding: fix it, decline it with a reason cited to code or a rule, or defer it, which is
 the operator's call. Fix, review the fixes as your workflow's review does, run `verify`, and push
 once. Reply to each finding, then resolve exactly the threads this round dispositioned. A base that
