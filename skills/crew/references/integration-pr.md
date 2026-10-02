@@ -30,7 +30,7 @@ Run `git fetch origin <base>`, then `verify` on a clean tree; fix anything red. 
 branch and run `gh pr create`: a Conventional Commits title; a body of what changed, why, the risk.
 Call the app's `get_status`; if it doesn't report this PR, call `bind_pr` with its URL. Then call
 `set_monitor` with `auto_fix: true`. Any of these calls can raise an approval prompt, which blocks
-it: send `NEED-INPUT` marked `answer: in this session only` before them, unless
+it. Send `NEED-INPUT` marked `answer: in this session only` before them, unless
 `get_session("self")` reports `permissionMode` `auto` or `bypassPermissions`.
 
 - **Ends:** PR open, bound, monitor on.
