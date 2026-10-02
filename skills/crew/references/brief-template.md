@@ -15,7 +15,7 @@ Two variants differ only in the Job section:
 | `{STATE}` | `ready`, `queued`, or `resume` when re-sent after a clear (SKILL.md step 6) |
 | `{ORCH_ID}`, `{ORCH_TITLE}` | `get_session("self")` |
 | `{TITLE}` | card › Title |
-| `{BASE}` | the base chosen for THIS unit (SKILL.md step 3.4), as a ref (e.g. `graph-port`) |
+| `{BASE}` | THIS unit's base (SKILL.md step 3.4), as a branch (e.g. `graph-port`, not `origin/main`) |
 | `{BASE_SHA}` | that ref's sha at spawn time; the worker re-points to it (*Worker* step 2) |
 | `{TICKET_SOURCE}` | `CREW.md` › Ticket source, filled (e.g. "Kino task KINO-5, via the Kino MCP `get_task`"), or "the spec below" |
 | `{SCOPE}` | card › Scope |

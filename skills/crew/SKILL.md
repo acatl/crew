@@ -164,7 +164,7 @@ a time, so check them against workers outside the sequence, not against each oth
    surface needs something that exists only on an in-flight branch)?
 4. **Base** — pick the commit this unit must start from, for this situation (the line it integrates
    into, the default branch for a PR cut from it, a specific sha for an audit), and write it into the
-   brief as **a ref plus a sha**. Never assume the app cut the worktree from it (see *Gotchas*); the
+   brief as **a branch plus a sha**. Never assume the app cut the worktree from it (see *Gotchas*); the
    worker re-points itself to that sha as its first setup step.
 
 Result: `✓ clear` · `⚠ overlap` (which worker, which paths) · `⚠ main checkout on <branch>, not <base>` ·

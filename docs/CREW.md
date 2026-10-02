@@ -25,12 +25,13 @@ orchestrator's memory, so the brief carries every decision the unit needs.
 ## Base
 
 **Chosen per unit, never fixed here.** The orchestrator picks the commit the unit must start
-from and writes it into the brief as **a ref plus a sha**. The worker's first setup step
+from and writes it into the brief as **a branch plus a sha**. The worker's first setup step
 re-points it there, guarded (crew skill › *Worker* step 2), and confirms `git rev-parse HEAD`.
 
 ## Verify
 
-Run in the worker's worktree after DONE, on a clean tree after `git fetch origin main`:
+Run in the worker's worktree after DONE, on a clean tree after `git fetch origin <base>`, the
+unit's Base:
 
 - `./scripts/verify.sh`: every CI check, in CI's order.
 

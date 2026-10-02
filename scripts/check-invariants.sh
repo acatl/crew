@@ -429,17 +429,22 @@ fi
 if [ "$merge_ok" = 1 ]; then held=$((held + 1)); fi
 
 # --- a PR opens against the brief's base ----------------------------------------------------------------------
-# Without --base, `gh pr create` targets the repo's default branch (or the branch's gh-merge-base), not the
-# base the brief chose (SKILL.md step 3.4), so a unit cut from another line opens a PR with the wrong range.
-# Every `gh pr create` a workflow or integration file names carries --base.
+# Without --base, `gh pr create` (alias `gh pr new`) targets the repo's default branch or the branch's
+# gh-merge-base, not the base the brief chose (SKILL.md step 3.4), so a unit cut from another line opens a PR
+# over the wrong range. Every such call a workflow or integration file names sets the base to `<base>`, in
+# any of gh's spellings; a literal branch there would be the same bug. A fenced block flattens to one match,
+# so each match is split at every `gh pr ` before it is judged.
 pr_ok=1 pr_seen=0
 for f in ${stage_files[@]+"${stage_files[@]}"}; do
-  while IFS= read -r call; do
+  while IFS=$'\t' read -r at call; do
     pr_seen=1
-    if ! grep -qE '^gh pr create --base ' <<< "$call"; then
-      fail "$f: names \`gh pr create\` without --base, which opens against the default branch: '$call'"; pr_ok=0
+    if ! grep -qE -- '(--base[ =]|-B )<base>([^[:alnum:]_/-]|$)' <<< "$call"; then
+      fail "$at: names \`gh pr create\` without --base <base>, which opens against the default branch: '$call'"
+      pr_ok=0
     fi
-  done < <(tr '\n' ' ' < "$f" | tr -s ' ' | grep -oE 'gh pr create[^`]*' || true)
+  done < <(scan 'gh pr (create|new)[^`]*' "$f" |
+    LC_ALL=C awk -F'\t' '{ n = split($2, c, / gh pr /); print $1 "\t" c[1]
+                            for (i = 2; i <= n; i++) print $1 "\tgh pr " c[i] }')
 done
 if [ "$pr_seen" = 0 ]; then
   reworded "the workflow and integration files" "a \`gh pr create\` call"; pr_ok=0

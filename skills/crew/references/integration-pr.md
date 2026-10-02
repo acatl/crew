@@ -8,7 +8,7 @@ description: The built-in integration. Land a workflow's work by GitHub pull req
 How finished work lands: a pull request, its review rounds and its merge. Your workflow's `handoff`
 continues into these stages when your brief names this file. It needs `gh` and the app's PR binding.
 The crew contract (SKILL.md) and your workflow's Rules sit under it; nothing here changes them.
-To adapt it (a reviewer roster, labels), copy it to `docs/crew/integrations/pr.md` and edit it.
+To adapt it (a reviewer roster, labels), edit a copy at `docs/crew/integrations/pr.md`.
 
 ## Parameters
 
@@ -85,7 +85,7 @@ confirm it and report the same.
 - **Consent.** The brief grants a push to your own branch, your own PR, its binding, and writes to
   it (replies, resolves). Anything else, a merge outside the merge rule included, is a Hard Gate:
   the operator's yes in this session, never relayed.
-- **The merge rule:** CI green on the head; `verify` green after `git fetch origin <base>`; every
-  finding dispositioned, replied to and resolved; `reviewDecision` not blocking; at least one
-  non-empty review. Judge `reviewDecision` and `mergeStateStatus`, never the open-thread count: a
+- **The merge rule:** CI green on the head; the PR targets `<base>`; `verify` green after
+  `git fetch origin <base>`; every finding dispositioned, replied to and resolved; `reviewDecision`
+  not blocking; at least one non-empty review. Judge `reviewDecision` and `mergeStateStatus`, never the open-thread count: a
   `CHANGES_REQUESTED` survives resolving every thread.

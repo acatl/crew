@@ -163,9 +163,11 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
 - **A merge go names its delegation.** Landing needs delegation; Integration mode `pr` is the one
   standing delegation, withheld by a card's `landing: operator`. *Checked*: every sentence in a
   workflow or integration file that tells the worker to merge names `landing`.
-- **A PR opens against the brief's base.** `gh pr create` without `--base` targets the repo's
-  default branch, not the base the brief chose. *Checked*: every `gh pr create` a workflow or
-  integration file names carries `--base`, and at least one names it.
+- **A PR opens against the brief's base.** `gh pr create` (alias `gh pr new`) without `--base`
+  targets the repo's default branch, not the base the brief chose, so the brief's `{BASE}` is a bare
+  branch (never `origin/…`) and integration files say `<base>`, never a literal branch. *Checked*:
+  every `gh pr create` or `gh pr new` a workflow or integration file names, prose included, sets
+  `--base <base>` (`--base=<base>`, `-B <base>`), and at least one is named.
 - **The queue card shows each unit's Workflow and Landing** (under Integration mode `pr` landing is
   per unit). *Checked*: SKILL.md's queue-card table header.
 - **A workflow's `verify` falls back as the orchestrator's does.** The source is SKILL.md's

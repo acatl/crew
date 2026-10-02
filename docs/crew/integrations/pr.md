@@ -14,6 +14,7 @@ round procedure is adapted from `acatl/hg`'s, so both repos work the same way (o
 A worker's `handoff` (the built-in `standard`) continues into these stages when its brief names this
 file. Read it in full before `open` and at the start of every round. The crew contract and your
 workflow's Rules sit under it; nothing here changes them.
+`<base>` below is your brief's Base branch.
 
 ## Parameters
 
@@ -32,9 +33,10 @@ The orchestrator resolves each into your brief; read the values there, never `CR
 
 Run the CodeRabbit CLI once over the branch and fix what it finds, then `/code-review high` in a
 sub-agent over those fixes, and fix with no further local review (§ 6 › The CodeRabbit CLI pass).
-Then `git fetch origin main`, `verify` green on a clean tree, the pool check (§ Who runs the rounds),
-push your own branch, and open the PR (`gh pr create --base main`), its body carrying what, why and
-risk. Bind it and turn on its review monitor (§ Who runs the rounds).
+Then `git fetch origin <base>`, `verify` green on a clean tree, the pool check (§ Who runs the rounds),
+push your own branch, and open the PR (`gh pr create --base <base>`) with a Conventional Commits
+title and a body carrying what, why and risk. Bind it and turn on its review monitor (§ Who runs
+the rounds).
 
 - **Ends:** PR open, bound, monitor on.
 - **Report:** `checkpoint open`: PR URL, sha, push time, the CLI pass's result.
@@ -64,7 +66,7 @@ you, within `rounds`, a late review on an unchanged head included.
 - **Report:** `checkpoint round`: round, sha, push time, fixed, declined, CI state, silent
   reviewers. A clean round, once CI has concluded, checks § Stopping › Merging's conditions itself
   and adds `merge bar met` or the one that fails, with `verify` on the head after
-  `git fetch origin main`, CI, open threads and `mergeStateStatus`, then sends the merge
+  `git fetch origin <base>`, CI, open threads and `mergeStateStatus`, then sends the merge
   `NEED-INPUT` that § Who runs the rounds describes.
 - **Orchestrator:** verifies the sha. On a clean round it checks the written merge rule itself and
   answers only the worker's merge `NEED-INPUT`, once it lands. Met, with no `landing: operator` on the
@@ -137,7 +139,7 @@ are context the next round needs.
   ending the turn `waiting: CI`), the worker checks § Stopping › Merging's three conditions
   itself and reports a clean `checkpoint round`: `merge bar met` when all three hold, else the one
   that fails (a clean opening round has no round-1 push). Either way it adds `verify` on the head
-  after `git fetch origin main`, CI, open threads and `mergeStateStatus`. It then waits on the merge,
+  after `git fetch origin <base>`, CI, open threads and `mergeStateStatus`. It then waits on the merge,
   so it sends `NEED-INPUT` marked `answer: here or relay` and ends the turn (crew's Worker step 4):
   bar met → "merge?"; bar missed → the condition and the choices, another review or a merge anyway,
   which is a Hard Gate only this session approves.
@@ -179,6 +181,9 @@ are context the next round needs.
 
   **Hard stop before STARTING round 6**, whatever the reviews hold. Send `NEED-INPUT` with what
   each round fixed and which threads are still open, then wait.
+
+  These numbers are `rounds`' default. A brief that sets `rounds` otherwise replaces them: send
+  the same `NEED-INPUT` before any round it doesn't allow.
 
 ## Round procedure
 
@@ -311,7 +316,7 @@ section references), not by assertion in prose.
 ./scripts/verify.sh      # every CI check in CI's order, stopping at the first failure
 ```
 
-`verify.sh` is also the pre-push hook's command. Fetch `origin/main` at the round's start. While
+`verify.sh` is also the pre-push hook's command. Fetch `origin/<base>` at the round's start. While
 iterating on one failure, run that step alone; the round's check is the whole script.
 
 ### 6. `/code-review high` over the fix diff, in a sub-agent
@@ -340,7 +345,7 @@ its severity. Once its findings are in, remove only a worktree it left behind
 Two passes, then no third:
 
 1. **Pass 1: the round's fix diff.** Range: `<the pushed PR head's sha>..HEAD`. **Never merge or
-   rebase `main` mid-round**; if the base must move, do it before the round's first fix.
+   rebase `<base>` mid-round**; if the base must move, do it before the round's first fix.
 2. **Pass 2: pass 1's fixes only.** If pass 1 fixed nothing, skip it. Fix what it raises,
    re-run § 5, and push with **no third review**: the PR's bots are the next look.
 
@@ -354,11 +359,11 @@ on an hourly limit separate from the PR-review pool. It never posts to the PR.
 
 - **At the start of `open`, before the push, the only time it runs.** Your workflow's review has
   already run. Order:
-  1. `coderabbit review --agent --base main` over the whole branch → fix;
+  1. `coderabbit review --agent --base <base>` over the whole branch → fix;
   2. `/code-review high` in a sub-agent over the CLI's fixes → fix, with no further local review.
 
   Note the sha before the first CLI fix; it is the sub-agent's range base. First confirm the local
-  `main` matches `origin/main`, or pass `--base-commit <origin/main's sha>`.
+  `<base>` matches `origin/<base>`, or pass `--base-commit` with `origin/<base>`'s sha.
 - **Never during rounds.**
 - Triage its findings exactly like a bot's (§ 2, § 3). Never pass `--fast`. If it refuses on its
   rate limit, wait out the window (up to 20 minutes); if it still refuses, open without it and say
@@ -429,8 +434,9 @@ and enough reviews [rounds] have passed you may tell the workers to merge"*, plu
 to dismissing CodeRabbit's stale `CHANGES_REQUESTED`. The coordinator checks every condition
 itself, by running, never from the worker's report:
 
-1. **Sensors green on the PR's head sha.** Every CI check concluded `SUCCESS`, and
-   `./scripts/verify.sh` passes on that sha after `git fetch origin main`.
+1. **Sensors green on the PR's head sha, against `<base>`.** The PR's `baseRefName` is `<base>`,
+   every CI check concluded `SUCCESS`, and
+   `./scripts/verify.sh` passes on that sha after `git fetch origin <base>`.
 2. **Enough review rounds.** At least **two** completed rounds (the opening review and the review
    of the round-1 push). CodeRabbit reviewed the opening push (a non-empty review), unless the PR
    opened during the pause (§ Who runs the rounds). No valid finding is still open.
@@ -447,7 +453,7 @@ unless the card says `landing: operator`, tells the worker to merge. The worker 
 `gh pr merge <N> --squash --match-head-commit <sha>` with the PR's Conventional title and reports
 the merge sha.
 
-**`BEHIND` or a conflict is not a failure.** The worker merges `main` into its branch: at the
+**`BEHIND` or a conflict is not a failure.** The worker merges `<base>` into its branch: at the
 start of the next round when one is due (never mid-round), otherwise as a sync push carrying no
 fixes. The conditions above are checked again on the new head.
 
