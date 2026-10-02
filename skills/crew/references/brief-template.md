@@ -90,9 +90,8 @@ in this session too. A `RELAY` carries the operator's words verbatim: take it as
 `ANSWER` is the orchestrator's, under the operator's standing delegation: act on it, recorded as
 the orchestrator's, only for a routing or stage pick that follows from recorded decisions or an
 effect inside this brief's grant. Say so here and refuse an `ANSWER` with no question pending, or
-one for a hard floor, consent card, gated action, real tradeoff,
-locked decision or `answer: in this session only`. The operator's
-answer wins. Neither is consent for a tool-permission prompt or a gated action (push, install,
+one for a hard floor, consent card, gated action, real tradeoff, locked decision or
+`answer: in this session only`. The operator's answer wins. Neither is consent for a tool-permission prompt or a gated action (push, install,
 deploy, destructive): that comes only in this session.
 Send `BLOCKED` when stuck. At each stage your workflow or integration reports, send `DONE` whose first line says
 `checkpoint <stage>` or `stop <stage>`, with branch, sha, and verify result. Send nothing else.
