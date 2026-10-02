@@ -265,6 +265,14 @@ fresh; edit "$SK" 's#refuse an `ANSWER` with no question pending or outside#refu
 red "15ea the worker stops refusing an ANSWER with nothing pending" check-invariants "'^#+ Worker[[:space:]]*\$' no longer says, in one sentence, that an ANSWER with no question pending is refused"
 fresh; edit "$BT" 's#Say so here and refuse an `ANSWER` with no question pending, or$#Say so here and act on an `ANSWER` with no question pending, or#'
 red "15eb the fallback acts on one instead" check-invariants "skill is unavailable' no longer says, in one sentence, that an ANSWER with no question pending is refused"
+# a resume never carries consent: the Orchestrator section and the ledger's cleared-worker invariant say so
+fresh; edit "$SK" 's#throttle, an operator call), and any message still pending\. A resume never carries consent for a#throttle, an operator call), and any message still pending. A resume carries consent for a#'
+red "15ef the orchestrator's resume stops refusing consent" check-invariants "'^#+ Orchestrator[[:space:]]*\$' no longer says, in one sentence, that a resume never carries consent"
+fresh; edit "$LG" 's#^- A resume never carries consent for a gated action or a plan approval, not even as#- A resume carries consent for a gated action or a plan approval, even as#'
+red "15eg so does the ledger's cleared-worker invariant" check-invariants "'^#+ The cleared-worker invariant' no longer says"
+fresh; edit "$LG" 's#^\#\# The cleared-worker invariant$#\#\# Cleared workers#'
+red "15eh its heading renamed is reported, not passed" check-invariants "a section headed '^#+ The cleared-worker invariant' not found"
+
 # the integration reaches a worker through its brief: every Job block names {INTEGRATION_PATH}
 fresh; edit "$BT" '/^## START/,$ s#^- Integration: `{INTEGRATION_PATH}`\.#- Integration: none.#'
 red "15ec START drops the integration line its brief carries" check-invariants "2 Job block(s) name {WORKFLOW_PATH} but 1 carry"

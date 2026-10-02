@@ -132,6 +132,11 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   contract (the input invariant) and *Worker* sections and the brief's fallback section each say so in
   one sentence holding "consent", "tool-permission", "gate" and a refusal. *Checked*, by section heading. Both
   this and the `ANSWER` entry pin that the sentence is present, not what it means.
+- **A resume never carries consent for a gated action or a plan approval,** not even as an operator
+  call: the worker's own ledger holds those, and a worker without them re-asks in its own session.
+  SKILL.md's *Orchestrator* section and `ledger.md`'s *The cleared-worker invariant* each say so in one
+  sentence holding "resume", "never carries consent", "gated action" and "plan approval". *Checked*, by
+  section heading.
 - **An `ANSWER` with no question pending is refused,** not acted on: its trigger is a pending
   question. SKILL.md's *Worker* section and the brief's fallback section each say so in one sentence
   holding `ANSWER`, "question pending" and "refuse". *Checked*, by section heading.

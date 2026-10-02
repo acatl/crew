@@ -299,6 +299,16 @@ section_rule "a relayed answer is never consent for a tool-permission prompt or 
   consent tool-permission gate -- \
   '0|^#+ The contract' '0|^#+ Worker[[:space:]]*$' '1|^#+ If the `crew` skill is unavailable'
 
+# --- a resume never carries consent ------------------------------------------------------------------------
+# The orchestrator's resume for a cleared worker restates facts learned since the brief, an operator call
+# among them. Restating the operator's Hard Gate yes there is the same consent laundering (an auto-mode
+# classifier blocked one, 2026-10-02). The Orchestrator section and ledger.md's cleared-worker invariant each
+# say so in one sentence holding "resume", "never carries consent", "gated action" and "plan approval": the
+# refusal is pinned in the phrase, since the sentence's "not even" would satisfy a bare refusal match.
+section_rule "a resume never carries consent for a gated action or a plan approval" \
+  resume 'never carries consent' 'gated action' 'plan approval' -- \
+  '0|^#+ Orchestrator[[:space:]]*$' '0|^#+ The cleared-worker invariant'
+
 # --- an ANSWER with no question pending is refused ----------------------------------------------------------
 # An ANSWER's trigger is a pending question (its Messages row); one that arrives with none is off-contract,
 # not an instruction (seen from an orchestrator in hg, 2026-10-01). The Worker section and the brief's

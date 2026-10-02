@@ -134,6 +134,10 @@ message, a monitor, a notification. This has happened repeatedly in practice.
 - **Nothing may wake it except its resume** (SKILL.md step 6), sent at once, even when the next step
   is only "wait".
 - The row is never evicted while that resume is owed.
+- A resume never carries consent for a gated action or a plan approval, not even as an operator call:
+  the worker's own ledger holds those, and a worker whose ledger lacks one re-asks in its own session.
+  Restated in a resume, it is consent laundered across sessions (an auto-mode classifier blocked one,
+  2026-10-02).
 
 Note that the orchestrator generally **cannot** clear a worker for it: a chip-started worker counts as
 started by the operator, so `clear_session` refuses it. The worker clears itself.

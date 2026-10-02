@@ -77,8 +77,7 @@ operator, who answers in either place.
   cross-session permission laundering. The worker marks these `answer: in this session only`; the
   orchestrator's nudge sends the operator to the worker session.
 
-A queued worker waiting for `START` is waiting on the orchestrator, not the operator. It sends no
-`NEED-INPUT` for that wait.
+A queued worker waiting for `START` waits on the orchestrator, not the operator: no `NEED-INPUT` for it.
 
 ### Authority
 
@@ -246,8 +245,10 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   the saved brief with its marker line set to `state=resume` and any queued Job block swapped for its
   START (`briefs/<row>-start.md`) whole, then a `## Resume` section: where to pick up, the approved
   plan's path, the worker's ledger path, facts learned since the brief (an environment quirk, a
-  throttle, an operator call), and any message still pending. Once it's sent: drop `resume not sent`
-  from `owed`, status `running` unless `owed` still holds a question, roster start epoch reset.
+  throttle, an operator call), and any message still pending. A resume never carries consent for a
+  gated action or a plan approval, not even as an operator call: the worker's own ledger holds those,
+  and a worker whose ledger lacks one re-asks in its own session. Once it's sent: drop `resume not
+  sent` from `owed`, status `running` unless `owed` still holds a question, roster start epoch reset.
 - **Idle notice** → ignore it for a worker that's queued, landed or archived, or verified with nothing
   sent to it since (exits fire notices too). One busy now (`ListAgents`), yet to start on your last message, or for a turn that
   ended before you sent it (`list_events` times) is stale (*Gotchas*): see *Subscribing*. Check its
@@ -499,8 +500,7 @@ anything besides the four kinds.
 - **Worker sessions don't share your memory.** A worktree session gets its own project folder under
   `~/.claude/projects/`, with no `memory/` in it (verified), so it most likely can't see memory the
   orchestrator saved (inferred). Put every decision a unit needs in its brief or START.
-- **Global installs from a worktree dangle.** Seen in hg: its skill installer, run from a worktree,
-  would link the operator's home at an archived directory. Run them in the main checkout (Post-land).
+- **Global installs from a worktree dangle** (seen in hg, its skill installer): run them in the main checkout.
 - **You can't clear a worker's context for it.** `clear_session` accepts "a session this session
   started", but a chip-started worker counts as started by the *operator's click*, so it's refused.
   The worker clears itself last, and you re-send its brief. *(Reported live 2026-09-23; not reproduced.)*
