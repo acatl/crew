@@ -205,6 +205,15 @@ green "15de a dotted name inside the sentence doesn't split it" check-invariants
 edit "$PR" 's#with no `landing: operator` on#with no `landing: delegated` on#'              # same fixture
 red "15df and the same fixture still fires on a missing withhold" check-invariants "$PR: tells the worker to merge without naming"
 
+# a PR opens against the brief's base: every `gh pr create` carries --base (the controls cover green)
+fresh; edit "$IP" 's#`gh pr create --base <base>`#`gh pr create`#'
+red "15dp1 the built-in opens its PR against the default branch" check-invariants "$IP: names \`gh pr create\` without --base"
+fresh; edit "$PR" 's#`gh pr create --base main`#`gh pr create --fill`#'
+red "15dp2 so does a project integration, whatever else it passes" check-invariants "$PR: names \`gh pr create\` without --base"
+fresh; edit "$IP" 's#`gh pr create --base <base>`#`gh pr new`#'
+edit "$PR" 's#`gh pr create --base main`#`gh pr new`#'
+red "15dp3 no gh pr create at all fails, never passes" check-invariants "a \`gh pr create\` call not found"
+
 # the queue card shows each unit's workflow and landing
 fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Integration | Scope | Landing | Cleanup |#> | \# | Unit | Title | Workflow | Integration | Scope | Cleanup |#'
 red "15dg the queue card loses its per-unit Landing" check-invariants "the queue card has no per-unit Landing column"

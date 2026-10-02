@@ -428,6 +428,24 @@ if [ "$merge_seen" = 0 ]; then
 fi
 if [ "$merge_ok" = 1 ]; then held=$((held + 1)); fi
 
+# --- a PR opens against the brief's base ----------------------------------------------------------------------
+# Without --base, `gh pr create` targets the repo's default branch (or the branch's gh-merge-base), not the
+# base the brief chose (SKILL.md step 3.4), so a unit cut from another line opens a PR with the wrong range.
+# Every `gh pr create` a workflow or integration file names carries --base.
+pr_ok=1 pr_seen=0
+for f in ${stage_files[@]+"${stage_files[@]}"}; do
+  while IFS= read -r call; do
+    pr_seen=1
+    if ! grep -qE '^gh pr create --base ' <<< "$call"; then
+      fail "$f: names \`gh pr create\` without --base, which opens against the default branch: '$call'"; pr_ok=0
+    fi
+  done < <(tr '\n' ' ' < "$f" | tr -s ' ' | grep -oE 'gh pr create[^`]*' || true)
+done
+if [ "$pr_seen" = 0 ]; then
+  reworded "the workflow and integration files" "a \`gh pr create\` call"; pr_ok=0
+fi
+if [ "$pr_ok" = 1 ]; then held=$((held + 1)); fi
+
 # --- the queue card shows each unit's workflow and landing ----------------------------------------------------
 # Under Integration mode `pr` landing is per unit (a PR-merging unit is delegated by the merge rule), so one
 # card-wide Landing line can show a delegated unit as "operator decides". The queue card's table carries both.

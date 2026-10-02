@@ -8,8 +8,7 @@ description: The built-in integration. Land a workflow's work by GitHub pull req
 How finished work lands: a pull request, its review rounds and its merge. Your workflow's `handoff`
 continues into these stages when your brief names this file. It needs `gh` and the app's PR binding.
 The crew contract (SKILL.md) and your workflow's Rules sit under it; nothing here changes them.
-To adapt it (a reviewer roster, labels, a review budget), copy it to `docs/crew/integrations/pr.md`
-and edit the copy.
+To adapt it (a reviewer roster, labels), copy it to `docs/crew/integrations/pr.md` and edit it.
 
 ## Parameters
 
@@ -27,10 +26,10 @@ The orchestrator resolves each into your brief; read the values there, never `CR
 ### open
 
 Run `git fetch origin <base>`, then `verify` on a clean tree; fix anything red. Push your own
-branch and run `gh pr create`: a Conventional Commits title; a body of what changed, why, the risk.
-Call the app's `get_status`; if it doesn't report this PR, call `bind_pr` with its URL. Then call
-`set_monitor` with `auto_fix: true`. Any of these calls can raise an approval prompt, which blocks
-it. Send `NEED-INPUT` marked `answer: in this session only` before them, unless
+branch and run `gh pr create --base <base>`: a Conventional Commits title; a body of what changed,
+why, the risk. Call the app's `get_status`; if it doesn't report this PR, call `bind_pr` with its
+URL. Then call `set_monitor` with `auto_fix: true`. Any of these calls can raise an approval
+prompt, which blocks it. Send `NEED-INPUT` marked `answer: in this session only` before them, unless
 `get_session("self")` reports `permissionMode` `auto` or `bypassPermissions`.
 
 - **Ends:** PR open, bound, monitor on.

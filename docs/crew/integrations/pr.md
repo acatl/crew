@@ -33,8 +33,8 @@ The orchestrator resolves each into your brief; read the values there, never `CR
 Run the CodeRabbit CLI once over the branch and fix what it finds, then `/code-review high` in a
 sub-agent over those fixes, and fix with no further local review (§ 6 › The CodeRabbit CLI pass).
 Then `git fetch origin main`, `verify` green on a clean tree, the pool check (§ Who runs the rounds),
-push your own branch, and open the PR, its body carrying what, why and risk. Bind it and turn on
-its review monitor (§ Who runs the rounds).
+push your own branch, and open the PR (`gh pr create --base main`), its body carrying what, why and
+risk. Bind it and turn on its review monitor (§ Who runs the rounds).
 
 - **Ends:** PR open, bound, monitor on.
 - **Report:** `checkpoint open`: PR URL, sha, push time, the CLI pass's result.
@@ -117,7 +117,7 @@ A single owner (a crew worker, or the operator's own session) holds the PR from 
 opens until it merges, and runs **every** round on it. Each round's triage, sweep and declines
 are context the next round needs.
 
-- **At PR open, bind the PR and turn on its review monitor.** Right after `gh pr create`, call
+- **At PR open, bind the PR and turn on its review monitor.** Right after opening it, call
   the app's `get_status` and, if it doesn't report this PR, `bind_pr` with its URL. Then call
   `set_monitor` with `auto_fix: true` and the PR's URL. The monitor is what wakes the owner for
   each round (§ 0); without it, a worker that reported `DONE` sleeps through the reviews.
