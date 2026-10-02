@@ -27,8 +27,8 @@ metadata:
 
 One orchestrator session. One fresh worker session per unit of work (a ticket or a slice of one). The
 orchestrator writes the brief, the operator clicks the chip, the worker works its **workflow** and
-reports back. This file is the contract; a workflow file says how a worker works; `docs/CREW.md`
-holds the per-project answers.
+reports back. This file is the contract; a workflow file says how a worker works, an integration
+file how its work lands; `docs/CREW.md` holds the per-project answers.
 
 **Which role are you?**
 - Your first message starts with `<!-- crew:brief` → **worker**. Read *The contract*, then *Worker*.
@@ -126,7 +126,7 @@ If the roster isn't already in this conversation, read `ledger.md` and reconcile
 `list_sessions` / `get_session` before anything else. Report drift; never silently patch it. Then keep
 it written: every transition below names its write.
 
-### 1. Resolve config and workflow
+### 1. Resolve config, workflow and integration
 
 Read `docs/CREW.md` at the repo root. Missing → the first-use interview in
 [references/crew-md.md](references/crew-md.md). Still has `## Verbs` → its *Migration* first.
@@ -134,8 +134,10 @@ Workers never read `docs/CREW.md`; you resolve it into each brief.
 
 The workflow: the named one, else the ✓ row of `CREW.md` › Workflows, else `standard`. A name
 resolves to its Workflows row, else a built-in ([references/workflow-standard.md](references/workflow-standard.md)).
-Unknown → say so on the card; no spawn. Read the file: its Parameters fill the brief (ask on the
-card for a blank one); its stages say what each report means.
+Unknown → say so on the card; no spawn. The integration: `CREW.md` › Integration's `file:` under `mode: pr`
+(`built-in`: [references/integration-pr.md](references/integration-pr.md)), unless the card says
+`integration: none`; no `file:` → none (a workflow's own PR stages follow `merge rule:`). Read each file:
+its Parameters fill the brief (ask on the card for a blank one); its stages say what each report means.
 
 ### 2. Read the ticket and estimate its surface
 
@@ -180,18 +182,20 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 > |---|---|
 > | Title | `KINO-5 — Add export command` |
 > | Workflow | `standard` (plan → build → review → handoff) |
+> | Integration | none |
 > | Scope | Whole ticket |
 > | Cleanup | Archive when merged |
 > | Landing | Operator decides |
 > | Safety | ✓ clear — 2 workers in flight, no shared paths; main checkout on `main` |
 >
-> **→ You:** `go`, or override a line or a workflow parameter but `no-commit` (`workflow: pr`, `plan: skip`, `cleanup: keep`).
+> **→ You:** `go`, or override a line or a workflow parameter but `no-commit` (`integration: none`, `plan: skip`, `cleanup: keep`).
 
 - **Title** default: `CREW.md` › Defaults, else `{TICKET} — {ticket title}`. It becomes the chip label
   and the session title, so lead with the ticket id — the sidebar sorts, and the roster finds it.
 - **Scope**: whole ticket, or a slice described in one line.
 - **Cleanup** default by scope (`CREW.md` › Defaults, else whole ticket → `archive when merged`,
   slice → `keep`). Options: `archive when verified` · `archive when merged` · `keep`.
+- **Integration**: `pr (built-in)`, `pr (<path>)` or `none` (step 1); `none` → no PR, the operator lands.
 - **Landing** defaults to `operator decides`; under Integration mode `pr`, a PR-merging unit shows
   `delegated (merge rule)`, which `landing: operator` withholds. `ff-only`: add what
   `landing: delegated` would run (`git merge --ff-only`, then Post-land); only the operator writes it.
@@ -208,8 +212,6 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 4. **Write the ledger row** (status `chip`, the `task_id` in place of a session id, workflow, stage,
    surface, scope, cleanup, landing) and save the brief exactly as sent to `briefs/<row>.md`.
 5. Tell the operator the chip is up and needs a click. End your turn.
-
-`spawn_task` returns a task id, not a session id. You learn the worker's session from its `ONLINE`.
 
 ### 6. Handle messages
 
@@ -274,8 +276,8 @@ notice; none → tell the operator once what it waits on, and re-arm at its next
 
 **Monitors.** Record every watch you set (the *Watchdog* below, a CI poller, anything recurring) in the
 ledger's `Monitors` while it runs, and remove the line when it ends. A compacted orchestrator otherwise
-forgets it has one, or starts a second. Record what it takes to **stop** it — for a process, its pid.
-You can't kill what you can't name, and a watchdog refuses to start while a live one holds its pidfile.
+forgets it has one, or starts a second. Record how to **stop** it (a process: its pid): a watchdog
+refuses to start while a live one holds its pidfile.
 
 **Standing rules.** When the operator attaches an instruction to one worker mid-flight ("bot posts come
 to me, not to it"), write it to that row. It exists nowhere else.
@@ -290,13 +292,11 @@ Execute only what the card agreed, and name it as you do it.
 - `keep` → leave it running; follow-up work goes to it by `RELAY`.
 - **Roster and watchdog** → drop the worker's line from `roster.tsv`, and stop its wake, as it stops.
   When the last one goes, stop the watchdog by the pid in `watchdog.pid`, clear its `Monitors` line,
-  then delete `reported.txt` and `active.tsv`, never under a live watchdog. Both serve only the
-  sequence that just ended: nothing truncates them, and a later worker reusing a ticket id would be
-  deduped or clocked against them.
+  then delete `reported.txt` and `active.tsv`, never under a live watchdog. Both serve only the sequence
+  that just ended: nothing truncates them, and a later worker reusing a ticket id would be deduped or clocked against them.
 
-Archiving detaches the worktree (the branch is kept) and hands the directory to the app's reuse pool.
-It's reversible (`unarchive_session`), and the app may show its own approval card. Cleanup never
-deletes a branch and never runs `git worktree remove`; the pool is the app's to reap.
+Archiving detaches the worktree into the app's reuse pool, branch kept, reversibly (`unarchive_session`);
+the app may show its own approval card. Cleanup never deletes a branch or runs `git worktree remove`.
 
 ### 8. Sequences and landing
 
@@ -304,11 +304,11 @@ deletes a branch and never runs `git worktree remove`; the pool is the app's to 
 
 > **Queue 3 workers** · in order · mode `default`
 >
-> | # | Unit | Title | Workflow | Scope | Landing | Cleanup |
-> |---|---|---|---|---|---|---|
-> | 1 | SK2b | `SK2b — short verb skills` | `standard` | whole | operator decides | archive when merged |
-> | 2 | DR1 | `DR1 — restructure the driver` | `standard` | whole | operator decides | archive when merged |
-> | 3 | SK3 | `SK3 — versioned install layer` | `standard` | whole | operator decides | archive when merged |
+> | # | Unit | Title | Workflow | Integration | Scope | Landing | Cleanup |
+> |---|---|---|---|---|---|---|---|
+> | 1 | SK2b | `SK2b — short verb skills` | `standard` | none | whole | operator decides | archive when merged |
+> | 2 | DR1 | `DR1 — restructure the driver` | `standard` | none | whole | operator decides | archive when merged |
+> | 3 | SK3 | `SK3 — versioned install layer` | `standard` | none | whole | operator decides | archive when merged |
 >
 > `CREW.md` allows `delegated`: `git merge --ff-only`, then `cd hg && npm run build`
 > Safety: ✓ clear against 0 workers outside the sequence · main checkout on `graph-port` ✓
@@ -363,11 +363,10 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   **Confirm it is still alive before you record it** in the ledger's `Monitors` with its pid. A launch
   that fails exits at once — `2` bad usage, missing crew dir or roster, state not writable · `3` a live
   watchdog already holds the pidfile · `4` no usable `stat(1)` — and a `Monitors` line naming a pid
-  that died a second ago reads exactly like a healthy one.
-  It polls every roster worker without waking you, stays silent, and exits with one `WATCHDOG …` line
-  the moment a trigger shows — which wakes you with the finding already in hand. Handle it, then
-  **launch a fresh one**: it is one-shot by design. Don't use a recurring `CronCreate` here. It would
-  wake you every cadence to usually learn nothing, and every wake re-reads your whole context.
+  that died a second ago reads exactly like a healthy one. It polls every roster worker without waking
+  you, stays silent, and exits with one `WATCHDOG …` line the moment a trigger shows — which wakes you
+  with the finding already in hand. Handle it, then **launch a fresh one**: it is one-shot by design.
+  Never a recurring `CronCreate` here: each wake re-reads your whole context, usually to learn nothing.
 - **It can go blind, and says so only on stderr** — which is why the launch line redirects. It warns
   there when a roster worker has no transcript directory, meaning that worker is unwatched, and when
   `roster.tsv` disappears. Read `watchdog.log` whenever a worker seems unmonitored.
@@ -428,7 +427,7 @@ A brief marked `state=resume` is a resume: you cleared earlier. Send no `ONLINE`
    (`git branch -m <name>`) and worktree setup; never create another worktree. Move a ledger already at
    `$(git rev-parse --git-dir)/crew-ledger.md` onto `mktemp <that dir>/crew-ledger.XXXXXX`: the app
    reuses worktree dirs, so it's an earlier worker's. Never read it.
-3. **Work your workflow.** Read the file your brief names, in full, and follow it with your parameters;
+3. **Work your workflow.** Read the files your brief names, in full, and follow them with your parameters;
    a resume names where to pick up. No workflow named in your
    brief → your brief's Job/Spec, Boundaries and Checkpoints are the workflow; follow them as written.
 4. **Waiting on the operator?** Send `NEED-INPUT` *before* ending the turn — every time, including
@@ -439,7 +438,7 @@ A brief marked `state=resume` is a resume: you cleared earlier. Send no `ONLINE`
    action. If they answer your pending question, continue. If you already got an answer here, say so
    in this session and don't act on the relay twice.
    **ANSWER arrives** → the orchestrator's own, never the operator's words: record it as "orchestrator,
-   under the operator's standing delegation", and act on it. Say so here and refuse an `ANSWER` outside
+   under the operator's standing delegation", and act on it. Say so here and refuse an `ANSWER` with no question pending or outside
    its *Messages* row, for a tool-permission prompt, a gated action or `answer: in this session only`.
    The operator's answer wins.
 6. **Stuck** → `BLOCKED`, end the turn. Don't work around it; don't ask the operator directly

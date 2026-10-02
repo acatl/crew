@@ -46,13 +46,19 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
   stage names its end, its report (`checkpoint <stage>` or `stop <stage>`) and the orchestrator's
   response, which is all the orchestrator needs to follow a workflow it has never seen. The contract
   sits under every workflow. The one built-in, `standard`, is `references/workflow-standard.md`; a
-  project lists its own in `docs/CREW.md` › Workflows (this repo: `docs/crew/workflows/pr.md`).
+  project lists its own in `docs/CREW.md` › Workflows (this repo uses `standard`).
+- **An integration is how the work lands:** a file in the workflow's shape whose stages run after the
+  workflow's `handoff` (`standard`'s carries the one join line). `CREW.md` › Integration's `file:`
+  under `mode: pr` names it: `built-in` is `references/integration-pr.md` (a short, generic GitHub PR
+  starter: `open` → `round` → `merge`), or a project copy (this repo: `docs/crew/integrations/pr.md`,
+  with CodeRabbit, the review pool and the round procedure). No `file:` → no integration: a workflow
+  with its own PR stages (hg's `light`) follows `merge rule:` as before.
 - **Sessions talk only through `send_message` by sessionId,** using seven message kinds: worker →
   orchestrator `ONLINE`/`NEED-INPUT`/`BLOCKED`/`DONE`, orchestrator → worker `RELAY`/`START`/`ANSWER`.
   Tool-permission prompts and gated consent are never relayed, and never answered by an `ANSWER`.
 - **`references/` holds what the orchestrator fills or persists:**
   - `brief-template.md`: the worker's first message, in a ready and a queued variant, plus `START`.
-    It names the workflow file and its resolved parameters.
+    It names the workflow and integration files and their resolved parameters.
   - `workflow-standard.md`: the built-in workflow. Workers read it; it's flat in `references/`
     because skill-validator warns on any other directory, or a nested one.
   - `crew-md.md`: the first-use interview that writes each consuming project's `docs/CREW.md`, the
@@ -126,6 +132,9 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   contract (the input invariant) and *Worker* sections and the brief's fallback section each say so in
   one sentence holding "consent", "tool-permission", "gate" and a refusal. *Checked*, by section heading. Both
   this and the `ANSWER` entry pin that the sentence is present, not what it means.
+- **An `ANSWER` with no question pending is refused,** not acted on: its trigger is a pending
+  question. SKILL.md's *Worker* section and the brief's fallback section each say so in one sentence
+  holding `ANSWER`, "question pending" and "refuse". *Checked*, by section heading.
 - **The `<!-- crew:brief` marker** is used for role detection, in the frontmatter `description`, and
   by the roster rebuild's grep. Keep it byte-exact. *Checked* against the brief template's first line.
 - **`CREW.md` › Section references** in the skill name `## ` headings of the template in
@@ -134,6 +143,13 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   orchestrator resolves `CREW.md` › Workflows into the brief's `{WORKFLOW_PATH}` and `{PARAMETERS}`.
   *Checked*: no Worker section cites `CREW.md` (the orchestrator's may), the brief's Job line carries
   `{WORKFLOW_PATH}`, and its placeholder row sources it from Workflows.
+- **The integration reaches a worker the same way.** The orchestrator resolves `CREW.md` ›
+  Integration into the brief's `{INTEGRATION_PATH}` and `{INTEGRATION_PARAMETERS}` (or
+  `- Integration: none`). *Checked*: every Job block naming `{WORKFLOW_PATH}` (the brief's and
+  START's) carries the `- Integration:` line, and its placeholder row sources it from Integration.
+- **Briefs from before integrations still work.** A brief with no `Integration:` line names none, so
+  `standard`'s `handoff` reports `stop handoff` as before; a `mode: pr` with no `file:` resolves to no
+  integration, so hg's `CREW.md` (`merge rule:`, its `light` workflow's own PR stages) is unchanged.
 - **Briefs from before workflows still work.** In-flight workers re-read the Worker section at every
   resume, and their briefs name no workflow. The Worker section keeps the line that makes such a
   brief its own workflow, and the orchestrator reads the older `DONE · checkpoint: <boundary>` and
@@ -141,23 +157,25 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   copies of the contract (SKILL.md's *Messages* and the brief's fallback).
 - **A merge go names its delegation.** Landing needs delegation; Integration mode `pr` is the one
   standing delegation, withheld by a card's `landing: operator`. *Checked*: every sentence in a
-  workflow file or `docs/pr-round-workflow.md` that tells the worker to merge names `landing`.
+  workflow or integration file that tells the worker to merge names `landing`.
 - **The queue card shows each unit's Workflow and Landing** (under Integration mode `pr` landing is
   per unit). *Checked*: SKILL.md's queue-card table header.
 - **A workflow's `verify` falls back as the orchestrator's does.** The source is SKILL.md's
-  ``DONE `stop <stage>` `` bullet; every workflow's `verify` default names the same sources. *Checked*,
-  and the built-in must carry the row.
+  ``DONE `stop <stage>` `` bullet; every workflow's and integration's `verify` default names the same
+  sources. *Checked*, and each built-in must carry the row.
 - **Every brief state is handled on both sides.** The brief's marker line carries `state=` (`ready`,
   `queued`, or `resume` for a re-send after a clear); the brief template's `{STATE}` row is the source.
   *Checked*, both ways: SKILL.md's Orchestrator and Worker sections each name every value (`state: <v>`
   or `state=<v>`) and no other, and the brief's fallback section names every value.
 - **A ready PR asks before it merges.** After `merge bar met` the worker waits on the merge, so it sends
-  `NEED-INPUT`, and the merge go is an `ANSWER` to it. *Checked*: every workflow file or
-  `docs/pr-round-workflow.md` that names `merge bar met` has a sentence that sends `NEED-INPUT` for the
-  merge (the orchestrator's answering sentence doesn't count), and at least one names it.
-- **Every workflow file has the orchestrator's shape** (frontmatter `name` = file name, and
-  `description`; Parameters, Stages, Rules in order; each stage's Ends, Report, Orchestrator; exactly
-  one `stop`). *Checked* by `check-structure.sh`, over the built-in and `docs/crew/workflows/`.
+  `NEED-INPUT`, and the merge go is an `ANSWER` to it. *Checked*: every workflow or integration file
+  that names `merge bar met` has a sentence that sends `NEED-INPUT` for the merge (the orchestrator's
+  answering sentence doesn't count), and at least one names it.
+- **Every workflow and integration file has the orchestrator's shape** (frontmatter `name` = file
+  name less its `workflow-`/`integration-` prefix, and `description`; Parameters, Stages, Rules in
+  order; each stage's Ends, Report, Orchestrator; exactly one `stop`). *Checked* by
+  `check-structure.sh`, over both built-ins (each must exist), `docs/crew/workflows/` and
+  `docs/crew/integrations/` (either may be absent).
 
 ## Conventions
 

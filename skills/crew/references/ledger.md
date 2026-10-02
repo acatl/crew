@@ -55,7 +55,7 @@ updated: <iso> · orchestrator: <sessionId>
 
 ### r3 · #9 · running
 - session: local_271f8174-… · brief: briefs/r3.md
-- workflow: pr · stage: round 3
+- workflow: standard · integration: pr · stage: round 3
 - owed: operator's merge go · review budget unspent
 - surface: hg/src/cli.ts, docs/CREW.md
 - verified: a762e48 green (2026-09-24) — tsc, 1274 tests, links, shellcheck

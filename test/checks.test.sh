@@ -27,7 +27,7 @@ trap 'exit 143' TERM
 fresh() {
   rm -rf "$S"; mkdir -p "$S/test" "$S/docs"
   cp -R "$REPO/skills" "$REPO/scripts" "$REPO/baselines" "$S/"
-  cp -R "$REPO/docs/crew" "$REPO/docs/pr-round-workflow.md" "$S/docs/"
+  cp -R "$REPO/docs/crew" "$S/docs/"
   cp "$REPO/test/watchdog.test.sh" "$S/test/"
 }
 # edit <file> <sed expression>: in place through a temp file, since BSD and GNU sed -i disagree. An
@@ -56,7 +56,8 @@ CM=skills/crew/references/crew-md.md
 BT=skills/crew/references/brief-template.md
 LG=skills/crew/references/ledger.md
 WS=skills/crew/references/workflow-standard.md
-PR=docs/crew/workflows/pr.md
+IP=skills/crew/references/integration-pr.md
+PR=docs/crew/integrations/pr.md
 WD=skills/crew/scripts/watchdog.sh
 OV=skills/crew/scripts/overlap.sh
 
@@ -185,23 +186,29 @@ red "15z the fallback drops the gated-action half" check-invariants "the section
 
 # a merge go names its delegation: a sentence that tells the worker to merge names `landing:`
 fresh; edit "$PR" 's#with no `landing: operator` on#with no `landing: delegated` on#'
-red "15da a workflow gates the merge on the card's delegation alone" check-invariants "$PR: tells the worker to merge without naming"
-fresh; edit docs/pr-round-workflow.md 's#unless the card says `landing: operator`, tells#tells#'
-red "15db so does the round procedure" check-invariants "docs/pr-round-workflow.md: tells the worker to merge"
+red "15da a project integration gates the merge on the card's delegation alone" check-invariants "$PR: tells the worker to merge without naming"
+fresh; edit "$IP" 's#Met, with no `landing: operator` on the card, it tells#Met, it tells#'
+red "15db so does the built-in integration" check-invariants "$IP: tells the worker to merge"
 fresh; edit "$PR" 's#it tells the worker to merge by#it tells the worker to go by#'
-edit docs/pr-round-workflow.md 's#, tells the worker to merge\.#, tells the worker to go.#'
+edit "$PR" 's#, tells the worker to merge\.#, tells the worker to go.#'
+edit "$IP" 's#it tells the worker to merge by#it tells the worker to go by#'
 red "15dc no merge sentence at all fails, never passes" check-invariants "a sentence that tells the worker to merge not found"
-fresh; rm "$S/docs/pr-round-workflow.md"
-red "15dd a missing round procedure is reported, not skipped" check-invariants "docs/pr-round-workflow.md: the file not found"
+fresh; rm "$S/$IP"
+red "15dd a missing built-in integration is reported, not skipped" check-invariants "skills/crew/references/integration-*.md: the built-in file not found"
+fresh; rm -r "$S/docs/crew/integrations"
+green "15dd2 a project with no integrations or workflows dir is checked, not reported as reworded" check-invariants
+mkdir -p "$S/docs/crew/workflows"                                                         # same fixture
+printf -- '---\nname: x\n---\n\nThe orchestrator tells the worker to merge.\n' > "$S/docs/crew/workflows/x.md"
+red "15dd3 and a project workflow planted there is still checked" check-invariants "docs/crew/workflows/x.md: tells the worker to merge without naming"
 fresh; edit "$PR" 's#^  card (#  card, per docs/CREW.md (#'
 green "15de a dotted name inside the sentence doesn't split it" check-invariants
 edit "$PR" 's#with no `landing: operator` on#with no `landing: delegated` on#'              # same fixture
 red "15df and the same fixture still fires on a missing withhold" check-invariants "$PR: tells the worker to merge without naming"
 
 # the queue card shows each unit's workflow and landing
-fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Scope | Landing | Cleanup |#> | \# | Unit | Title | Workflow | Scope | Cleanup |#'
+fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Integration | Scope | Landing | Cleanup |#> | \# | Unit | Title | Workflow | Integration | Scope | Cleanup |#'
 red "15dg the queue card loses its per-unit Landing" check-invariants "the queue card has no per-unit Landing column"
-fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Scope | Landing | Cleanup |#> | \# | Unit | Title | Scope | Landing | Cleanup |#'
+fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Integration | Scope | Landing | Cleanup |#> | \# | Unit | Title | Integration | Scope | Landing | Cleanup |#'
 red "15dh or its Workflow" check-invariants "the queue card has no per-unit Workflow column"
 # a workflow's verify falls back as the orchestrator's does
 fresh; edit "$WS" 's#| `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else asked |#| `CREW.md` › Verify |#'
@@ -212,6 +219,10 @@ fresh; edit "$SK" 's#^  `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors
 red "15dk the orchestrator's chain changes and the workflows are named" check-invariants "$WS: the \`verify\` default falls back to"
 fresh; edit "$WS" '/^| `verify` |/d'
 red "15dl the built-in without a verify row is reported, not passed" check-invariants "the \`verify\` parameter row not found"
+fresh; edit "$IP" '/^| `verify` |/d'
+red "15dl2 and so is the built-in integration without one" check-invariants "$IP: the \`verify\` parameter row not found"
+fresh; edit "$IP" 's#| `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else asked |#| `CREW.md` › Verify |#'
+red "15dl3 the built-in integration's verify default drifts" check-invariants "$IP: the \`verify\` default falls back to"
 fresh; edit "$PR" '/^| `verify` |/d'
 green "15dm a project workflow may leave verify out" check-invariants
 edit "$WS" '/^| `verify` |/d'                                                            # same fixture
@@ -238,15 +249,29 @@ red "15dz the fallback stops naming the first state too" check-invariants "the f
 fresh; edit "$BT" 's#^| `{STATE}` | `ready`, `queued`, or `resume` when#| `{STATE}` | `ready` or `queued`, never#'
 red "15du a template that drops resume while SKILL.md still sends it" check-invariants "handles brief state 'resume', which"
 # a ready PR asks before it merges: `merge bar met` comes with a merge NEED-INPUT
-fresh; edit "$PR" 's#^  merge `NEED-INPUT` that#  merge question that#'
-red "15dv the workflow drops its merge NEED-INPUT" check-invariants "$PR: names \`merge bar met\` but no sentence"
-fresh; edit "$PR" 's#merge `NEED-INPUT`#merge question#g'
-edit "$PR" 's#`merge bar met`#the bar#g'
-green "15dw a workflow that never reaches merge bar met needs no merge NEED-INPUT" check-invariants
-edit docs/pr-round-workflow.md 's#so it sends `NEED-INPUT` marked#so it sends a question marked#'   # same fixture
-red "15dx and the same fixture fires once the round procedure drops it" check-invariants "docs/pr-round-workflow.md: names \`merge bar met\` but no sentence"
-edit docs/pr-round-workflow.md 's#`merge bar met`#the bar#g'
+fresh; edit "$IP" 's#^sends the merge `NEED-INPUT`#asks the merge question#'
+red "15dv the built-in integration drops its merge NEED-INPUT" check-invariants "$IP: names \`merge bar met\` but no sentence"
+fresh; edit "$PR" 's#so it sends `NEED-INPUT` marked#so it sends a question marked#'
+edit "$PR" 's#^  `NEED-INPUT` that § Who runs#  question that § Who runs#'
+red "15dv2 so does a project integration" check-invariants "$PR: names \`merge bar met\` but no sentence"
+edit "$PR" 's#`merge bar met`#the bar#g'                                                    # same fixture
+green "15dw a file that never reaches merge bar met needs no merge NEED-INPUT" check-invariants
+edit "$IP" 's#^sends the merge `NEED-INPUT`#asks the merge question#'                         # same fixture
+red "15dx and the same fixture fires once the built-in drops it" check-invariants "$IP: names \`merge bar met\` but no sentence"
+edit "$IP" 's#`merge bar met`#the bar#g'
 red "15dy no file names merge bar met: reported, not passed" check-invariants "\`merge bar met\` not found"
+# an ANSWER with no question pending is refused: the Worker section and the brief's fallback say so
+fresh; edit "$SK" 's#refuse an `ANSWER` with no question pending or outside#refuse an `ANSWER` outside#'
+red "15ea the worker stops refusing an ANSWER with nothing pending" check-invariants "'^#+ Worker[[:space:]]*\$' no longer says, in one sentence, that an ANSWER with no question pending is refused"
+fresh; edit "$BT" 's#Say so here and refuse an `ANSWER` with no question pending, or$#Say so here and act on an `ANSWER` with no question pending, or#'
+red "15eb the fallback acts on one instead" check-invariants "skill is unavailable' no longer says, in one sentence, that an ANSWER with no question pending is refused"
+# the integration reaches a worker through its brief: every Job block names {INTEGRATION_PATH}
+fresh; edit "$BT" '/^## START/,$ s#^- Integration: `{INTEGRATION_PATH}`\.#- Integration: none.#'
+red "15ec START drops the integration line its brief carries" check-invariants "2 Job block(s) name {WORKFLOW_PATH} but 1 carry"
+fresh; edit "$BT" 's#^- Integration: `{INTEGRATION_PATH}`\.#- Integration: none.#'
+red "15ed both Job blocks drop it" check-invariants "but 0 carry"
+fresh; edit "$BT" 's#its file, absolute: `CREW.md` › Integration.s `file:`#its file, absolute: `CREW.md` › Workflows row#'
+red "15ee the row sourcing {INTEGRATION_PATH} from anything but Integration" check-invariants "no placeholder row sourcing {INTEGRATION_PATH}"
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"
@@ -258,7 +283,7 @@ red "18 a references/ file that doesn't exist" check-section-refs "references/mi
 fresh; printf '\nRun `<skill-dir>/scripts/gone.sh`.\n' >> "$S/$SK"
 red "19 a skill script that doesn't exist" check-section-refs "<skill-dir>/scripts/gone.sh"
 
-fresh; for f in "$SK" "$BT" "$LG" "$WS"; do edit "$f" 's#CREW\.md` ›#CREW.md` -#g'; done
+fresh; for f in "$SK" "$BT" "$LG" "$WS" "$IP"; do edit "$f" 's#CREW\.md` ›#CREW.md` -#g'; done
 red "19b no CREW.md references at all fails, never passes" check-section-refs "found no 'CREW.md › Section' references"
 fresh; grep -rl 'references/' "$S/skills/crew" | while IFS= read -r f; do edit "${f#"$S"/}" 's#references/#refs/#g'; done
 red "19c no references/ mentions at all fails, never passes" check-section-refs "found no references/<name>.md mentions"
@@ -329,6 +354,18 @@ fresh; edit "$PR" '/^- \*\*Orchestrator:\*\* runs Post-land/d'
 red "40 a project workflow is checked too" check-structure "$PR:"
 fresh; rm "$S/$WS"
 red "41 no built-in workflow fails, never passes" check-structure "no workflow-*.md"
+fresh; rm "$S/$IP"
+red "41a no built-in integration fails, never passes" check-structure "no integration-*.md"
+fresh; edit "$IP" 's#^- \*\*Report:\*\* `checkpoint open`#- **Report:** `stop open`#'
+red "41b a built-in integration with two stops" check-structure "$IP:"
+if grep -qF "2 stages report stop" "$ROOT/out"; then ok "41c and the count is named"; else bad "41c stop count" "$(cat "$ROOT/out")"; fi
+fresh; edit "$IP" 's#^name: pr$#name: integration-pr#'
+red "41d an integration's name keeps no integration- prefix" check-structure 'frontmatter name is "integration-pr"'
+fresh; rm -r "$S/docs/crew/integrations"
+run check-structure
+if ! grep -qF "docs/crew" "$ROOT/out"; then ok "41e no project integrations dir names no file"; else bad "41e no project dir" "$(cat "$ROOT/out")"; fi
+mkdir -p "$S/docs/crew/integrations"; printf -- '---\nname: y\ndescription: d\n---\n\n## Parameters\n' > "$S/docs/crew/integrations/y.md"   # same fixture
+red "41f and a project integration planted there is checked" check-structure "docs/crew/integrations/y.md:"
 fresh; edit "$WS" 's#^\#\#\# review$#```text\
 \#\#\# not a stage\
 ```\

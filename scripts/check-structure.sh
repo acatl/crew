@@ -8,9 +8,10 @@
 # token count. Splitting SKILL.md into references/ is the next PR (PR 3), which deletes this
 # exemption. Until then scripts/check-budget.sh keeps SKILL.md from growing.
 #
-# Then every workflow file (the built-in skills/crew/references/workflow-*.md, and this repo's
-# docs/crew/workflows/*.md) has the shape an orchestrator relies on to follow a workflow it has never
-# seen: frontmatter name (the file's name) and description; ## Parameters, ## Stages, ## Rules in
+# Then every workflow and integration file (the built-ins skills/crew/references/workflow-*.md and
+# integration-*.md, and this repo's docs/crew/workflows/*.md and docs/crew/integrations/*.md) has the
+# shape an orchestrator relies on to follow one it has never seen: frontmatter name (the file's name,
+# less its workflow- or integration- prefix) and description; ## Parameters, ## Stages, ## Rules in
 # that order; every ### stage names its Ends, Report and Orchestrator; each Report is
 # `checkpoint <that stage>`, `stop <that stage>` or none; exactly one stop.
 set -euo pipefail
@@ -38,19 +39,24 @@ jq -r ".results[] | select($exempt) | \"known: \(.message) (PR 3 removes this ex
 bad=$(jq -r ".results[] | select((.level == \"error\" or .level == \"warning\") and ($exempt | not))
              | \"✖ \(.file // \"skills/crew\"): \(.level): \(.message)\"" <<< "$json")
 
-# workflow files: the built-in must exist, or this pass would check nothing and pass
-builtins=$(find skills/crew/references -name 'workflow-*.md' -type f)
-workflows=()
+# workflow and integration files: each built-in must exist, or this pass would check nothing and pass
+workflows=() builtins=""
+for kind in workflow integration; do
+  found=$(find skills/crew/references -name "$kind-*.md" -type f)
+  if [ -z "$found" ]; then
+    bad+="${bad:+$'\n'}✖ skills/crew/references: no $kind-*.md — the built-in is gone, or this check's lookup broke"
+  fi
+  builtins+="$found"$'\n'
+done
 while IFS= read -r f; do workflows+=("$f"); done < <(
-  { printf '%s\n' "$builtins"
-    if [ -d docs/crew/workflows ]; then find docs/crew/workflows -name '*.md' -type f; fi
+  { printf '%s' "$builtins"
+    for d in docs/crew/workflows docs/crew/integrations; do
+      if [ -d "$d" ]; then find "$d" -name '*.md' -type f; fi
+    done
   } | grep . | LC_ALL=C sort)
-if [ -z "$builtins" ]; then
-  bad+="${bad:+$'\n'}✖ skills/crew/references: no workflow-*.md — the built-in is gone, or this check's lookup broke"
-fi
 for f in ${workflows[@]+"${workflows[@]}"}; do
   [ -n "$f" ] || continue
-  want=$(basename "$f" .md); want=${want#workflow-}
+  want=$(basename "$f" .md); want=${want#workflow-}; want=${want#integration-}
   out=$(LC_ALL=C awk -v f="$f" -v want="$want" '
     function err(m) { printf "✖ %s:%d: %s\n", f, FNR, m }
     NR == 1 { if ($0 != "---") err("no frontmatter"); else fm = 1; next }
@@ -84,7 +90,7 @@ for f in ${workflows[@]+"${workflows[@]}"}; do
       if (!seen["Parameters"] || !seen["Stages"] || !seen["Rules"] || !(seen["Parameters"] < seen["Stages"] && seen["Stages"] < seen["Rules"]))
         err("needs ## Parameters, ## Stages, ## Rules, in that order")
       if (!stages) err("## Stages holds no ### stage")
-      if (stops != 1) err(stops + 0 " stages report stop; a workflow has exactly one")
+      if (stops != 1) err(stops + 0 " stages report stop; a workflow or integration has exactly one")
     }' "$f")
   if [ -n "$out" ]; then bad+="${bad:+$'\n'}$out"; fi
 done
@@ -93,5 +99,5 @@ if [ -n "$bad" ]; then
   printf '%s\n' "$bad" >&2
   exit 1
 fi
-printf '✓ skill structure is clean (%s; %d workflow files)\n' \
+printf '✓ skill structure is clean (%s; %d workflow and integration files)\n' \
   "$(jq -r '[.results[] | select(.level == "pass")] | length | tostring + " checks passed"' <<< "$json")" "${#workflows[@]}"

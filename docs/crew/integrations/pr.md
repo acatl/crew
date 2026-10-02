@@ -1,18 +1,97 @@
-# PR review rounds — how this repo's PRs run them
+---
+name: pr
+description: crew's own integration. The built-in `pr` plus acatl/crew's CodeRabbit CLI pass, reviewer roster, review pool and round procedure.
+---
 
-The procedure the owner of a PR on `acatl/crew` follows for **every** review round, from the
-PR's opening to its merge. A crew worker's brief names this file, and the worker reads it at the
-start of each round. It is adapted from `acatl/hg`'s `docs/pr-round-workflow.md` so both repos
-work the same way (operator, 2026-09-25). The operator's rulings quoted below were made on
-`acatl/hg` and adopted here with it.
+# Integration: pr (acatl/crew)
 
-**Each round = settle → read → triage → sweep → fix → verify → review → push → reply**,
-with § 5's verify re-run after each review pass's fixes, before the push.
-One push per round, and no round starts before the reviewers settle. A clean round, with nothing to
-fix, stops at triage: no push and no round number, so round N is always the one making the PR's
-N-th push after the opening one.
+How work on `acatl/crew` lands: a pull request, its review rounds and its merge. It is the crew
+skill's built-in integration (`references/integration-pr.md`) adapted to this repo: the CodeRabbit
+CLI pass, the reviewer roster, the account-wide review pool and the round procedure below. The
+round procedure is adapted from `acatl/hg`'s, so both repos work the same way (operator,
+2026-09-25); the operator's rulings quoted below were made on `acatl/hg` and adopted here with it.
 
-## What is consent, and what is a gate
+A worker's `handoff` (the built-in `standard`) continues into these stages when its brief names this
+file. Read it in full before `open` and at the start of every round. The crew contract and your
+workflow's Rules sit under it; nothing here changes them.
+
+## Parameters
+
+The orchestrator resolves each into your brief; read the values there, never `CREW.md`.
+
+| Name | Meaning | Default |
+|---|---|---|
+| `rounds` | review rounds on the PR, one push each | 1–4 planned; 5 only for a valid defect on an ordinary path; stop before 6 |
+| `settle` | minutes to wait after a push for its reviews | `20` |
+| `no-commit` | minutes without a commit; must equal the watchdog's | `CREW.md` › Ledger's; absent, 60 minutes |
+| `verify` | what proves the work green | `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else asked |
+
+## Stages
+
+### open
+
+Run the CodeRabbit CLI once over the branch and fix what it finds, then `/code-review high` in a
+sub-agent over those fixes, and fix with no further local review (§ 6 › The CodeRabbit CLI pass).
+Then `git fetch origin main`, `verify` green on a clean tree, the pool check (§ Who runs the rounds),
+push your own branch, and open the PR, its body carrying what, why and risk. Bind it and turn on
+its review monitor (§ Who runs the rounds).
+
+- **Ends:** PR open, bound, monitor on.
+- **Report:** `checkpoint open`: PR URL, sha, push time, the CLI pass's result.
+- **Orchestrator:** records the PR and its monitor in the ledger.
+- **Clears:** yes, monitor off first and back on at the resume.
+
+### round
+
+**Start by arming a settle timer.** A post wakes you; a reviewer that stays silent (throttled,
+paused by label, or skipping the commit) wakes no one. So on entering the stage, after a resume too,
+start a background command (the Bash tool's `run_in_background`) that exits when every roster login
+has reviewed the head, or when `settle` has passed since the push (roster in § 0). Its exit, not a
+post, starts the round. Woken by the monitor mid-settle → keep waiting. End each waiting turn with
+the line `waiting: settle timer, until <push time + settle>`. **Window passed with no review →
+settled: triage what exists** (threads, review bodies, CI). A silent reviewer is named in the
+`DONE`, never waited on past the window; one saying it is still working on the current head extends
+the window once, to 20 minutes from then: re-arm the timer and end the turn with the new `until`.
+
+Then run one round per § Round procedure: read, triage, sweep, fix, verify, `/code-review high`
+over the fix diff, one push, reply and resolve. Put `dont-review` on just before the first push
+after the opening one (§ Who runs the rounds). A round with nothing to fix is a clean round: no
+push, no round number; it ends as § Who runs the rounds says. Repeat when the next reviews wake
+you, within `rounds`, a late review on an unchanged head included.
+
+- **Ends:** the round's push is up and its threads are dispositioned, or the round settled clean
+  with its declines replied to and resolved.
+- **Report:** `checkpoint round`: round, sha, push time, fixed, declined, CI state, silent
+  reviewers. A clean round, once CI has concluded, checks § Stopping › Merging's conditions itself
+  and adds `merge bar met` or the one that fails, with `verify` on the head after
+  `git fetch origin main`, CI, open threads and `mergeStateStatus`, then sends the merge
+  `NEED-INPUT` that § Who runs the rounds describes.
+- **Orchestrator:** verifies the sha. On a clean round it checks the written merge rule itself and
+  answers only the worker's merge `NEED-INPUT`, once it lands. Met, with no `landing: operator` on the
+  card (`CREW.md` › Integration `mode: pr` delegates the rest), it tells the worker to merge by `ANSWER`
+  to its "merge?". Met under that override, it nudges the operator, who merges by hand or says go, which
+  it relays. Met while the worker asked as missed (CI concluded since, say), it `ANSWER`s "re-check the
+  bar", and the worker asks again. Missed by its own check, whatever the worker reported, it nudges with
+  the failing condition and relays no merge: a merge despite it is the operator's own, by hand or in the
+  worker's session (§ Stopping › Merging). It handles the operator's merge (`prState: MERGED`) as
+  `stop merge`.
+- **Clears:** after a push, yes, monitor off first. Not after a clean round: one step from the
+  stop.
+
+### merge
+
+Merge only on a go to your "merge?" (§ Stopping › Merging), then turn the monitor off. Woken by a
+merge the operator made instead, confirm it and report the same.
+
+- **Ends:** merged, by you or the operator.
+- **Report:** `stop merge`: the merge sha, monitor off, carried.
+- **Orchestrator:** runs Post-land, cleans up per the card, and carries findings into the next unit.
+- **Clears:** no
+
+## Rules
+
+Your workflow's Rules hold through these stages: its loop budget, git safety, carrying and
+checkpoints. On top of them:
 
 - **Consent already given:**
   - a crew brief's grant covers a push to the worker's own branch, opening its own PR, and
@@ -67,29 +146,49 @@ are context the next round needs.
   Stopping › Merging): the coordinator's `ANSWER` to that "merge?" under the merge rule (a card's
   `landing: operator` withholds it), the operator's go relayed to it, or the operator's yes in this
   session to a merge outside the rule.
-- **CodeRabbit reviews rounds 1–3 only; from round 4 it is paused by label.** Just BEFORE
-  pushing round 3's fixes, the worker applies the `dont-review` label
-  (`gh pr edit <N> --repo acatl/crew --add-label dont-review`; `.coderabbit.yaml` excludes that
-  label from auto-review). No `@coderabbitai review` after that without the operator. The label
-  saves the account-wide pool for the next PR.
+- **CodeRabbit reviews the opening push only** (operator, 2026-10-02, from 2026-10-03). Just
+  BEFORE the first push after the opening one (round 1's fixes, or a sync push), the worker applies
+  the `dont-review` label (`gh pr edit <N> --repo acatl/crew --add-label dont-review`;
+  `.coderabbit.yaml` excludes that label from auto-review). No `@coderabbitai review` after that
+  without the operator. The label saves the account-wide pool for the next PR. **Until 2026-10-03
+  CodeRabbit's PR reviews are paused** (operator, 2026-09-30): a PR opens with `dont-review` already
+  on, and the merge bar has no CodeRabbit line.
+- **The pool check: before any push CodeRabbit will review, read the pool.** CodeRabbit's PR
+  reviews come from one account-wide hourly pool (about 5 an hour) shared by `acatl/hg`,
+  `acatl/crew` and `acatl/kino`. For each of those repos, read the newest `coderabbitai` review:
+
+  ```bash
+  gh api graphql -f query='{repository(owner:"acatl",name:"<repo>"){pullRequests(last:20,orderBy:{field:UPDATED_AT,direction:ASC}){nodes{reviews(last:20){nodes{author{login} submittedAt}}}}}}'
+  ```
+
+  Keep the newest `coderabbitai` `submittedAt` across the three. Under 60 minutes old → hold the
+  push, spend the wait on local work, then push.
 - **Baselines are the operator's.** The checks that compare against a committed baseline (the
   word budget, the content metrics) may hold or improve. A worker never raises a budget or lowers
   a content baseline to get green, and never asks for it inside a fix loop: new debt is fixed.
   Only the operator changes a baseline to accept a regression.
-- **The CodeRabbit CLI runs ONCE, before the PR opens, never during rounds** (§ 6 › The
+- **The CodeRabbit CLI runs ONCE, at the start of `open`, never during rounds** (§ 6 › The
   CodeRabbit CLI pass).
 - **The round cap: rounds 1–4 are planned; round 5 runs only for a valid defect.** Before
   STARTING round 5, look at what the reviews of round 4's push hold:
   - **a valid defect on an ordinary path** → round 5 runs, pre-approved;
   - **only low findings that are not defects** → no round 5: merge-and-carry (§ 2);
   - **a finding on a rarer input than the rounds before it** → that is the edge-case chase
-    (§ The loop budget): no round 5, escalate;
+    (§ 6 › The loop budget): no round 5, escalate;
   - otherwise the PR is ready (§ Stopping).
 
   **Hard stop before STARTING round 6**, whatever the reviews hold. Send `NEED-INPUT` with what
   each round fixed and which threads are still open, then wait.
 
-## 0. Wait for the reviewers to settle — the round has not started yet
+## Round procedure
+
+**Each round = settle → read → triage → sweep → fix → verify → review → push → reply**,
+with § 5's verify re-run after each review pass's fixes, before the push.
+One push per round, and no round starts before the reviewers settle. A clean round, with nothing to
+fix, stops at triage: no push and no round number, so round N is always the one making the PR's
+N-th push after the opening one.
+
+### 0. Wait for the reviewers to settle — the round has not started yet
 
 **Being woken is the signal to start WAITING, not to start fixing.** The app's
 `set_monitor auto_fix` fires on the first bot comment, and the reviewers post minutes apart.
@@ -103,15 +202,15 @@ the round, unless a reviewer says it is still working on the current head: then 
 20 minutes from then. Record each push's time in the ledger and the `DONE`; after a resume the
 window is measured from it.
 
-Roster: `coderabbitai`, `copilot-pull-request-reviewer`, `chatgpt-codex-connector`. Settle
-window: 20 min. From round 4 the roster is Copilot and Codex only (CodeRabbit is paused by
-label). **A roster login that never posts on the opening push may not be enabled on this repo.**
-Tell the coordinator rather than waiting on it every round.
+Roster: `coderabbitai` (the opening push only), `copilot-pull-request-reviewer`,
+`chatgpt-codex-connector`. Settle window: `settle`, 20 minutes. **A roster login that never posts
+on the opening push may not be enabled on this repo.** Tell the coordinator rather than waiting on
+it every round.
 
 **Proceed when EITHER holds:**
 
 - every roster login has reviewed the CURRENT head, or
-- 20 minutes have passed since the head was pushed, measured from the push, never from the
+- `settle` has passed since the head was pushed, measured from the push, never from the
   commit timestamp.
 
 ```bash
@@ -134,7 +233,7 @@ Compare each roster login's latest review `commit.oid` against `headRefOid`.
   that looks like a real one. Detect it (`bodyText` length 0 on the current head) and tell the
   coordinator: resuming spends a slot from the account-wide pool and is the operator's call.
 
-## 1. Read everything before touching anything
+### 1. Read everything before touching anything
 
 Every thread in full, including collapsed `<details>` bodies. Bots put proposed diffs there,
 and sometimes concede the finding themselves.
@@ -156,7 +255,7 @@ gh api --paginate repos/acatl/crew/pulls/N/reviews --jq '.[] | select(.body != "
 
 A finding with no thread still needs a disposition; its reply goes on the PR as one comment.
 
-## 2. Triage each finding to one verdict
+### 2. Triage each finding to one verdict
 
 | Verdict | Requires |
 | --- | --- |
@@ -186,7 +285,7 @@ argument: write the pinning test and cite it. Argument loses to artifact.
 
 **Never weaken a test to make a fix pass.**
 
-## 3. Generalize each confirmed finding to its class, then sweep
+### 3. Generalize each confirmed finding to its class, then sweep
 
 - **Name the class as a pattern, not an instance.**
 - **Grep the whole tree**, not just this PR's files. In this repo that includes every restated
@@ -199,13 +298,13 @@ argument: write the pinning test and cite it. Argument loses to artifact.
 - **Bound it to the pattern.** If the sweep becomes a refactor, stop and report.
 - A class with no other instances still gets one line: "swept, no others".
 
-## 4. Fix
+### 4. Fix
 
 On the PR branch: every confirmed finding and every sweep match, each with a test that pins it
 where the behavior is testable. Skill prose is pinned by the checks that read it (invariants,
 section references), not by assertion in prose.
 
-## 5. Verify
+### 5. Verify
 
 ```bash
 ./scripts/verify.sh      # every CI check in CI's order, stopping at the first failure
@@ -214,7 +313,7 @@ section references), not by assertion in prose.
 `verify.sh` is also the pre-push hook's command. Fetch `origin/main` at the round's start. While
 iterating on one failure, run that step alone; the round's check is the whole script.
 
-## 6. `/code-review high` over the fix diff, in a sub-agent
+### 6. `/code-review high` over the fix diff, in a sub-agent
 
 The round's local reviewer is the `/code-review` skill at `high`, run INSIDE a sub-agent (the
 Agent tool) that gets only the scope, so the reviewer stays apart from the doer.
@@ -229,12 +328,13 @@ uncommitted fixes.
 - "run `npm ci` before any check";
 - "run `/code-review high` on exactly that range; to test whether a pin pins, restore the
   pre-fix file (`git checkout <range base> -- <file>`) and run the test";
-- "your final message lists every finding as text".
+- "your final message lists every finding as text";
+- "as your very last step, remove your own worktree (`git worktree remove --force <its path>`)".
 
 Never your reasoning, your conclusions or your triage: a reviewer handed your conclusion returns
 it confirmed. **You judge and fix what it returns**, and every valid finding is fixed, whatever
-its severity. Once its findings are in, remove the worktree it changed
-(`git worktree remove <its path>`).
+its severity. Once its findings are in, remove only a worktree it left behind
+(`git worktree remove <its path>`); one you can't remove goes in the next `DONE` by path.
 
 Two passes, then no third:
 
@@ -246,52 +346,49 @@ Two passes, then no third:
 What it catches most often is a pinning test that does not pin. A test you wrote and watched
 pass is the thing you are least able to review.
 
-### The CodeRabbit CLI pass — once, before opening
+#### The CodeRabbit CLI pass — once, at the start of `open`
 
 The CLI (`coderabbit`, installed and signed in on this machine) runs the same reviewer locally,
 on an hourly limit separate from the PR-review pool. It never posts to the PR.
 
-- **Before opening the PR, the only time it runs.** Order:
-  1. self-review of the branch → fix;
-  2. `coderabbit review --agent --base main` over the whole branch → fix;
-  3. `/code-review high` in a sub-agent over *all* the pre-open fixes → fix, with no further
-     local review.
+- **At the start of `open`, before the push, the only time it runs.** Your workflow's review has
+  already run. Order:
+  1. `coderabbit review --agent --base main` over the whole branch → fix;
+  2. `/code-review high` in a sub-agent over the CLI's fixes → fix, with no further local review.
 
-  Note the sha before the first self-review fix; it is the sub-agent's range base. First confirm
-  the local `main` matches `origin/main`, or pass `--base-commit <origin/main's sha>`.
+  Note the sha before the first CLI fix; it is the sub-agent's range base. First confirm the local
+  `main` matches `origin/main`, or pass `--base-commit <origin/main's sha>`.
 - **Never during rounds.**
 - Triage its findings exactly like a bot's (§ 2, § 3). Never pass `--fast`. If it refuses on its
-  rate limit, wait out the window (up to 20 minutes); if it still refuses, run the sub-agent
-  review without it and say so in the `DONE` that reports the PR open.
+  rate limit, wait out the window (up to 20 minutes); if it still refuses, open without it and say
+  so in the `DONE` that reports the PR open.
 
-### The loop budget — a review is not a loop
+#### The loop budget — a review is not a loop
 
 **At most two local review→fix iterations per round**; a third needs the operator. In a round,
-the bots' reviews are the round's INPUT, and the two iterations are § 6's two passes. Before
-opening, the self-review is the review, and the CLI plus `/code-review high` are the two
-iterations. **Stop early and escalate** (`NEED-INPUT` in a crew worker) the moment any of these
-shows:
+the bots' reviews are the round's INPUT, and the two iterations are § 6's two passes. At `open`,
+the CLI and `/code-review high` are the two iterations. **Stop early and escalate** (`NEED-INPUT`
+in a crew worker) the moment any of these shows:
 
 - a finding CAUSED by the previous iteration's own fix;
 - findings moving to ever-rarer inputs (an edge-case chase, not a defect hunt);
 - a fix growing into a hand-built copy of a spec or format: propose the library and ask for its
   install as a Hard Gate;
-- 60 minutes without a commit.
+- `no-commit` minutes without a commit.
 
 **Every valid finding is fixed, whatever its severity.** The budget caps review *iterations*,
 not fixes. **At the last allowed review, a fix-created finding is fixed and the round proceeds
 to its push, with no escalation.** PR review ROUNDS are a separate count, bounded only by the
 round cap. Deferring a valid finding instead of fixing it is the operator's call.
 
-## 7. One push
+### 7. One push
 
-Every fix batched; a clean round has none. A PR gets three CodeRabbit-reviewed pushes (the opening
-push, then rounds 1 and 2), drawn from an account-wide hourly pool: load each one heavily, and the
-last one hardest.
-Round 3's push is also where `dont-review` goes on: label first, then push. Conventional-Commit
-subject, **lowercase after the type**.
+Every fix batched; a clean round has none. CodeRabbit reviews only the opening push, drawn from an
+account-wide hourly pool: load it heavily, and run the pool check before it. The first push after it
+is where `dont-review` goes on: label first, then push. Conventional-Commit subject, **lowercase
+after the type**.
 
-## 8. Reply and resolve, one pass
+### 8. Reply and resolve, one pass
 
 About 2 s apart, under GitHub's bulk-write limit. Every reply says fixed-and-how,
 declined-and-why or deferred-and-where, with the actual argument.
@@ -334,8 +431,8 @@ itself, by running, never from the worker's report:
 1. **Sensors green on the PR's head sha.** Every CI check concluded `SUCCESS`, and
    `./scripts/verify.sh` passes on that sha after `git fetch origin main`.
 2. **Enough review rounds.** At least **two** completed rounds (the opening review and the review
-   of the round-1 push). CodeRabbit has reviewed the current head, or the PR carries
-   `dont-review` and CodeRabbit reviewed every push before it. No valid finding is still open.
+   of the round-1 push). CodeRabbit reviewed the opening push (a non-empty review), unless the PR
+   opened during the pause (§ Who runs the rounds). No valid finding is still open.
 3. **Every thread dispositioned** (fixed, declined on the merits, deferred with the operator's
    yes, or merge-and-carry), each with its reply, and resolved.
 
@@ -345,8 +442,9 @@ says `landing: operator`: then the coordinator reports the PR ready and the oper
 When all three hold and `reviewDecision` is blocked only by CodeRabbit's stale
 `CHANGES_REQUESTED`, the coordinator dismisses **that review only**, with a message naming the
 resolved threads and the head sha it checked. It then confirms `mergeStateStatus` is `CLEAN` and,
-unless the card says `landing: operator`, tells the worker to merge. The worker runs `gh pr merge <N> --squash` with the PR's Conventional
-title and reports the merge sha.
+unless the card says `landing: operator`, tells the worker to merge. The worker runs
+`gh pr merge <N> --squash --match-head-commit <sha>` with the PR's Conventional title and reports
+the merge sha.
 
 **`BEHIND` or a conflict is not a failure.** The worker merges `main` into its branch: at the
 start of the next round when one is due (never mid-round), otherwise as a sync push carrying no

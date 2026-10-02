@@ -299,6 +299,14 @@ section_rule "a relayed answer is never consent for a tool-permission prompt or 
   consent tool-permission gate -- \
   '0|^#+ The contract' '0|^#+ Worker[[:space:]]*$' '1|^#+ If the `crew` skill is unavailable'
 
+# --- an ANSWER with no question pending is refused ----------------------------------------------------------
+# An ANSWER's trigger is a pending question (its Messages row); one that arrives with none is off-contract,
+# not an instruction (seen from an orchestrator in hg, 2026-10-01). The Worker section and the brief's
+# fallback each say so in one sentence holding ANSWER, "question pending" and "refuse".
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+section_rule "an ANSWER with no question pending is refused" ANSWER 'question pending' refuse -- \
+  '0|^#+ Worker[[:space:]]*$' '1|^#+ If the `crew` skill is unavailable'
+
 # --- the workflow reaches a worker through its brief ------------------------------------------------------
 # Workers never read CREW.md: the orchestrator resolves the workflow (CREW.md › Workflows) into the
 # brief's {WORKFLOW_PATH} and {PARAMETERS}, and the worker reads the file the brief names. So no Worker
@@ -346,14 +354,44 @@ for form in '`DONE · checkpoint: <boundary>`' 'plain `DONE` is a stop'; do
 done
 if [ "$wf_ok" = 1 ]; then held=$((held + 1)); fi
 
+# --- the integration reaches a worker through its brief too ------------------------------------------------
+# The orchestrator resolves CREW.md › Integration into the brief's {INTEGRATION_PATH}, beside the workflow.
+# Every Job block that names {WORKFLOW_PATH} (the ready brief's and START's) names {INTEGRATION_PATH} too, or
+# a START would drop the integration its brief carried, and its placeholder row sources it from Integration.
+ip_ok=1
+# shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
+n_wf=$(grep -cF 'Read `{WORKFLOW_PATH}` in full' "$BRIEF" || true)
+# shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
+n_ip=$(grep -cE '^- Integration: `[{]INTEGRATION_PATH[}]`' "$BRIEF" || true)
+if [ "$n_ip" = 0 ] || [ "$n_ip" != "$n_wf" ]; then
+  fail "$BRIEF: $n_wf Job block(s) name {WORKFLOW_PATH} but $n_ip carry a '- Integration: \`{INTEGRATION_PATH}\`' line"; ip_ok=0
+fi
+# shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
+if [ -z "$(scan "$(ws '[|] `[{]INTEGRATION_PATH[}]` [|] [^|]*`[^`|]*CREW\.md` › Integration')" "$BRIEF")" ]; then
+  fail "$BRIEF: no placeholder row sourcing {INTEGRATION_PATH} from \`CREW.md\` › Integration"; ip_ok=0
+fi
+if [ "$ip_ok" = 1 ]; then held=$((held + 1)); fi
+
+# --- the files that hold stages -------------------------------------------------------------------------------
+# The built-in workflow and integration must exist, or the checks over them would check nothing. A project's
+# own (docs/crew/workflows/, docs/crew/integrations/) may be absent: that dir is found, never globbed, so a
+# deleted one reads as empty, not as a reworded file.
+stage_files=()
+for f in "$SKILL"/references/workflow-*.md "$SKILL"/references/integration-*.md; do
+  if [ -f "$f" ]; then stage_files+=("$f"); else reworded "$f" "the built-in file"; fi
+done
+while IFS= read -r f; do stage_files+=("$f"); done < <(
+  for d in docs/crew/workflows docs/crew/integrations; do
+    if [ -d "$d" ]; then find "$d" -name '*.md' -type f; fi
+  done | LC_ALL=C sort)
+
 # --- a merge go names its delegation -----------------------------------------------------------------------
 # Landing needs delegation (the contract's Authority), and under Integration mode `pr` the written merge
 # rule delegates every card that doesn't say `landing: operator`. So every sentence that tells the worker
-# to merge, in a workflow file or the PR round procedure, names that withholding: a merge ordered on the
-# rule alone would bypass the card. The round procedure must exist, or half of this checks nothing.
-merge_ok=1 merge_seen=0 merge_files=("$SKILL"/references/workflow-*.md docs/crew/workflows/*.md docs/pr-round-workflow.md)
-for f in "${merge_files[@]}"; do
-  if [ ! -f "$f" ]; then reworded "$f" "the file"; merge_ok=0; continue; fi
+# to merge, in a workflow or integration file, names that withholding: a merge ordered on the rule alone
+# would bypass the card.
+merge_ok=1 merge_seen=0
+for f in ${stage_files[@]+"${stage_files[@]}"}; do
   while IFS= read -r sentence; do
     merge_seen=1
     # shellcheck disable=SC2016  # the backticks are literal Markdown
@@ -363,7 +401,7 @@ for f in "${merge_files[@]}"; do
   done < <(tr '\n' ' ' < "$f" | tr -s ' ' | sed 's/[.;] /\n/g' | grep -iE 'tells? the worker to merge' || true)
 done
 if [ "$merge_seen" = 0 ]; then
-  reworded "${merge_files[*]}" "a sentence that tells the worker to merge"; merge_ok=0
+  reworded "the workflow and integration files" "a sentence that tells the worker to merge"; merge_ok=0
 fi
 if [ "$merge_ok" = 1 ]; then held=$((held + 1)); fi
 
@@ -385,9 +423,9 @@ fi
 
 # --- a workflow's verify falls back as the orchestrator's does ------------------------------------------------
 # A worker's build ends on `verify` green, and the orchestrator verifies a stop by the brief's `verify`, else
-# its own chain (SKILL.md's "DONE `stop <stage>`" bullet, the source). A workflow's `verify` default names
-# the same sources, or a project missing one leaves the two sides verifying different things. The built-in
-# must carry the row, so the check can't pass on finding none.
+# its own chain (SKILL.md's "DONE `stop <stage>`" bullet, the source). A workflow's or integration's `verify`
+# default names the same sources, or a project missing one leaves the two sides verifying different things.
+# Each built-in must carry the row, so the check can't pass on finding none.
 v_ok=1
 # shellcheck disable=SC2016  # the backticks are literal Markdown
 stop=$(section '^#+ Orchestrator[[:space:]]*$' 0 "${mds[@]}" | grep -oE '[*][*]DONE `stop <stage>`[*][*][^-]*' | head -n 1 || true)
@@ -395,8 +433,7 @@ chain=$(grep -oE '(CREW\.md|docs/HARNESS\.md)` › [A-Z][a-z]+' <<< "$stop" | LC
 if [ -z "$chain" ]; then
   reworded "$SKILL/SKILL.md" "the Orchestrator's DONE \`stop <stage>\` verify chain"; v_ok=0
 fi
-for f in "$SKILL"/references/workflow-*.md docs/crew/workflows/*.md; do
-  [ -f "$f" ] || continue
+for f in ${stage_files[@]+"${stage_files[@]}"}; do
   # shellcheck disable=SC2016  # the backticks are literal Markdown
   row=$(grep -E '^\| `verify` \|' "$f" || true)
   if [ -z "$row" ]; then
@@ -412,13 +449,12 @@ if [ "$v_ok" = 1 ]; then held=$((held + 1)); fi
 
 # --- a ready PR asks before it merges ----------------------------------------------------------------------
 # After `merge bar met` the worker waits on the merge, so it sends NEED-INPUT (SKILL.md Worker step 4), and
-# the merge go is an ANSWER to that question: no other kind can carry it. Every workflow file or round
-# procedure that names `merge bar met` holds a sentence that sends NEED-INPUT for the merge (the worker's;
+# the merge go is an ANSWER to that question: no other kind can carry it. Every workflow or integration
+# file that names `merge bar met` holds a sentence that sends NEED-INPUT for the merge (the worker's;
 # the orchestrator's "answers only the worker's merge NEED-INPUT" doesn't count). At least one must
 # name it, so the check can't pass on finding none.
 ask_ok=1 ask_seen=0
-for f in "${merge_files[@]}"; do
-  [ -f "$f" ] || continue
+for f in ${stage_files[@]+"${stage_files[@]}"}; do
   sentences=$(tr '\n' ' ' < "$f" | tr -s ' ' | sed 's/[.;] /\n/g')
   grep -qF 'merge bar met' <<< "$sentences" || continue
   ask_seen=1
@@ -427,7 +463,7 @@ for f in "${merge_files[@]}"; do
   fi
 done
 if [ "$ask_seen" = 0 ]; then
-  reworded "${merge_files[*]}" "\`merge bar met\`"; ask_ok=0
+  reworded "the workflow and integration files" "\`merge bar met\`"; ask_ok=0
 fi
 if [ "$ask_ok" = 1 ]; then held=$((held + 1)); fi
 

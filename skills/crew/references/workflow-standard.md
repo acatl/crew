@@ -1,6 +1,6 @@
 ---
 name: standard
-description: The built-in workflow. Plan, build, review in isolation, hand off committed and verified; no PR.
+description: The built-in workflow. Plan, build, review in isolation, hand off committed and verified, or continue into the brief's integration.
 ---
 
 # Workflow: standard
@@ -54,12 +54,14 @@ those fixes alone. Any other reviewer's fixes get the same look: fixes are code 
 
 ### handoff
 
-Update your ledger, report, and stop.
+Update your ledger. Your brief names an integration → continue into its stages: this stage reports
+nothing, and the integration's stop is yours. Otherwise report and stop.
 
-- **Ends:** reported.
-- **Report:** `stop handoff`: branch, sha, verify result, fixed, declined, carried.
+- **Ends:** reported, or the integration's first stage begun.
+- **Report:** `stop handoff` (none under an integration): branch, sha, verify result, fixed,
+  declined, carried.
 - **Orchestrator:** verifies by running, lands per the card and `CREW.md` › Integration, cleans up,
-  and carries findings into the next unit.
+  and carries findings into the next unit. Under an integration, its stages say.
 - **Clears:** no
 
 ## Rules

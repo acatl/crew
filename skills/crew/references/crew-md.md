@@ -17,7 +17,7 @@ continue the spawn: the brief carries everything, so workers don't need it commi
 | Verify | `docs/HARNESS.md` › Sensors, `package.json` `check`/`test`, `Makefile` `test` | ask now; `verify` needs it |
 | Worktree setup | a lockfile (`package-lock.json` → `npm ci`, `pnpm-lock.yaml` → `pnpm install`, …) in the root and in any workspace package, gitignored runtime files at the root (`.env`) | `none` |
 | Branch naming | — | keep the `claude/…` branch |
-| Integration mode | `docs/HARNESS.md` merge mode (workers merge PRs under a written rule → `pr`) | `operator` |
+| Integration (how work lands) | `docs/HARNESS.md` merge mode (workers merge PRs under a written rule → `pr`); a GitHub remote with `gh` → offer `pr` | `operator`. `pr` offers `file: built-in`; to adapt it, copy the skill's `references/integration-pr.md` to `docs/crew/integrations/pr.md` and name that |
 | Post-land | anything the main checkout serves from a gitignored build (a CLI or skill linked globally from here → its build command) | `none` |
 | Standing boundaries | install or link commands that write outside the repo (`<tool> install`, `npm link`, home-dir symlinks) → "never run `<cmd>` from a worktree" | `none` |
 | Title / cleanup defaults | — | see template |
@@ -80,9 +80,12 @@ keep
 
 `operator`: the operator lands every branch. `ff-only`: on a card's `landing: delegated`, the
 orchestrator lands a verified branch with `git merge --ff-only <worker-branch>` in the main
-checkout. Never a merge commit, never a push. `pr`: a worker whose workflow merges its PR does
-so on the orchestrator's go when the merge rule holds, unless the card says `landing: operator`. Add
-`- merge rule: <where>`; Post-land starts by pulling `<base>`.
+checkout. Never a merge commit, never a push. `pr`: work lands by pull request, merged by the worker
+on the orchestrator's go when the merge rule holds, unless the card says `landing: operator`. Add
+`- file: built-in` (or a project copy, such as `docs/crew/integrations/pr.md`): a workflow's
+`handoff` continues into that file's stages, and the file holds the merge rule. Without `file:`, a
+workflow with its own PR stages merges under `- merge rule: <where>`. Post-land starts by pulling
+`<base>`.
 
 ## Post-land
 Run in the main checkout after each landing:
