@@ -6,7 +6,7 @@ description: The built-in integration. Land a workflow's work by GitHub pull req
 # Integration: pr
 
 How finished work lands: a pull request, its review rounds and its merge. Your workflow's `handoff`
-continues into these stages when your brief names this file. It needs `gh` and the app's PR binding.
+continues into these stages when your brief names this file. `<base>` is your brief's Base branch.
 The crew contract (SKILL.md) and your workflow's Rules sit under it; nothing here changes them.
 To adapt it (a reviewer roster, labels), edit a copy at `docs/crew/integrations/pr.md`.
 

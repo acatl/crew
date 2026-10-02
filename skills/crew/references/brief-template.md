@@ -16,7 +16,7 @@ Two variants differ only in the Job section:
 | `{ORCH_ID}`, `{ORCH_TITLE}` | `get_session("self")` |
 | `{TITLE}` | card › Title |
 | `{BASE}` | THIS unit's base (SKILL.md step 3.4), as a branch (e.g. `graph-port`, not `origin/main`) |
-| `{BASE_SHA}` | that ref's sha at spawn time; the worker re-points to it (*Worker* step 2) |
+| `{BASE_SHA}` | its tip at spawn time, or an audit's sha; the worker re-points to it |
 | `{TICKET_SOURCE}` | `CREW.md` › Ticket source, filled (e.g. "Kino task KINO-5, via the Kino MCP `get_task`"), or "the spec below" |
 | `{SCOPE}` | card › Scope |
 | `{WORKFLOW}` | card › Workflow |

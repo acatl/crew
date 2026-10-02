@@ -205,25 +205,28 @@ green "15de a dotted name inside the sentence doesn't split it" check-invariants
 edit "$PR" 's#with no `landing: operator` on#with no `landing: delegated` on#'              # same fixture
 red "15df and the same fixture still fires on a missing withhold" check-invariants "$PR: tells the worker to merge without naming"
 
-# a PR opens against the brief's base: every `gh pr create`/`new` sets --base <base> (the controls cover green)
+# a PR opens against the brief's base: every `gh pr create`/`new` reads `gh pr create --base <base>` (the
+# controls cover green; no case pins a line number, so a re-wrap alone never turns one red)
 fresh; edit "$IP" 's#`gh pr create --base <base>`#`gh pr create`#'
-red "15ei1 the built-in opens its PR against the default branch" check-invariants "$IP:29: names \`gh pr create\` without --base <base>"
+red "15ei1 the built-in opens its PR against the default branch" check-invariants "'gh pr create', not"
 fresh; edit "$PR" 's#`gh pr create --base <base>`#`gh pr create --fill`#'
-red "15ei2 so does a project integration, whatever else it passes" check-invariants "$PR:37: names \`gh pr create\` without --base <base>"
+red "15ei2 so does a project integration, whatever else it passes" check-invariants "'gh pr create --fill', not"
 fresh; edit "$IP" 's#`gh pr create --base <base>`#`gh pr create --base main`#'
-red "15ei3 a literal branch in place of <base> is the same bug" check-invariants "$IP:29: names \`gh pr create\` without --base <base>"
+red "15ei3 a literal branch in place of <base> is the same bug" check-invariants "'gh pr create --base main', not"
 fresh; edit "$PR" 's#`gh pr create --base <base>`#`gh pr new`#'
-red "15ei4 gh's alias gh pr new is checked too" check-invariants "$PR:37: names \`gh pr create\` without --base <base>"
-fresh; edit "$IP" 's#`gh pr create --base <base>`#`gh pr create --fill -B <base>`#'
-edit "$PR" 's#`gh pr create --base <base>`#`gh pr create --base=<base> --draft`#'
-green "15ei5 gh's other spellings of the base pass" check-invariants
-edit "$IP" 's#`gh pr create --fill -B <base>`#`gh pr create --fill -B <base>x`#'          # same fixture
-red "15ei6 and the same fixture still fires on a base that isn't <base>" check-invariants "$IP:29: names"
-fresh; printf '\n```bash\ngh pr create --base <base> --fill\ngh pr create --fill --draft\n```\n' >> "$S/$PR"
-red "15ei7 two calls in one fenced block are judged one by one" check-invariants "'gh pr create --fill --draft'"
+red "15ei4 gh's alias gh pr new is checked too" check-invariants "'gh pr new', not"
+fresh; edit "$PR" 's#`gh pr create --base <base>`#`gh pr create --base <base> --draft`#'
+green "15ei5 flags after the base pass" check-invariants
+edit "$PR" 's#`gh pr create --base <base> --draft`#`gh pr create --draft --base <base>`#'  # same fixture
+red "15ei6 but a base after another flag is not the canonical form" check-invariants "'gh pr create --draft --base', not"
+fresh; printf '\n```bash\ngh pr create --base <base> --fill\ngh pr checks 5 --watch\n```\n' >> "$S/$PR"
+green "15ei7 other gh pr commands beside a good call are not calls to judge" check-invariants
+printf '```bash\n(gh pr create --fill)\n```\n' >> "$S/$PR"                                  # same fixture
+red "15ei7b but each call in a fence is judged alone, wherever it starts" check-invariants "'gh pr create --fill)', not"
+fresh; printf '\n- Then\n  `gh pr\n  create --fill`.\n' >> "$S/$PR"
+red "15ei8 a call wrapped across lines is still seen" check-invariants "'gh pr create --fill', not"
 fresh; edit "$IP" 's#`gh pr create --base <base>`#the PR#'
-edit "$PR" 's#(`gh pr create --base <base>`) ##'
-red "15ei8 no gh pr create at all fails, never passes" check-invariants "a \`gh pr create\` call not found"
+red "15ei9 the built-in without the call fails, though the project copy still names one" check-invariants "$IP: the call 'gh pr create --base <base>' not found"
 # the queue card shows each unit's workflow and landing
 fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Integration | Scope | Landing | Cleanup |#> | \# | Unit | Title | Workflow | Integration | Scope | Cleanup |#'
 red "15dg the queue card loses its per-unit Landing" check-invariants "the queue card has no per-unit Landing column"

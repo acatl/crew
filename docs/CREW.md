@@ -65,7 +65,9 @@ its PR).
 ## Post-land
 
 After every merge to `main`, in the main checkout: confirm the tree is clean, then
-`git pull --ff-only`, then `npm ci`. **The main checkout is the live skill**:
+`git pull --ff-only`, then `npm ci`. After a merge to another base, `git fetch origin <base>:<base>`
+there instead: it moves the local `<base>` the next unit's START sha is read from, and leaves the
+live skill alone. **The main checkout is the live skill**:
 `~/.claude/skills/crew` links to its `skills/crew/`, so the pull is what makes a merge reach
 every new session. The orchestrator runs it. Pulling and installing from the committed
 lockfile write only inside the repo.
