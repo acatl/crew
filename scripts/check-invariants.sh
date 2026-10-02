@@ -366,28 +366,29 @@ if [ "$wf_ok" = 1 ]; then held=$((held + 1)); fi
 
 # --- the integration reaches a worker through its brief too ------------------------------------------------
 # The orchestrator resolves CREW.md › Integration into the brief's {INTEGRATION_PATH}, beside the workflow.
-# Every Job block that names {WORKFLOW_PATH} (the ready brief's and START's) names {INTEGRATION_PATH} too, or
-# a START would drop the integration its brief carried, and its placeholder row sources it from Integration.
-# Counted per block (a `## Job` section, ended by the next heading or fence), never in total: a total lets
-# one block's duplicate line cover another block's missing one.
+# The ready brief's Job list names {WORKFLOW_PATH} and {INTEGRATION_PATH}, and START's Job list, which replaces
+# it for a queued worker, is the same list: one that drifted would drop the integration (or the workflow, or
+# `Do not touch`) its brief carried. Each list is its `## Job` section, read as section() reads one (fence-
+# aware, wrapped lines joined), less its `<Ready: …>` annotation. The ready one is cut off at the queued
+# block's heading; a renamed heading pulls the queued Job in, which fails as a mismatch, never passes.
 ip_ok=1
-# shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
-ip_blocks=$(awk '
-  function close_block() { if (blk && wf) print blk, ip; blk = wf = ip = 0 }
-  /^#/ || /^````/ { close_block() }
-  /^## Job[[:space:]]*$/ { blk = FNR }
-  blk && index($0, "Read `{WORKFLOW_PATH}` in full") { wf = 1 }
-  blk && /^- Integration: `[{]INTEGRATION_PATH[}]`/ { ip++ }
-  END { close_block() }' "$BRIEF")
-if [ -z "$ip_blocks" ]; then
-  reworded "$BRIEF" "a \`## Job\` block naming {WORKFLOW_PATH}"; ip_ok=0
+job_list() { section '^## Job[[:space:]]*$' 1 "$1" | sed -E 's/<[A-Z][a-z]+: [^>]*> ?//g'; }
+ready_job=$(job_list <(awk '/^### Queued block/ {exit} 1' "$BRIEF"))
+start_job=$(job_list <(awk '/^## START[[:space:]]*$/ {p = 1} p' "$BRIEF"))
+if [ -z "$ready_job" ]; then reworded "$BRIEF" "the ready brief's \`## Job\` section"; ip_ok=0; fi
+if [ -z "$start_job" ]; then reworded "$BRIEF" "START's \`## Job\` section"; ip_ok=0; fi
+if [ -n "$ready_job" ]; then
+  # shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
+  for want in '- Workflow: `{WORKFLOW}`. Read `{WORKFLOW_PATH}` in full' '- Integration: `{INTEGRATION_PATH}`.'; do
+    if ! grep -qF -- "$want" <<< "$ready_job"; then
+      fail "$BRIEF: the ready brief's Job list has no '$want' line"; ip_ok=0
+    fi
+  done
 fi
-while read -r line n; do
-  [ -n "$line" ] || continue
-  if [ "$n" != 1 ]; then
-    fail "$BRIEF:$line: the Job block naming {WORKFLOW_PATH} carries $n '- Integration: \`{INTEGRATION_PATH}\`' lines, not one"; ip_ok=0
-  fi
-done <<< "$ip_blocks"
+if [ -n "$ready_job" ] && [ -n "$start_job" ] && [ "$ready_job" != "$start_job" ]; then
+  fail "$BRIEF: START's Job list differs from the ready brief's, which it replaces"$'\n'"  brief: $ready_job"$'\n'"  START: $start_job"
+  ip_ok=0
+fi
 # shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
 if [ -z "$(scan "$(ws '[|] `[{]INTEGRATION_PATH[}]` [|] [^|]*`[^`|]*CREW\.md` › Integration')" "$BRIEF")" ]; then
   fail "$BRIEF: no placeholder row sourcing {INTEGRATION_PATH} from \`CREW.md\` › Integration"; ip_ok=0

@@ -275,14 +275,25 @@ red "15eh its heading renamed is reported, not passed" check-invariants "a secti
 
 # the integration reaches a worker through its brief: every Job block names {INTEGRATION_PATH}
 fresh; edit "$BT" '/^## START/,$ s#^- Integration: `{INTEGRATION_PATH}`\.#- Integration: none.#'
-red "15ec START drops the integration line its brief carries" check-invariants "the Job block naming {WORKFLOW_PATH} carries 0"
+red "15ec START drops the integration line its brief carries" check-invariants "START's Job list differs from the ready brief's"
 fresh; edit "$BT" 's#^- Integration: `{INTEGRATION_PATH}`\.#- Integration: none.#'
-red "15ed both Job blocks drop it" check-invariants "the Job block naming {WORKFLOW_PATH} carries 0"
+red "15ed both Job lists drop it" check-invariants "the ready brief's Job list has no '- Integration: \`{INTEGRATION_PATH}\`.' line"
 fresh; edit "$BT" '/^## START/,$ s#^- Integration: `{INTEGRATION_PATH}`\.#- Integration: none.#'
-edit "$BT" 's#^\(- Integration: `{INTEGRATION_PATH}`.*\)$#\1\
-\1#'                       # START's line is gone, so only the brief's doubles
-red "15ec2 one block's duplicate line doesn't cover another block's missing one" check-invariants "the Job block naming {WORKFLOW_PATH} carries 0"
-if grep -qF "the Job block naming {WORKFLOW_PATH} carries 2" "$ROOT/out"; then ok "15ec3 and the doubled block is named too"; else bad "15ec3 doubled block" "$(cat "$ROOT/out")"; fi
+edit "$BT" '/^- Integration: `{INTEGRATION_PATH}`/p'                                     # same fixture
+red "15ec2 one list's doubled line doesn't cover the other's missing one" check-invariants "START's Job list differs from the ready brief's"
+fresh; edit "$BT" '/^## START/,$ s#^- Do not touch: {FORBIDDEN}$#- Surface note: none#'
+red "15ec3 START drops another Job line, Do not touch" check-invariants "START's Job list differs from the ready brief's"
+fresh; edit "$BT" '/^## START/,$ { /^- Workflow: `{WORKFLOW}`/d; }'
+red "15ec4 or its Workflow line" check-invariants "START's Job list differs from the ready brief's"
+fresh; edit "$BT" '/^## START/,$ s|^## Job$|### Job|'
+red "15ec5 START's Job heading renamed is reported, not passed on the brief's strength" check-invariants "START's \`## Job\` section not found"
+fresh; edit "$BT" '1,/^### Queued block/ s|^## Job$|## The job|'
+red "15ec6 the ready brief's Job heading renamed is reported" check-invariants "the ready brief's \`## Job\` section not found"
+fresh; edit "$BT" '/^## START/,$ s#^- Workflow: `{WORKFLOW}`\. Read `{WORKFLOW_PATH}` in full and follow it\. Mode: `{MODE}`\.$#- Workflow: `{WORKFLOW}`. Read `{WORKFLOW_PATH}`\
+  in full and follow it. Mode: `{MODE}`.#'
+green "15ec7 a wrapped Job line still matches its copy" check-invariants
+edit "$BT" '/^## START/,$ s#^- Integration: `{INTEGRATION_PATH}`\.#- Integration: none.#'      # same fixture
+red "15ec8 and the same fixture fires on a dropped Integration line" check-invariants "START's Job list differs from the ready brief's"
 fresh; edit "$BT" 's#its file, absolute: `CREW.md` › Integration.s `file:`#its file, absolute: `CREW.md` › Workflows row#'
 red "15ee the row sourcing {INTEGRATION_PATH} from anything but Integration" check-invariants "no placeholder row sourcing {INTEGRATION_PATH}"
 

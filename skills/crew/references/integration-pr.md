@@ -26,13 +26,12 @@ The orchestrator resolves each into your brief; read the values there, never `CR
 
 ### open
 
-Run `git fetch origin <base>`, then `verify` on a clean tree; fix anything red first. Push your own
-branch and run `gh pr create`: a Conventional Commits title, and a body saying what changed, why,
-and the risk. Call the app's `get_status`; if it doesn't report this PR, call `bind_pr` with its URL;
-then `set_monitor` with `auto_fix: true`. Each of these calls raises an approval prompt in some
-permission modes, and a prompt blocks the call. Send `NEED-INPUT` marked `answer: in this session
-only` before them, unless `get_session("self")` reports `permissionMode` `auto` or
-`bypassPermissions`.
+Run `git fetch origin <base>`, then `verify` on a clean tree; fix anything red. Push your own
+branch and run `gh pr create`: a Conventional Commits title; a body of what changed, why, the risk.
+Call the app's `get_status`; if it doesn't report this PR, call `bind_pr` with its URL. Then call
+`set_monitor` with `auto_fix: true`. Any of these calls can raise an approval prompt, which blocks
+it: send `NEED-INPUT` marked `answer: in this session only` before them, unless
+`get_session("self")` reports `permissionMode` `auto` or `bypassPermissions`.
 
 - **Ends:** PR open, bound, monitor on.
 - **Report:** `checkpoint open`: PR URL, sha, push time.
@@ -43,23 +42,22 @@ only` before them, unless `get_session("self")` reports `permissionMode` `auto` 
 
 Arm a settle timer first, on entering and after a resume too: a background command (the Bash tool's
 `run_in_background`) that exits once `settle` minutes have passed since the push, or earlier once
-every reviewer of an earlier push has reviewed the head (none yet: the full window). A silent
-reviewer wakes no one; the timer does. End each waiting turn with `waiting: settle timer, until <push time + settle>`.
-Woken by the monitor mid-settle → keep waiting.
+every reviewer of the previous push has reviewed the head (none yet: the full window). A silent
+reviewer wakes no one. End each waiting turn with
+`waiting: settle timer, until <push time + settle>`. Woken by the monitor mid-settle → keep waiting.
 
-Read every review thread and review body: some reviewers file findings with no thread.
-Triage each finding: fix it, decline it with a reason cited to code or a rule, or defer it, which is
-the operator's call. Fix, review the fixes as your workflow's review does, run `verify`, and push
+Read every review thread and review body (some findings have no thread).
+Triage each finding: fix it, decline it with a reason cited to code or a rule, or defer it (the
+operator's call). Fix, review the fixes as your workflow's review does, run `verify`, and push
 once. Reply to each finding, then resolve exactly the threads this round dispositioned. A base that
 moved (`BEHIND`, a conflict) → merge it at the next round's start, never mid-round, or alone as a
 sync push.
 
-A round with nothing to fix pushes nothing. Check the merge rule (Rules) yourself once CI
+A round with nothing to fix pushes nothing. Check the merge rule yourself once CI
 concludes (still running → a background `gh pr checks <N> --watch`, ending the turn `waiting: CI`),
 and add `merge bar met` or the condition that fails to the report. The clean round then
 sends the merge `NEED-INPUT` ("merge?", or the failing condition and the choices) and ends the turn.
-Send `NEED-INPUT` before a round `rounds` doesn't allow, with what each round fixed and what is still
-open.
+Send `NEED-INPUT` before a round `rounds` doesn't allow, with each round's fixes and what is still open.
 
 - **Ends:** the round's push is up and its findings dispositioned, or the clean round's report sent.
 - **Report:** `checkpoint round`: round, sha, push time, fixed, declined, CI, silent reviewers.
@@ -84,10 +82,11 @@ confirm it and report the same.
 ## Rules
 
 - **Your workflow's Rules hold here:** its loop budget, git safety, carrying and checkpoints.
+- **Record each push's time in your ledger:** after a clear, `settle` runs from it, never the commit's.
 - **Consent.** The brief grants a push to your own branch, your own PR, its binding, and writes to
   it (replies, resolves). Anything else, a merge outside the merge rule included, is a Hard Gate:
   the operator's yes in this session, never relayed.
 - **The merge rule:** CI green on the head; `verify` green after `git fetch origin <base>`; every
   finding dispositioned, replied to and resolved; `reviewDecision` not blocking; at least one
-  round's reviews in. Judge `reviewDecision` and `mergeStateStatus`, never the open-thread count: a
+  non-empty review. Judge `reviewDecision` and `mergeStateStatus`, never the open-thread count: a
   `CHANGES_REQUESTED` survives resolving every thread.

@@ -209,7 +209,8 @@ it every round.
 
 **Proceed when EITHER holds:**
 
-- every roster login has reviewed the CURRENT head, or
+- every roster login has reviewed the CURRENT head (with every login dropped as silent or paused,
+  this never holds: wait out the window), or
 - `settle` has passed since the head was pushed, measured from the push, never from the
   commit timestamp.
 
