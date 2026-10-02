@@ -212,10 +212,15 @@ saw_idle() {  # saw_idle <ticket> <worktree>: an idle pass ends the worker's str
   if [ -n "$(row_of "$1" "$2")" ]; then save_active "$(without "$1" "$2")"; fi
 }
 # last_alert <ticket> <push time>: the sub-agent count trigger 2 last alerted at for that push, or 0.
-# The ""-concatenations keep awk from coercing ids like "01" and "1" into the same number.
+# The ""-concatenations keep awk from coercing ids like "01" and "1" into the same number. BSD awk
+# exits without running END on a missing file (reported.txt deleted under a live watchdog), so the
+# empty result becomes 0 here: callers compare it as an integer.
 last_alert() {
-  K="$1" P="$2" awk '$1"" == ENVIRON["K"]"" && $2 == "subs" && $3"" == ENVIRON["P"]"" {n = $4} END {print n + 0}' \
-    "$reported" 2>/dev/null
+  local n
+  n=$(K="$1" P="$2" awk '$1"" == ENVIRON["K"]"" && $2 == "subs" && $3"" == ENVIRON["P"]"" {n = $4} END {print n + 0}' \
+    "$reported" 2>/dev/null)
+  case "$n" in ''|*[!0-9]*) n=0 ;; esac
+  printf '%s\n' "$n"
 }
 prune_active() {  # prune_active <roster snapshot>: drop the rows of workers no longer on it
   local kept

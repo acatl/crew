@@ -290,8 +290,9 @@ Execute only what the card agreed, and name it as you do it.
 - `keep` → leave it running; follow-up work goes to it by `RELAY`.
 - **Roster and watchdog** → drop the worker's line from `roster.tsv`, and stop its wake, as it stops.
   When the last one goes, stop the watchdog by the pid in `watchdog.pid`, clear its `Monitors` line,
-  and delete `reported.txt` and `active.tsv`. Both serve only the sequence that just ended: nothing
-  truncates them, and a later worker reusing a ticket id would be deduped or clocked against them.
+  then delete `reported.txt` and `active.tsv`, never under a live watchdog. Both serve only the
+  sequence that just ended: nothing truncates them, and a later worker reusing a ticket id would be
+  deduped or clocked against them.
 
 Archiving detaches the worktree (the branch is kept) and hands the directory to the app's reuse pool.
 It's reversible (`unarchive_session`), and the app may show its own approval card. Cleanup never
