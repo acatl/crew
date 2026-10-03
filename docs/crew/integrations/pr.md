@@ -72,11 +72,12 @@ you, within `rounds`, a late review on an unchanged head included.
   answers only the worker's merge `NEED-INPUT`, once it lands. Met, with no `landing: operator` on the
   card (`CREW.md` › Integration `mode: pr` delegates the rest), it tells the worker to merge by `ANSWER`
   to its "merge?". Met under that override, it nudges the operator, who merges by hand or in the
-  worker's session, and relays no go: the rule is void there, so the merge is a Hard Gate. Met while the worker asked as missed (CI concluded since, say), it `ANSWER`s "re-check the
-  bar", and the worker asks again. Missed by its own check, whatever the worker reported, it nudges with
-  the failing condition and relays no merge: a merge despite it is the operator's own, by hand or in the
-  worker's session (§ Stopping › Merging). It handles the operator's merge (`prState: MERGED`) as
-  `stop merge`.
+  worker's session, and relays no go: the rule is void there, so the merge is a Hard Gate. Met while
+  the worker asked as missed (CI concluded since, say), it nudges the operator to have the worker
+  re-check the bar, in the worker's session, which is where that question is answered. Missed by its
+  own check, whatever the worker reported, it nudges with the failing condition and relays no merge:
+  a merge despite it is the operator's own, by hand or in the worker's session (§ Stopping ›
+  Merging). It handles the operator's merge (`prState: MERGED`) as `stop merge`.
 - **Clears:** after a push, yes, monitor off first. Not after a clean round: one step from the
   stop.
 
@@ -140,13 +141,16 @@ are context the next round needs.
   itself and reports a clean `checkpoint round`: `merge bar met` when all three hold, else the one
   that fails (a clean opening round has no round-1 push). Either way it adds `verify` on the head
   after `git fetch origin <base>`, the PR's base, CI, open threads and `mergeStateStatus`. It then
-  waits on the merge, so it sends `NEED-INPUT` marked `answer: here or relay` and ends the turn (crew's Worker step 4):
-  bar met → "merge?"; bar missed → the condition and the choices, another review or a merge anyway,
-  which is a Hard Gate only this session approves.
+  waits on the merge, so it sends `NEED-INPUT` and ends the turn (crew's Worker step 4): bar met →
+  "merge?"; bar missed → the condition and the choices, another review or a merge anyway, which is
+  a Hard Gate only this session approves. It marks that `NEED-INPUT` `answer: in this session only`
+  unless the bar is met and the brief's Landing is `delegated`: then `answer: here or relay`, so the
+  coordinator's `ANSWER` can carry the merge rule's go.
   A review that lands later on the same head starts the next round: § 0's window has long passed.
 - **The worker merges only on the coordinator's go**, never on its own reading of the PR (§
   Stopping › Merging): the coordinator's `ANSWER` to that "merge?" under the merge rule (a card's
-  `landing: operator` withholds it), or the operator's yes in this session, never a relayed go.
+  `landing: operator`, the brief's Landing `operator`, withholds it), or the operator's yes in this
+  session, never a relayed go.
 - **CodeRabbit reviews the opening push only** (operator, 2026-10-02, from 2026-10-03). Just
   BEFORE the first push after the opening one (round 1's fixes, or a sync push), the worker applies
   the `dont-review` label (`gh pr edit <N> --repo acatl/crew --add-label dont-review`;

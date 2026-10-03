@@ -460,7 +460,7 @@ first line.
 3. START's Job section and sha replace the brief's Job section and base sha. Continue at *Worker*
    step 2, which re-points you to that sha.
 
-Never: push, merge, or open a PR past the stop stage · touch the `Do not touch` paths · install or link
+Never: push, merge, or open a PR past your stop stage · touch the `Do not touch` paths · install or link
 anything that outlives this worktree (global installs, links from your home directory into it), since
 the worktree gets archived and the link would dangle · message another worker · archive yourself · send
 anything besides the four kinds.

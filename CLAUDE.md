@@ -163,10 +163,14 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
 - **A merge go names its delegation.** Landing needs delegation; Integration mode `pr` is the one
   standing delegation, withheld by a card's `landing: operator`. *Checked*: every sentence in a
   workflow or integration file that tells the worker to merge names `landing`.
-- **A relayed go is never a merge go.** A card's `landing: operator` voids the merge rule, making the
-  merge a Hard Gate, and the worker can't see the card: it merges only on the orchestrator's `ANSWER` or
-  the operator's yes in its own session. *Checked*: every workflow or integration file that asks
-  "merge?" has a sentence refusing a "relayed go", and none accepts a go relayed.
+- **A relayed go is never a merge go.** A card's `landing: operator` voids the merge rule, so a merge
+  under it (or on a missed bar) is a Hard Gate. The brief carries the card's Landing (`- Landing:
+  {LANDING}`, `delegated` or `operator`, in the brief's and START's Job lists), and the worker merges
+  only on the orchestrator's `ANSWER` or the operator's yes in its own session. *Checked*: both Job
+  lists carry the line and its placeholder row resolves it; every workflow or integration file that
+  asks "merge?" (any quoting) refuses a "relayed go" in a sentence naming the "merge?", accepts a
+  relayed go in no clause, and marks the question `answer: in this session only` by the brief's
+  Landing.
 - **Under an integration, the worker's stop is the integration's.** SKILL.md's *Authority* (how far a
   worker goes) and `ledger.md`'s *Eviction* (when a row leaves `Live`) each say "stop stage" and
   "integration's" in one sentence. *Checked*, by section heading.

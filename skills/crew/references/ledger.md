@@ -101,8 +101,9 @@ Each write rewrites the file, so eviction happens as part of writing: no cleanup
 
 ## Eviction
 
-A row leaves `Live` when its stop stage (its integration's, if any) is reached **and `owed` is empty**. Not when the worker is
-archived: a worker can be archived, or cleared and idle for hours, while its work is still owed.
+A row leaves `Live` when its stop stage (its integration's, if any) is reached **and `owed` is
+empty**. Not when the worker is archived: a worker can be archived, or cleared and idle for hours,
+while its work is still owed.
 
 On eviction: append the row to `archive-YYYY-MM.md`, **copying anything the orchestrator may still
 need** rather than referencing it — a worker's own ledger lives under `.git/worktrees/<name>/`, which

@@ -55,7 +55,9 @@ sync push.
 A round with nothing to fix pushes nothing. Check the merge rule yourself once CI
 concludes (still running → a background `gh pr checks <N> --watch`, ending the turn `waiting: CI`),
 and add `merge bar met` or the condition that fails to the report. The clean round then
-sends the merge `NEED-INPUT` ("merge?", or the failing condition and the choices) and ends the turn.
+sends the merge `NEED-INPUT` ("merge?", or the failing condition and the choices), marked
+`answer: in this session only` unless the bar is met and your brief's Landing is `delegated`, and
+ends the turn.
 Send `NEED-INPUT` before a round `rounds` doesn't allow, with each round's fixes and what is still open.
 
 - **Ends:** the round's push is up and its findings dispositioned, or the clean round's report sent.

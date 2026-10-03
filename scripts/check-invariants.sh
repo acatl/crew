@@ -264,24 +264,28 @@ section() {
     }
     w' "${@:3}" | tr '\n' ' ' | tr -s ' '
 }
-# sentence_with <text> <fixed string>... : 0 when one sentence holds every string and a refusal
+# sentence_with [--any] <text> <fixed string>... : 0 when one sentence holds every string and a refusal
+# (--any: no refusal needed)
 sentence_with() {
-  local sentences; sentences=$(tr '.' '\n' <<< "$1"); shift
+  local any=0 sentences; if [ "$1" = --any ]; then any=1; shift; fi
+  sentences=$(tr '.' '\n' <<< "$1"); shift
   while [ $# -gt 0 ]; do sentences=$(grep -F -- "$1" <<< "$sentences" || true); shift; done
-  grep -qE -- "$refusal" <<< "$sentences"
+  if [ "$any" = 1 ]; then [ -n "$sentences" ]; else grep -qE -- "$refusal" <<< "$sentences"; fi
 }
-# section_rule <what the rule says> <strings> -- <in-fence ok>|<heading ERE>...: every section states the
-# rule; one held invariant when all do. Presence, not meaning: a string check pins that the sentence is
-# there, and reviewers judge what it says.
+# section_rule [--any] <what the rule says> <strings> -- <in-fence ok>|<heading ERE>...: every section
+# states the rule; one held invariant when all do. Presence, not meaning: a string check pins that the
+# sentence is there, and reviewers judge what it says. --any passes on to sentence_with.
 section_rule() {
-  local says=$1 strings=() spec where text ok=1; shift
+  local any=() says strings=() spec where text ok=1
+  if [ "$1" = --any ]; then any=(--any); shift; fi
+  says=$1; shift
   while [ "$1" != -- ]; do strings+=("$1"); shift; done; shift
   for spec in "$@"; do
     where=${spec#*|}
     text=$(section "$where" "${spec%%|*}" "${mds[@]}")
     if [ -z "$text" ]; then
       reworded "$SKILL/*.md" "a section headed '$where'"; ok=0
-    elif ! sentence_with "$text" "${strings[@]}"; then
+    elif ! sentence_with ${any[@]+"${any[@]}"} "$text" "${strings[@]}"; then
       fail "$SKILL/*.md: the section headed '$where' no longer says, in one sentence, that $says"; ok=0
     fi
   done
@@ -323,17 +327,9 @@ section_rule "an ANSWER with no question pending is refused" ANSWER 'question pe
 # stage is the integration's (Codex on acatl/crew#7). Read as the workflow's, the contract's Authority would
 # stop a compliant worker before its PR opens, and the ledger would evict a row whose PR rounds still run. So
 # SKILL.md's Authority and ledger.md's Eviction each say "stop stage" and "integration's" in one sentence.
-# Presence, not meaning, as section_rule; no refusal to require here.
-stop_ok=1
-for spec in '^#+ Authority[[:space:]]*$' '^#+ Eviction[[:space:]]*$'; do
-  text=$(section "$spec" 0 "${mds[@]}")
-  if [ -z "$text" ]; then
-    reworded "$SKILL/*.md" "a section headed '$spec'"; stop_ok=0
-  elif ! tr '.' '\n' <<< "$text" | grep -F 'stop stage' | grep -qF "integration's"; then
-    fail "$SKILL/*.md: the section headed '$spec' no longer says, in one sentence, that the stop stage is the integration's when there is one"; stop_ok=0
-  fi
-done
-if [ "$stop_ok" = 1 ]; then held=$((held + 1)); fi
+# Presence, not meaning; no refusal to require here.
+section_rule --any "the stop stage is the integration's when there is one" 'stop stage' "integration's" -- \
+  '0|^#+ Authority[[:space:]]*$' '0|^#+ Eviction[[:space:]]*$'
 
 # --- the workflow reaches a worker through its brief ------------------------------------------------------
 # Workers never read CREW.md: the orchestrator resolves the workflow (CREW.md › Workflows) into the
@@ -397,7 +393,8 @@ if [ -z "$ready_job" ]; then reworded "$BRIEF" "the ready brief's \`## Job\` sec
 if [ -z "$start_job" ]; then reworded "$BRIEF" "START's \`## Job\` section"; ip_ok=0; fi
 if [ -n "$ready_job" ]; then
   # shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
-  for want in '- Workflow: `{WORKFLOW}`. Read `{WORKFLOW_PATH}` in full' '- Integration: `{INTEGRATION_PATH}`.'; do
+  for want in '- Workflow: `{WORKFLOW}`. Read `{WORKFLOW_PATH}` in full' '- Integration: `{INTEGRATION_PATH}`.' \
+    '- Landing: `{LANDING}`'; do
     if ! grep -qF -- "$want" <<< "$ready_job"; then
       fail "$BRIEF: the ready brief's Job list has no '$want' line"; ip_ok=0
     fi
@@ -410,6 +407,10 @@ fi
 # shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
 if [ -z "$(scan "$(ws '[|] `[{]INTEGRATION_PATH[}]` [|] [^|]*`[^`|]*CREW\.md` › Integration')" "$BRIEF")" ]; then
   fail "$BRIEF: no placeholder row sourcing {INTEGRATION_PATH} from \`CREW.md\` › Integration"; ip_ok=0
+fi
+# shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
+if ! grep -qE '^\| `\{LANDING\}` \| [^|]*`delegated`[^|]*`operator`' "$BRIEF"; then
+  fail "$BRIEF: no placeholder row resolving {LANDING} to \`delegated\` or \`operator\`"; ip_ok=0
 fi
 if [ "$ip_ok" = 1 ]; then held=$((held + 1)); fi
 
@@ -426,6 +427,9 @@ while IFS= read -r f; do stage_files+=("$f"); done < <(
     if [ -d "$d" ]; then find "$d" -name '*.md' -type f; fi
   done | LC_ALL=C sort)
 
+# sentences_of <file>: its sentences, one a line, wrapped lines joined; a sentence ends at ". " or "; "
+sentences_of() { tr '\n' ' ' < "$1" | tr -s ' ' | sed 's/[.;] /\n/g'; }
+
 # --- a merge go names its delegation -----------------------------------------------------------------------
 # Landing needs delegation (the contract's Authority), and under Integration mode `pr` the written merge
 # rule delegates every card that doesn't say `landing: operator`. So every sentence that tells the worker
@@ -439,7 +443,7 @@ for f in ${stage_files[@]+"${stage_files[@]}"}; do
     if ! grep -qiF '`landing: operator`' <<< "$sentence"; then
       fail "$f: tells the worker to merge without naming \`landing: operator\`: '$sentence'"; merge_ok=0
     fi
-  done < <(tr '\n' ' ' < "$f" | tr -s ' ' | sed 's/[.;] /\n/g' | grep -iE 'tells? the worker to merge' || true)
+  done < <(sentences_of "$f" | grep -iE 'tells? the worker to merge' || true)
 done
 if [ "$merge_seen" = 0 ]; then
   reworded "the workflow and integration files" "a sentence that tells the worker to merge"; merge_ok=0
@@ -447,21 +451,35 @@ fi
 if [ "$merge_ok" = 1 ]; then held=$((held + 1)); fi
 
 # --- a relayed go is never a merge go ---------------------------------------------------------------------------
-# A card's `landing: operator` voids the merge rule, so a merge under it is a Hard Gate, and the worker can't see
-# the card. So it merges only on the orchestrator's ANSWER or the operator's yes in its own session: acting on a
-# relayed go would launder consent across sessions (SECURITY.md; Codex on acatl/crew#7). Every workflow or
-# integration file that asks "merge?" holds a sentence with "relayed go" and a refusal, and none accepts a go
-# relayed ("go relayed", "says go, which it relays"). At least one must ask, so finding none fails.
+# A card's `landing: operator` voids the merge rule, so a merge under it is a Hard Gate; so is a merge on a missed
+# bar. Acting on a relayed go would launder consent across sessions (SECURITY.md; Codex on acatl/crew#7). The
+# brief carries the card's Landing, so every workflow or integration file that asks "merge?" (any quoting):
+# - refuses a relayed go in a sentence that names the "merge?" too, so a refusal elsewhere can't stand in;
+# - accepts none: no clause relays a go without a refusal in it ("relays the operator's go");
+# - marks the question `answer: in this session only` by the brief's Landing, in one sentence holding
+#   NEED-INPUT, that marker and "Landing", which leaves the orchestrator nothing to relay.
+# At least one file must ask, so finding none fails.
 relay_ok=1 relay_seen=0
 for f in ${stage_files[@]+"${stage_files[@]}"}; do
-  sentences=$(tr '\n' ' ' < "$f" | tr -s ' ' | sed 's/[.;] /\n/g')
-  grep -qF '"merge?"' <<< "$sentences" || continue
+  sentences=$(sentences_of "$f")
+  grep -qiE 'merge\?' <<< "$sentences" || continue
   relay_seen=1
-  if ! grep -F 'relayed go' <<< "$sentences" | grep -qE -- "$refusal"; then
-    fail "$f: asks \"merge?\" but no sentence refuses a relayed go"; relay_ok=0
+  if ! grep -iE 'merge\?' <<< "$sentences" | grep -F 'relayed go' | grep -qE -- "$refusal"; then
+    fail "$f: asks \"merge?\" but no sentence naming it refuses a relayed go"; relay_ok=0
   fi
-  if grep -qiE 'go relayed|says go, which it relays' <<< "$sentences"; then
+  # Judged per clause (split at ", ", ": " and parentheses), so a refusal in the same sentence can't cover an
+  # acceptance beside it ("…, the operator's go relayed to it, …, never a relayed go"). The one shape a comma
+  # splits ("says go, which it relays") is matched whole. The `answer: here or relay` marker names a channel,
+  # not a relay: it is dropped first.
+  # shellcheck disable=SC2016  # the backticks are literal Markdown
+  clauses=$(sed -E 's/, |: |[()]/\n/g' <<< "${sentences//'`answer: here or relay`'/}")
+  if grep -iE '(^|[^a-z])relay(s|ed)?([^a-z]|$)' <<< "$clauses" | grep -iE '(^|[^a-z])go([^a-z]|$)' \
+    | grep -vqE -- "$refusal" || grep -qiF 'says go, which it relays' <<< "$sentences"; then
     fail "$f: accepts a relayed go for the merge"; relay_ok=0
+  fi
+  # shellcheck disable=SC2016  # the backticks are literal Markdown
+  if ! grep -F 'NEED-INPUT' <<< "$sentences" | grep -F "$marker" | grep -qF 'Landing'; then
+    fail "$f: asks \"merge?\" but doesn't mark it $marker by the brief's Landing"; relay_ok=0
   fi
 done
 if [ "$relay_seen" = 0 ]; then
@@ -543,7 +561,7 @@ if [ "$v_ok" = 1 ]; then held=$((held + 1)); fi
 # name it, so the check can't pass on finding none.
 ask_ok=1 ask_seen=0
 for f in ${stage_files[@]+"${stage_files[@]}"}; do
-  sentences=$(tr '\n' ' ' < "$f" | tr -s ' ' | sed 's/[.;] /\n/g')
+  sentences=$(sentences_of "$f")
   grep -qF 'merge bar met' <<< "$sentences" || continue
   ask_seen=1
   if ! grep -F 'NEED-INPUT' <<< "$sentences" | grep -E '(^|[^a-z])sends ' | grep -qiE 'merge([^a-z]|$)'; then

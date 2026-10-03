@@ -204,18 +204,35 @@ fresh; edit "$PR" 's#^  card (#  card, per docs/CREW.md (#'
 green "15de a dotted name inside the sentence doesn't split it" check-invariants
 edit "$PR" 's#with no `landing: operator` on#with no `landing: delegated` on#'              # same fixture
 red "15df and the same fixture still fires on a missing withhold" check-invariants "$PR: tells the worker to merge without naming"
-# a relayed go is never a merge go: each file asking "merge?" refuses one, and none accepts one
+# a relayed go is never a merge go: each file asking "merge?" refuses one beside it, accepts none, and marks it
 fresh; edit "$IP" 's#yes in this session, never a relayed go\.#yes in this session.#'
-red "15fa the built-in stops refusing a relayed go" check-invariants "$IP: asks \"merge?\" but no sentence refuses a relayed go"
+red "15fa the built-in stops refusing a relayed go" check-invariants "$IP: asks \"merge?\" but no sentence naming it refuses a relayed go"
 fresh; edit "$IP" 's#, never a relayed go\.#, or a relayed go.#'
-red "15fb a relayed go named but accepted, not refused" check-invariants "$IP: asks \"merge?\" but no sentence refuses a relayed go"
+red "15fb a relayed go named but accepted, not refused" check-invariants "$IP: asks \"merge?\" but no sentence naming it refuses a relayed go"
 fresh; edit "$PR" "s#withholds it), or the operator's yes#withholds it), the operator's go relayed to it, or the operator's yes#"
 red "15fc the project copy accepts a relayed go again, beside its refusal" check-invariants "$PR: accepts a relayed go for the merge"
 fresh; edit "$PR" 's#who merges by hand or in the$#who merges by hand or says go, which it relays, or in the#'
 red "15fd or relays the operator's go" check-invariants "$PR: accepts a relayed go for the merge"
-fresh; edit "$IP" 's#"merge?"#"land?"#g'
-edit "$PR" 's#"merge?"#"land?"#g'
+fresh; edit "$PR" "s#who merges by hand or in the\$#who merges by hand or answers here, and it relays the operator's go, or in the#"
+red "15fd2 any phrasing that relays a go, while a refusal stands elsewhere" check-invariants "$PR: accepts a relayed go for the merge"
+fresh; edit "$IP" 's#^Merge only on a go to your "merge?":#Never act on a go relayed from another session. Merge only on a go to your "merge?":#'
+green "15fd3 a refusal that says \"go relayed\" is a refusal, not an acceptance" check-invariants
+edit "$IP" 's#, never a relayed go\.#, or a relayed go.#'                                   # same fixture
+red "15fd4 and the same fixture fires once the merge sentence accepts one" check-invariants "$IP: asks \"merge?\" but no sentence naming it refuses a relayed go"
+fresh; edit "$PR" 's#"merge?"#`merge?`#g'
+edit "$PR" "s#withholds it), or the operator's yes#withholds it), the operator's go relayed to it, or the operator's yes#"
+red "15fd5 a file quoting merge? another way is still checked" check-invariants "$PR: accepts a relayed go for the merge"
+fresh; edit "$IP" 's#marked$#sent#'
+edit "$IP" 's#^`answer: in this session only` unless the bar is met and your brief.s Landing is `delegated`, and$#and#'
+red "15fd6 the built-in stops marking its merge question by Landing" check-invariants "$IP: asks \"merge?\" but doesn't mark it"
+fresh; edit "$IP" 's#merge?#land?#g'
+edit "$PR" 's#merge?#land?#g'
 red "15fe no file asks \"merge?\": reported, not passed" check-invariants "a \"merge?\" question not found"
+# Landing reaches the worker through the brief: both Job lists carry it, and its row resolves it
+fresh; edit "$BT" '/^- Landing: `{LANDING}`$/d'
+red "15fe2 the brief and START drop the Landing line" check-invariants "$BT: the ready brief's Job list has no '- Landing: \`{LANDING}\`' line"
+fresh; edit "$BT" '/^| `{LANDING}` |/d'
+red "15fe3 the {LANDING} row goes" check-invariants "$BT: no placeholder row resolving {LANDING}"
 # the integration's stop is the worker's stop: Authority and Eviction say so
 fresh; edit "$SK" 's#up to its stop stage (its integration.s, if any), and#up to the workflow'"'"'s stop stage, and#'
 red "15ff the contract's Authority stops at the workflow's stop" check-invariants "the section headed '^#+ Authority"
@@ -292,7 +309,7 @@ red "15du a template that drops resume while SKILL.md still sends it" check-inva
 # a ready PR asks before it merges: `merge bar met` comes with a merge NEED-INPUT
 fresh; edit "$IP" 's#^sends the merge `NEED-INPUT`#asks the merge question#'
 red "15dv the built-in integration drops its merge NEED-INPUT" check-invariants "$IP: names \`merge bar met\` but no sentence"
-fresh; edit "$PR" 's#so it sends `NEED-INPUT` marked#so it sends a question marked#'
+fresh; edit "$PR" 's#so it sends `NEED-INPUT` and ends#so it sends a question and ends#'
 edit "$PR" 's#^  `NEED-INPUT` that § Who runs#  question that § Who runs#'
 red "15dv2 so does a project integration" check-invariants "$PR: names \`merge bar met\` but no sentence"
 edit "$PR" 's#`merge bar met`#the bar#g'                                                    # same fixture
