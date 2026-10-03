@@ -24,7 +24,7 @@ Two variants differ only in the Job section:
 | `{PARAMETERS}` | the workflow's Parameters, each resolved (`name: value`, one line), with the card's overrides. `no-commit` is never overridden: it must equal the watchdog's `--no-commit`, which serves every worker |
 | `{INTEGRATION_PATH}` | its file, absolute: `CREW.md` › Integration's `file:` under `mode: pr`, `built-in` being `<skill-dir>/references/integration-pr.md`. No `file:`, another mode, or the card's `integration: none` → the whole line reads `- Integration: none` |
 | `{INTEGRATION_PARAMETERS}` | the integration's Parameters, resolved as `{PARAMETERS}` are |
-| `{LANDING}` | card › Landing: `delegated` if it delegates the merge, else `operator` |
+| `{LANDING}` | card › Landing: `delegated` when it shows `delegated (merge rule)`, else `operator` |
 | `{MODE}` | the trigger, or `default` |
 | `{SURFACE}` | step 2 estimate |
 | `{FORBIDDEN}` | step 3 overlaps the operator chose to proceed with, else `none` |

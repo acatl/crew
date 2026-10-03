@@ -63,8 +63,9 @@ Send `NEED-INPUT` before a round `rounds` doesn't allow, with each round's fixes
 - **Ends:** the round's push is up and its findings dispositioned, or the clean round's report sent.
 - **Report:** `checkpoint round`: round, sha, push time, fixed, declined, CI, silent reviewers.
 - **Orchestrator:** verifies the sha. On a clean round it checks the merge rule itself, by running.
-  Met, with no `landing: operator` on the card, it tells the worker to merge by `ANSWER` to its
-  "merge?"; else it nudges the operator, with the failing condition if missed, and relays no merge.
+  Met, with no `landing: operator` on the card and its "merge?" marked `answer: here or relay`, it
+  tells the worker to merge by `ANSWER`; else it nudges the operator, with the failing condition if
+  missed, and relays no merge.
 - **Clears:** after a push, yes, monitor off first; never after a clean round.
 
 ### merge

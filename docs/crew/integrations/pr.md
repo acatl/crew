@@ -70,8 +70,9 @@ you, within `rounds`, a late review on an unchanged head included.
   `NEED-INPUT` that § Who runs the rounds describes.
 - **Orchestrator:** verifies the sha. On a clean round it checks the written merge rule itself and
   answers only the worker's merge `NEED-INPUT`, once it lands. Met, with no `landing: operator` on the
-  card (`CREW.md` › Integration `mode: pr` delegates the rest), it tells the worker to merge by `ANSWER`
-  to its "merge?". Met under that override, it nudges the operator, who merges by hand or in the
+  card (`CREW.md` › Integration `mode: pr` delegates the rest) and the worker's "merge?" marked
+  `answer: here or relay`, it tells the worker to merge by `ANSWER`. Met under that override, or on a
+  "merge?" marked `answer: in this session only`, it nudges the operator, who merges by hand or in the
   worker's session, and relays no go: the rule is void there, so the merge is a Hard Gate. Met while
   the worker asked as missed (CI concluded since, say), it nudges the operator to have the worker
   re-check the bar, in the worker's session, which is where that question is answered. Missed by its

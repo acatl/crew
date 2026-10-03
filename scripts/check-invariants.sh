@@ -409,8 +409,8 @@ if [ -z "$(scan "$(ws '[|] `[{]INTEGRATION_PATH[}]` [|] [^|]*`[^`|]*CREW\.md` �
   fail "$BRIEF: no placeholder row sourcing {INTEGRATION_PATH} from \`CREW.md\` › Integration"; ip_ok=0
 fi
 # shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
-if ! grep -qE '^\| `\{LANDING\}` \| [^|]*`delegated`[^|]*`operator`' "$BRIEF"; then
-  fail "$BRIEF: no placeholder row resolving {LANDING} to \`delegated\` or \`operator\`"; ip_ok=0
+if [ -z "$(scan "$(ws '[|] `[{]LANDING[}]` [|] card › Landing[^|]*`delegated`[^|]*`operator`')" "$BRIEF")" ]; then
+  fail "$BRIEF: no placeholder row resolving {LANDING} from card › Landing to \`delegated\` or \`operator\`"; ip_ok=0
 fi
 if [ "$ip_ok" = 1 ]; then held=$((held + 1)); fi
 
@@ -457,9 +457,11 @@ if [ "$merge_ok" = 1 ]; then held=$((held + 1)); fi
 # - refuses a relayed go in a sentence that names the "merge?" too, so a refusal elsewhere can't stand in;
 # - accepts none: no clause relays a go without a refusal in it ("relays the operator's go");
 # - marks the question `answer: in this session only` by the brief's Landing, in one sentence holding
-#   NEED-INPUT, that marker and "Landing", which leaves the orchestrator nothing to relay.
+#   NEED-INPUT, that marker, "Landing", "unless" and `delegated`, which leaves the orchestrator nothing to
+#   relay. Presence, not meaning: the strings pin the sentence's shape, and reviewers judge its logic.
 # At least one file must ask, so finding none fails.
 relay_ok=1 relay_seen=0
+go_refused='(^|[^A-Za-z])([Nn]ever|[Nn]either|[Nn]o|[Nn]ot|[Rr]efuse)([^A-Za-z].*)?[^A-Za-z][Gg]o([^A-Za-z]|$)'
 for f in ${stage_files[@]+"${stage_files[@]}"}; do
   sentences=$(sentences_of "$f")
   grep -qiE 'merge\?' <<< "$sentences" || continue
@@ -468,17 +470,19 @@ for f in ${stage_files[@]+"${stage_files[@]}"}; do
     fail "$f: asks \"merge?\" but no sentence naming it refuses a relayed go"; relay_ok=0
   fi
   # Judged per clause (split at ", ", ": " and parentheses), so a refusal in the same sentence can't cover an
-  # acceptance beside it ("…, the operator's go relayed to it, …, never a relayed go"). The one shape a comma
+  # acceptance beside it ("…, the operator's go relayed to it, …, never a relayed go"), and the refusal must
+  # come before the go ("relays no go"; not "relays the operator's go and no other"). The one shape a comma
   # splits ("says go, which it relays") is matched whole. The `answer: here or relay` marker names a channel,
   # not a relay: it is dropped first.
   # shellcheck disable=SC2016  # the backticks are literal Markdown
   clauses=$(sed -E 's/, |: |[()]/\n/g' <<< "${sentences//'`answer: here or relay`'/}")
-  if grep -iE '(^|[^a-z])relay(s|ed)?([^a-z]|$)' <<< "$clauses" | grep -iE '(^|[^a-z])go([^a-z]|$)' \
-    | grep -vqE -- "$refusal" || grep -qiF 'says go, which it relays' <<< "$sentences"; then
+  if grep -iE '(^|[^a-z])relay(s|ed|ing)?([^a-z]|$)' <<< "$clauses" | grep -iE '(^|[^a-z])go([^a-z]|$)' \
+    | grep -vqE -- "$go_refused" || grep -qiF 'says go, which it relays' <<< "$sentences"; then
     fail "$f: accepts a relayed go for the merge"; relay_ok=0
   fi
   # shellcheck disable=SC2016  # the backticks are literal Markdown
-  if ! grep -F 'NEED-INPUT' <<< "$sentences" | grep -F "$marker" | grep -qF 'Landing'; then
+  if ! grep -F 'NEED-INPUT' <<< "$sentences" | grep -F "$marker" | grep -F 'Landing' | grep -F 'unless' \
+    | grep -qF '`delegated`'; then
     fail "$f: asks \"merge?\" but doesn't mark it $marker by the brief's Landing"; relay_ok=0
   fi
 done

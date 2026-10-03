@@ -154,7 +154,9 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   START's) carries the `- Integration:` line, and its placeholder row sources it from Integration.
 - **Briefs from before integrations still work.** A brief with no `Integration:` line names none, so
   `standard`'s `handoff` reports `stop handoff` as before; a `mode: pr` with no `file:` resolves to no
-  integration, so hg's `CREW.md` (`merge rule:`, its `light` workflow's own PR stages) is unchanged.
+  integration, so hg's `CREW.md` (`merge rule:`, its `light` workflow's own PR stages) is unchanged. A brief
+  with no `- Landing:` line reads as not `delegated`: its merge question is in-session only, which
+  fails closed.
 - **Briefs from before workflows still work.** In-flight workers re-read the Worker section at every
   resume, and their briefs name no workflow. The Worker section keeps the line that makes such a
   brief its own workflow, and the orchestrator reads the older `DONE · checkpoint: <boundary>` and
@@ -167,10 +169,11 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   under it (or on a missed bar) is a Hard Gate. The brief carries the card's Landing (`- Landing:
   {LANDING}`, `delegated` or `operator`, in the brief's and START's Job lists), and the worker merges
   only on the orchestrator's `ANSWER` or the operator's yes in its own session. *Checked*: both Job
-  lists carry the line and its placeholder row resolves it; every workflow or integration file that
-  asks "merge?" (any quoting) refuses a "relayed go" in a sentence naming the "merge?", accepts a
-  relayed go in no clause, and marks the question `answer: in this session only` by the brief's
-  Landing.
+  lists carry the line and its placeholder row resolves it from the card; every workflow or
+  integration file that asks "merge?" (any quoting) refuses a "relayed go" in a sentence naming the
+  "merge?", has no clause that relays a go without a refusal before it, and has a sentence holding
+  `NEED-INPUT`, `answer: in this session only`, "Landing", "unless" and `delegated`. Presence, not
+  meaning: a synonym for "relay" or a reversed condition is the reviewer's to catch.
 - **Under an integration, the worker's stop is the integration's.** SKILL.md's *Authority* (how far a
   worker goes) and `ledger.md`'s *Eviction* (when a row leaves `Live`) each say "stop stage" and
   "integration's" in one sentence. *Checked*, by section heading.

@@ -187,11 +187,11 @@ red "15z the fallback drops the gated-action half" check-invariants "the section
 # a merge go names its delegation: a sentence that tells the worker to merge names `landing:`
 fresh; edit "$PR" 's#with no `landing: operator` on#with no `landing: delegated` on#'
 red "15da a project integration gates the merge on the card's delegation alone" check-invariants "$PR: tells the worker to merge without naming"
-fresh; edit "$IP" 's#Met, with no `landing: operator` on the card, it tells#Met, it tells#'
+fresh; edit "$IP" 's#Met, with no `landing: operator` on the card and its#Met, with its#'
 red "15db so does the built-in integration" check-invariants "$IP: tells the worker to merge"
 fresh; edit "$PR" 's#it tells the worker to merge by#it tells the worker to go by#'
 edit "$PR" 's#, tells the worker to merge\.#, tells the worker to go.#'
-edit "$IP" 's#it tells the worker to merge by#it tells the worker to go by#'
+edit "$IP" 's#^  tells the worker to merge by#  tells the worker to go by#'
 red "15dc no merge sentence at all fails, never passes" check-invariants "a sentence that tells the worker to merge not found"
 fresh; rm "$S/$IP"
 red "15dd a missing built-in integration is reported, not skipped" check-invariants "skills/crew/references/integration-*.md: the built-in file not found"
@@ -225,6 +225,14 @@ red "15fd5 a file quoting merge? another way is still checked" check-invariants 
 fresh; edit "$IP" 's#marked$#sent#'
 edit "$IP" 's#^`answer: in this session only` unless the bar is met and your brief.s Landing is `delegated`, and$#and#'
 red "15fd6 the built-in stops marking its merge question by Landing" check-invariants "$IP: asks \"merge?\" but doesn't mark it"
+fresh; edit "$PR" 's#^  a Hard Gate only this session approves. It marks that `NEED-INPUT` `answer: in this session only`$#  a Hard Gate only this session approves. It marks that `NEED-INPUT`#'
+red "15fd7 so does the project copy" check-invariants "$PR: asks \"merge?\" but doesn't mark it"
+fresh; edit "$IP" 's#unless the bar is met and your brief.s Landing is `delegated`, and$#when your brief'"'"'s Landing is `delegated`, and#'
+red "15fd8 a marking with its condition reversed loses its \"unless\"" check-invariants "$IP: asks \"merge?\" but doesn't mark it"
+fresh; edit "$PR" "s#who merges by hand or in the\$#who merges by hand or in the worker's session, relays the operator's go and no other, or in the#"
+red "15fd9 a refusal word after the go doesn't refuse it" check-invariants "$PR: accepts a relayed go for the merge"
+fresh; edit "$PR" "s#who merges by hand or in the\$#who merges by hand or answers here, and it is relaying the operator's go, or in the#"
+red "15fd10 nor does \"relaying\" escape" check-invariants "$PR: accepts a relayed go for the merge"
 fresh; edit "$IP" 's#merge?#land?#g'
 edit "$PR" 's#merge?#land?#g'
 red "15fe no file asks \"merge?\": reported, not passed" check-invariants "a \"merge?\" question not found"
@@ -233,6 +241,8 @@ fresh; edit "$BT" '/^- Landing: `{LANDING}`$/d'
 red "15fe2 the brief and START drop the Landing line" check-invariants "$BT: the ready brief's Job list has no '- Landing: \`{LANDING}\`' line"
 fresh; edit "$BT" '/^| `{LANDING}` |/d'
 red "15fe3 the {LANDING} row goes" check-invariants "$BT: no placeholder row resolving {LANDING}"
+fresh; edit "$BT" 's#^| `{LANDING}` | card › Landing: #| `{LANDING}` | #'
+red "15fe4 a {LANDING} row that drops its source, the card" check-invariants "$BT: no placeholder row resolving {LANDING}"
 # the integration's stop is the worker's stop: Authority and Eviction say so
 fresh; edit "$SK" 's#up to its stop stage (its integration.s, if any), and#up to the workflow'"'"'s stop stage, and#'
 red "15ff the contract's Authority stops at the workflow's stop" check-invariants "the section headed '^#+ Authority"
