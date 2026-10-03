@@ -338,10 +338,11 @@ section_rule --any "the stop stage is the integration's when there is one" 'stop
 # lines with `integration` in one sentence, step 8 spawns every unit by step 5, and step 8, the Messages
 # START row and the START template write START from the row.
 # shellcheck disable=SC2016  # the backticks are literal Markdown
-section_rule --any "the ledger row holds the card's lines, integration included" "card's lines" '`integration`' -- \
+section_rule --any "the ledger row holds the card's lines: integration, mode, Do not touch, decisions" \
+  "card's lines" '`integration`' mode '`Do not touch`' 'decision only in' -- \
   '0|^#+ 5[.] Spawn' '0|^#+ Shape[[:space:]]*$'
-section_rule --any "START is written from the row's card lines" \
-  "written now from the landed state and its row's card lines" -- '0|^#+ 8[.] Sequences'
+section_rule --any "START is written from the row's card lines" 'new base sha' "row's card lines" -- \
+  '0|^#+ 8[.] Sequences'
 section_rule --any "every queued unit is spawned by step 5, which writes its row" 'Spawn every unit now' 'step 5' -- \
   '0|^#+ 8[.] Sequences'
 section_rule --any "the contract's START row is written from the unit's ledger row" 'queued brief left out' \

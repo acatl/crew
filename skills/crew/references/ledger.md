@@ -10,8 +10,7 @@ branch, PR, archived), the ledger is authoritative for intent. They join on `ses
 the ledger what `list_sessions` can answer — it goes stale and then lies.
 
 **Generic by construction:** the skill's rules read only the *spine* below. Everything else in a row is
-free-form text the orchestrator writes as a situation demands, and the skill carries it without
-interpreting it. Nothing here names a tool, a stage, or a count: those are the workflow's, the
+free-form text the orchestrator writes as a situation demands. Nothing here names a tool, a stage, or a count: those are the workflow's, the
 project's (`CREW.md`), or a row's own fields.
 
 ## Where
@@ -56,11 +55,11 @@ updated: <iso> · orchestrator: <sessionId>
 ### r3 · #9 · running
 - session: local_271f8174-… · brief: briefs/r3.md
 - workflow: standard · integration: pr · mode: yolo · scope: whole · landing: operator · cleanup: keep
-- stage: round 3
+- do not touch: none · decisions: none · stage: round 3
 - owed: operator's merge go · review budget unspent
 - surface: hg/src/cli.ts, docs/CREW.md
 - verified: a762e48 green (2026-09-24) — tsc, 1274 tests, links, shellcheck
-- counters: rounds 5 of 5 → at limit, operator decides · reviewer passes 2 of 2
+- counters: rounds 5 of 5 → at limit
 - standing: bot posts on this PR come to me, not to the worker (operator, 09-24)
 - worker ledger: <its git-dir>/crew-ledger.md
 
@@ -77,9 +76,10 @@ updated: <iso> · orchestrator: <sessionId>
 ```
 
 **Spine** (the only fields any rule reads): row id, unit, status, `session`, `brief`, `stage`, `owed`,
-and the card's lines (`workflow` and its overrides, `integration`, mode, scope, cleanup, landing, `Do not
-touch`, any spec decision only in memory): a queued unit's START reads them. Row ids are stable and never reused; the unit may change (folded or renumbered),
-which is why rows join on `session`, never on a unit or a title.
+and the card's lines (`workflow` and its overrides, `integration`, mode, scope, cleanup, landing,
+`Do not touch`, any decision only in memory, not the spec): a queued unit's START reads them. Row ids
+are stable and never reused; the unit may change, so rows join on `session`, never on
+a unit or title.
 
 **Status** is one of: `chip` (spawned, not yet clicked — `session` holds the `task_id` instead),
 `queued`, `running`, `waiting-on-operator`, `blocked`, `cleared`, `done`, `verified`, `landed`.
@@ -94,7 +94,7 @@ collapses to the decision (`landing → delegated (operator, 09-24)`).
 
 ## Written at every transition
 
-After the card's `go` (the row and its brief) · on `ONLINE` (session id, worktree) · on `NEED-INPUT`
+After the card's `go` (the row and its brief) · on a card override after it · on `ONLINE` (session id, worktree) · on `NEED-INPUT`
 (the question verbatim, into `owed`) · on the operator's answer (collapse to the decision) · on the
 verify verdict (sha + result) · on landing · on cleanup · when a monitor starts or stops · when the
 operator attaches a standing rule to a worker · when a worker reports it cleared its context.

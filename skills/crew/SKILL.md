@@ -63,8 +63,8 @@ Besides the brief and its resume (*Orchestrator* step 6), nothing else crosses. 
 
 ### The input invariant
 
-Every `NEED-INPUT` appears in **two places**: in the worker's own session (as the operator would see it
-if they were watching there) and in the orchestrator (the message). The orchestrator nudges the
+Every `NEED-INPUT` appears in **two places**: in the worker's own session and in the orchestrator (the
+message). The orchestrator nudges the
 operator, who answers in either place.
 
 - **Answered in the worker session** → the worker continues. It sends nothing extra; its next message
@@ -119,7 +119,7 @@ path; never assume where the skill is installed.
 ### 0. Resume from the ledger
 
 The roster lives in your conversation, which a compaction or a `/clear` destroys; the ledger
-survives. See [references/ledger.md](references/ledger.md) for its location, shape and rules.
+survives. See [references/ledger.md](references/ledger.md).
 
 If the roster isn't already in this conversation, read `ledger.md` and reconcile it against
 `list_sessions` / `get_session` before anything else. Report drift; never silently patch it. Then keep
@@ -149,7 +149,7 @@ this conversation, including any decision that lives only in your memory.
 
 ### 3. Parallel-safety check
 
-Run these against every in-flight worker in the roster (see *Roster*), but a sequence's units only
+Run these against every in-flight worker in the roster, but a sequence's units only
 against workers outside it: they run one at a time.
 
 1. **Actual overlap** — what in-flight workers have already touched:
@@ -209,7 +209,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
    = the filled brief. Pass `cwd` only when the worker belongs to a different repo than yours.
 4. **Write the ledger row** (status `chip`, the `task_id` in place of a session id, stage, surface,
    and the card's lines: `workflow` and its overrides, `integration`, mode, scope, cleanup, landing,
-   `Do not touch`, any spec decision only in your memory) and save the brief exactly as sent to
+   `Do not touch`, any decision only in your memory, not the spec) and save the brief exactly as sent to
    `briefs/<row>.md`.
 5. Tell the operator the chip is up and needs a click. End your turn.
 
@@ -317,8 +317,9 @@ the app may show its own approval card. Cleanup never deletes a branch or runs `
 >
 > **→ You:** `go`, or override (`2 title: …`, `landing: delegated`, `1 landing: operator`).
 
-Follow step 4 for each Landing. **Spawn every unit now**, each by step 5: unit 1 with a ready brief, the
-rest with the **queued variant** (no Job section). Don't write later units' specs yet: earlier units will move the base under them.
+Follow step 4 for each Landing. **Spawn every unit now**, each by step 5 (end your turn after the last):
+unit 1 with a ready brief, the rest with the **queued variant** (no Job section). Don't write later
+units' specs yet: earlier units will move the base under them.
 
 **When unit N's DONE verifies:**
 
@@ -331,9 +332,10 @@ rest with the **queued variant** (no Job section). Don't write later units' spec
 2. **Clean up** unit N per its card.
 3. **Start** unit N+1: send `START` ([references/brief-template.md](references/brief-template.md) ›
    START) with the new base sha and its Job section, written now from the landed state and its row's
-   card lines. Include what earlier units changed and handed on, and each finding unit N carried as a
-   "Carried from N" line (also a checklist line on N+1's ticket). Save it as `briefs/<row>-start.md`.
-   Then set it `running`, add its roster line, and subscribe to its idle notice.
+   card lines, after re-running step 3 outside the sequence (a new overlap goes to the operator).
+   Include what earlier units changed and handed on, and each finding unit N carried as a "Carried from
+   N" line (also a checklist line on N+1's ticket). Save it as `briefs/<row>-start.md`. Then set it
+   `running`, add its roster line, and subscribe to its idle notice.
 
 **Hold the base still.** While a sequence is in flight, nothing commits to `<base>` except landings.
 That includes you; tell the operator the same. One stray commit and the next ff-only landing is refused.
@@ -348,14 +350,13 @@ also spawned non-crew chips, confirm with the `crew:brief` marker in the worker'
 
 ### Watchdog — a looping worker never goes idle
 
-Idle notices only fire when a worker stops. A worker stuck in a fix/review loop never stops, so no
-notice ever arrives. Origin (hg, 2026-09-22): a unit worker ran ~15 isolated-review rounds over hours,
+Idle notices fire only when a worker stops; one stuck in a fix/review loop never does. Origin (hg, 2026-09-22): a unit worker ran ~15 isolated-review rounds over hours,
 hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't look for the whole stretch.
 
 - **While any worker is `running`, a watchdog process runs.** Write `roster.tsv` **first** (a missing
   crew dir or roster is an immediate exit 2), then launch it with the Bash tool's `run_in_background`,
-  not a shell `&`: the harness re-invokes you when a backgrounded command exits, and that exit is the
-  entire mechanism.
+  not a shell `&`: the harness re-invokes you when a backgrounded command exits; that exit is the whole
+  mechanism.
   ```bash
   <skill-dir>/scripts/watchdog.sh --base <base> \
     [--interval <s>] [--no-commit <s>] [--subagent-step <n>] \
@@ -383,8 +384,8 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   you. Rewrite it write-to-temp-then-`mv`, never in place. It is re-read every pass, so an edit lands
   with no restart. The worktree path must be **byte-identical to the one the app reports** — the
   transcript directory is derived from it by substitution, so a trailing slash or a `/private/var` vs
-  `/var` spelling silently yields an unwatched worker. One `--base`, the baseline before a worker's first
-  push, covers the whole roster; on a mixed-base roster, pass the most common one.
+  `/var` spelling silently yields an unwatched worker. One `--base`, used only as the baseline before a
+  worker's first push, covers the whole roster; on a mixed-base roster, pass the most common one.
 - **Stop it by the pid** in `~/.claude/crew/<slug>/watchdog.pid` once the last worker stops, and clear
   its `Monitors` line. **Never `pkill -f watchdog.sh`**: a name-based kill takes out every project's watchdog.
 - **Also check on every orchestrator turn**, cheaply: `list_events` tail (limit ~40) and

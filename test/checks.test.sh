@@ -263,8 +263,14 @@ fresh; edit "$SK" 's#landed state and the unit.s ledger row\. It replaces#curren
 red "15fi5 the contract's START row computes the card afresh" check-invariants "the section headed '^#+ Messages"
 fresh; edit "$SK" 's#^   START) with the new base sha#   ) with the new base sha#'
 green "15fi6 a link cleanup in step 8's START line stays green" check-invariants
-fresh; edit "$SK" 's#\*\*Spawn every unit now\*\*, each by step 5:#**Spawn every unit now**:#'
+fresh; edit "$SK" 's#\*\*Spawn every unit now\*\*, each by step 5 (end your turn after the last):#**Spawn every unit now**:#'
 red "15fi7 step 8 spawns the queue without step 5's row write" check-invariants "the section headed '^#+ 8[.] Sequences"
+fresh; edit "$SK" 's#integration`, mode, scope,#integration`, scope,#'
+red "15fi8 step 5's row write drops the mode" check-invariants "the section headed '^#+ 5[.] Spawn"
+fresh; edit "$LG" 's#^`Do not touch`, any decision#any decision#'
+red "15fi9 the spine drops Do not touch" check-invariants "the section headed '^#+ Shape"
+fresh; edit "$SK" 's#Job section, written now from the landed state and its row.s#Job section, written from the landed state and the row'"'"'s#'
+green "15fi10 a same-meaning reword of step 8's START line stays green" check-invariants
 
 # a PR opens against the brief's base: every `gh pr create`/`new` reads `gh pr create --base <base>` (the
 # controls cover green; no case pins a line number, so a re-wrap alone never turns one red)

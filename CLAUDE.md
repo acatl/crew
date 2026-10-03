@@ -180,9 +180,10 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
 - **A queued unit's card lives in its ledger row.** A queued brief has no Job section; START writes it
   later, after a compaction may have destroyed the card. The card's lines are every START input with no
   other durable source: `workflow` and its overrides, `integration`, mode, scope, cleanup, landing,
-  `Do not touch`, and spec decisions only in memory. SKILL.md step 5's row write and `ledger.md`'s spine
-  each name "card's lines" and `integration` in one sentence; step 8 spawns every unit by "step 5" and
-  writes START from the "row's card lines"; SKILL.md's *Messages* START row and the brief template's
+  `Do not touch`, and decisions only in memory (not the spec). SKILL.md step 5's row write and
+  `ledger.md`'s spine each name "card's lines", `integration`, mode, `Do not touch` and "decision only
+  in" in one sentence; step 8 spawns every unit by "step 5" and writes START with the "new base sha"
+  from the "row's card lines", re-running step 3; SKILL.md's *Messages* START row and the brief template's
   START section take it from the "ledger row". Lost, an `integration: none` unit would fall back to
   `CREW.md`'s default and open a PR. *Checked*, by section heading.
 - **A PR opens against the brief's base.** `gh pr create` (alias `gh pr new`) without `--base`

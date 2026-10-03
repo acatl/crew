@@ -16,7 +16,7 @@ Two variants differ only in the Job section:
 | `{TITLE}` | card › Title |
 | `{BASE}` | THIS unit's base (SKILL.md step 3.4), as a branch (e.g. `graph-port`, not `origin/main`) |
 | `{BASE_SHA}` | its tip at spawn time, or an audit's sha; the worker re-points to it |
-| `{TICKET_SOURCE}` | `CREW.md` › Ticket source, filled (e.g. "Kino task KINO-5, via the Kino MCP `get_task`"), or "the spec below" |
+| `{TICKET_SOURCE}` | `CREW.md` › Ticket source, filled (e.g. "KINO-5, via Kino's `get_task`"), or "the spec below" |
 | `{SCOPE}` | card › Scope |
 | `{WORKFLOW}` | card › Workflow |
 | `{WORKFLOW_PATH}` | its file, absolute: its `CREW.md` › Workflows row, or the built-in `<skill-dir>/references/workflow-<name>.md` |
@@ -28,7 +28,7 @@ Two variants differ only in the Job section:
 | `{SURFACE}` | step 2 estimate |
 | `{FORBIDDEN}` | step 3 overlaps the operator chose to proceed with, else `none` |
 | `{SPEC}` | the full unit spec when the brief carries it, including decisions only in the orchestrator's memory; else drop `## Spec` |
-| `{BRANCH_RULE}` | `CREW.md` › Branch naming, resolved, else "keep the branch you're on" |
+| `{BRANCH_RULE}` | `CREW.md` › Branch naming, resolved (e.g. "rename to `kino-5`"), else "keep the branch you're on" |
 | `{SETUP}` | `CREW.md` › Worktree setup |
 | `{STANDING}` | `CREW.md` › Standing boundaries, one bullet each, else drop the line |
 | `{BRIEF_PATH}` | this brief's saved path: `~/.claude/crew/<slug>/briefs/<row>.md` |
