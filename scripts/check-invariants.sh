@@ -515,6 +515,27 @@ if [ -z "$(scan "$(ws 'gh pr create --base <base>')" "$IPR")" ]; then
 fi
 if [ "$pr_ok" = 1 ]; then held=$((held + 1)); fi
 
+# --- a merge is confirmed before `stop merge` -------------------------------------------------------------------
+# On a base that requires a merge queue, `gh pr merge` only queues the PR (gh's own help), so a worker that reports
+# `stop merge` right after it has the orchestrator run Post-land and start the next unit on a PR that may still
+# fail the queue (Codex on acatl/crew#7). Every workflow or integration file that names `gh pr merge` holds a
+# sentence that waits for `gh pr view` to read `MERGED` and names the merge queue. Presence, not meaning. The
+# built-in names the call itself, so the check can't pass on finding none.
+mq_ok=1
+for f in ${stage_files[@]+"${stage_files[@]}"}; do
+  sentences=$(sentences_of "$f")
+  grep -qF 'gh pr merge' <<< "$sentences" || continue
+  # shellcheck disable=SC2016  # the backticks are literal Markdown
+  if ! grep -F 'gh pr view' <<< "$sentences" | grep -F '`MERGED`' | grep -qiF 'merge queue'; then
+    fail "$f: names \`gh pr merge\` but no sentence waits for \`gh pr view\` to read \`MERGED\` past a merge queue"
+    mq_ok=0
+  fi
+done
+if ! grep -qF 'gh pr merge' <<< "$(sentences_of "$IPR")"; then
+  reworded "$IPR" "the call 'gh pr merge'"; mq_ok=0
+fi
+if [ "$mq_ok" = 1 ]; then held=$((held + 1)); fi
+
 # --- the queue card shows each unit's workflow and landing ----------------------------------------------------
 # Under Integration mode `pr` landing is per unit (a PR-merging unit is delegated by the merge rule), so one
 # card-wide Landing line can show a delegated unit as "operator decides". The queue card's table carries both.

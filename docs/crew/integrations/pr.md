@@ -84,8 +84,9 @@ you, within `rounds`, a late review on an unchanged head included.
 
 ### merge
 
-Merge only on a go to your "merge?" (§ Stopping › Merging), then turn the monitor off. Woken by a
-merge the operator made instead, confirm it and report the same.
+Merge only on a go to your "merge?" (§ Stopping › Merging). A merge queue only queues it: wait
+until `gh pr view <N> --json state` reads `MERGED` (dropped from the queue → `BLOCKED`), then turn
+the monitor off. Woken by a merge the operator made instead, confirm it and report the same.
 
 - **Ends:** merged, by you or the operator.
 - **Report:** `stop merge`: the merge sha, monitor off, carried.
@@ -131,7 +132,8 @@ are context the next round needs.
   - Before clearing your own context, turn the monitor off (`auto_fix: false`): a cleared worker
     woken by anything but the resume carrying its brief hedges or invents. Turn it back on when
     the resume arrives and the PR is still open.
-  - After `gh pr merge`, turn it off, and say so in the merge `DONE`.
+  - After `gh pr merge`, once `gh pr view` reads `MERGED` (a merge queue only queues it), turn it
+    off, and say so in the merge `DONE`.
 - **After each round's push** the worker reports `DONE`, with `checkpoint` in its first line, to
   the coordinator: round number, commit sha, push time, what was fixed and what was declined, CI
   state, silent reviewers. That is a checkpoint, not an exit: when the next reviews land, the same
@@ -458,8 +460,9 @@ When all three hold and `reviewDecision` is blocked only by CodeRabbit's stale
 `CHANGES_REQUESTED`, the coordinator dismisses **that review only**, with a message naming the
 resolved threads and the head sha it checked. It then confirms `mergeStateStatus` is `CLEAN` and,
 unless the card says `landing: operator`, tells the worker to merge. The worker runs
-`gh pr merge <N> --squash --match-head-commit <sha>` with the PR's Conventional title and reports
-the merge sha.
+`gh pr merge <N> --squash --match-head-commit <sha>` with the PR's Conventional title, waits until
+`gh pr view <N> --json state` reads `MERGED` (a merge queue only queues it), and reports the merge
+sha.
 
 **`BEHIND` or a conflict is not a failure.** The worker runs `git fetch origin <base>` and merges
 `origin/<base>` into its branch: at the start of the next round when one is due (never mid-round),

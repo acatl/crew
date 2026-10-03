@@ -5,9 +5,8 @@ description: The built-in integration. Land a workflow's work by GitHub pull req
 
 # Integration: pr
 
-How finished work lands: a pull request, its review rounds and its merge. Your workflow's `handoff`
-continues into these stages when your brief names this file. `<base>` is your brief's Base branch.
-The crew contract (SKILL.md) and your workflow's Rules sit under it; nothing here changes them.
+Your workflow's `handoff` continues into these stages when your brief names this file. `<base>` is
+your brief's Base branch. The crew contract (SKILL.md) sits under it; nothing here changes it.
 To adapt it (a reviewer roster, labels), edit a copy at `docs/crew/integrations/pr.md`.
 
 ## Parameters
@@ -25,7 +24,7 @@ The orchestrator resolves each into your brief; read the values there, never `CR
 
 ### open
 
-Run `git fetch origin <base>`, then `verify` on a clean tree; fix anything red. Push your own
+Run `git fetch origin <base>` and get `verify` green on a clean tree. Push your own
 branch and run `gh pr create --base <base>`: a Conventional Commits title; a body of what changed,
 why, the risk. Call the app's `get_status`; if it doesn't report this PR, call `bind_pr` with its
 URL. Then call `set_monitor` with `auto_fix: true`. Any of these calls can raise an approval
@@ -72,8 +71,9 @@ Send `NEED-INPUT` before a round `rounds` doesn't allow, with each round's fixes
 
 Merge only on a go to your "merge?": the orchestrator's `ANSWER` under `landing`, or the operator's
 yes in this session, never a relayed go. Run `gh pr merge <N> --squash --match-head-commit
-<sha>`, then turn the monitor off (`auto_fix: false`). Woken by a merge the operator made instead,
-confirm it and report the same.
+<sha>` and wait until `gh pr view <N> --json state` reads `MERGED`, since a merge queue only
+queues it (dropped → `BLOCKED`), then turn the monitor off (`auto_fix: false`). Woken by the
+operator's merge, confirm it and report the same.
 
 - **Ends:** merged.
 - **Report:** `stop merge`: merge sha, monitor off, carried.

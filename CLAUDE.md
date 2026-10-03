@@ -182,6 +182,11 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   branch (never `origin/…`). *Checked*: every `gh pr create` or `gh pr new` a workflow or
   integration file names, prose included, reads `gh pr create --base <base>` (more flags may
   follow), the one spelling checked exactly; and the built-in integration names it itself.
+- **A merge is confirmed before `stop merge`.** On a base with a merge queue, `gh pr merge` only
+  queues the PR, so a `stop merge` sent right after it would have the orchestrator run Post-land on a
+  PR that may still fail the queue. *Checked*: every workflow or integration file naming `gh pr merge`
+  has a sentence that waits for `gh pr view` to read `MERGED` and names the merge queue, and the
+  built-in names the call itself.
 - **The queue card shows each unit's Workflow and Landing** (under Integration mode `pr` landing is
   per unit). *Checked*: SKILL.md's queue-card table header.
 - **A workflow's `verify` falls back as the orchestrator's does.** The source is SKILL.md's
