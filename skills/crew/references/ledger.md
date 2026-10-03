@@ -97,12 +97,11 @@ After the card's `go` (the row and its brief) · on `ONLINE` (session id, worktr
 verify verdict (sha + result) · on landing · on cleanup · when a monitor starts or stops · when the
 operator attaches a standing rule to a worker · when a worker reports it cleared its context.
 
-Each write rewrites the file, so eviction happens as part of writing and there is no cleanup chore to
-forget.
+Each write rewrites the file, so eviction happens as part of writing: no cleanup chore to forget.
 
 ## Eviction
 
-A row leaves `Live` when its workflow's stop stage is reached **and `owed` is empty**. Not when the worker is
+A row leaves `Live` when its stop stage (its integration's, if any) is reached **and `owed` is empty**. Not when the worker is
 archived: a worker can be archived, or cleared and idle for hours, while its work is still owed.
 
 On eviction: append the row to `archive-YYYY-MM.md`, **copying anything the orchestrator may still

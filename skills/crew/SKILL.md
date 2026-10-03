@@ -88,8 +88,8 @@ A queued worker waiting for `START` waits on the orchestrator, not the operator:
   `pr`, its written merge rule for a PR-merging unit, unless the card says `landing: operator`.
   A plain `go` never delegates. Without delegation, the operator lands.
 - **The worker** follows its workflow as if the operator directed it, mode included — `yolo` means
-  yolo — up to the workflow's stop stage, and commits. Nothing past it. It never creates a worktree
-  (it already has one), never installs or links anything that outlives its worktree, never archives
+  yolo — up to its stop stage (its integration's, if any), and commits. Nothing past it. It never
+  creates a worktree, never installs or links anything that outlives its worktree, never archives
   itself, never messages another worker.
 - **The orchestrator** verifies by running, never by trusting a report. It executes only the landing and
   cleanup agreed on the card. It never merges other work to unblock a worker.

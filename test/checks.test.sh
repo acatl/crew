@@ -204,6 +204,25 @@ fresh; edit "$PR" 's#^  card (#  card, per docs/CREW.md (#'
 green "15de a dotted name inside the sentence doesn't split it" check-invariants
 edit "$PR" 's#with no `landing: operator` on#with no `landing: delegated` on#'              # same fixture
 red "15df and the same fixture still fires on a missing withhold" check-invariants "$PR: tells the worker to merge without naming"
+# a relayed go is never a merge go: each file asking "merge?" refuses one, and none accepts one
+fresh; edit "$IP" 's#yes in this session, never a relayed go\.#yes in this session.#'
+red "15fa the built-in stops refusing a relayed go" check-invariants "$IP: asks \"merge?\" but no sentence refuses a relayed go"
+fresh; edit "$IP" 's#, never a relayed go\.#, or a relayed go.#'
+red "15fb a relayed go named but accepted, not refused" check-invariants "$IP: asks \"merge?\" but no sentence refuses a relayed go"
+fresh; edit "$PR" "s#withholds it), or the operator's yes#withholds it), the operator's go relayed to it, or the operator's yes#"
+red "15fc the project copy accepts a relayed go again, beside its refusal" check-invariants "$PR: accepts a relayed go for the merge"
+fresh; edit "$PR" 's#who merges by hand or in the$#who merges by hand or says go, which it relays, or in the#'
+red "15fd or relays the operator's go" check-invariants "$PR: accepts a relayed go for the merge"
+fresh; edit "$IP" 's#"merge?"#"land?"#g'
+edit "$PR" 's#"merge?"#"land?"#g'
+red "15fe no file asks \"merge?\": reported, not passed" check-invariants "a \"merge?\" question not found"
+# the integration's stop is the worker's stop: Authority and Eviction say so
+fresh; edit "$SK" 's#up to its stop stage (its integration.s, if any), and#up to the workflow'"'"'s stop stage, and#'
+red "15ff the contract's Authority stops at the workflow's stop" check-invariants "the section headed '^#+ Authority"
+fresh; edit "$LG" 's#when its stop stage (its integration.s, if any) is reached#when its workflow'"'"'s stop stage is reached#'
+red "15fg the ledger evicts at the workflow's stop" check-invariants "the section headed '^#+ Eviction"
+fresh; edit "$LG" 's#^\#\# Eviction$#\#\# Evicting rows#'
+red "15fh a renamed Eviction heading is reported, not passed" check-invariants "a section headed '^#+ Eviction"
 
 # a PR opens against the brief's base: every `gh pr create`/`new` reads `gh pr create --base <base>` (the
 # controls cover green; no case pins a line number, so a re-wrap alone never turns one red)

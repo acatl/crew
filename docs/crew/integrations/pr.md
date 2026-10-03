@@ -71,8 +71,8 @@ you, within `rounds`, a late review on an unchanged head included.
 - **Orchestrator:** verifies the sha. On a clean round it checks the written merge rule itself and
   answers only the worker's merge `NEED-INPUT`, once it lands. Met, with no `landing: operator` on the
   card (`CREW.md` › Integration `mode: pr` delegates the rest), it tells the worker to merge by `ANSWER`
-  to its "merge?". Met under that override, it nudges the operator, who merges by hand or says go, which
-  it relays. Met while the worker asked as missed (CI concluded since, say), it `ANSWER`s "re-check the
+  to its "merge?". Met under that override, it nudges the operator, who merges by hand or in the
+  worker's session, and relays no go: the rule is void there, so the merge is a Hard Gate. Met while the worker asked as missed (CI concluded since, say), it `ANSWER`s "re-check the
   bar", and the worker asks again. Missed by its own check, whatever the worker reported, it nudges with
   the failing condition and relays no merge: a merge despite it is the operator's own, by hand or in the
   worker's session (§ Stopping › Merging). It handles the operator's merge (`prState: MERGED`) as
@@ -106,7 +106,7 @@ checkpoints. On top of them:
   - adding, removing or changing a dependency;
   - CI and shared config;
   - a push to `main` or to a branch you don't own, and any force-push;
-  - a merge outside the written merge rule;
+  - a merge outside the written merge rule, or under a card's `landing: operator`, which voids it;
   - any other write outside the repo;
   - anything destructive.
 
@@ -146,8 +146,7 @@ are context the next round needs.
   A review that lands later on the same head starts the next round: § 0's window has long passed.
 - **The worker merges only on the coordinator's go**, never on its own reading of the PR (§
   Stopping › Merging): the coordinator's `ANSWER` to that "merge?" under the merge rule (a card's
-  `landing: operator` withholds it), the operator's go relayed to it, or the operator's yes in this
-  session to a merge outside the rule.
+  `landing: operator` withholds it), or the operator's yes in this session, never a relayed go.
 - **CodeRabbit reviews the opening push only** (operator, 2026-10-02, from 2026-10-03). Just
   BEFORE the first push after the opening one (round 1's fixes, or a sync push), the worker applies
   the `dont-review` label (`gh pr edit <N> --repo acatl/crew --add-label dont-review`;
@@ -447,7 +446,8 @@ itself, by running, never from the worker's report:
    yes, or merge-and-carry), each with its reply, and resolved.
 
 The rule is a standing delegation (`docs/CREW.md` › Integration, `mode: pr`), void on a card that
-says `landing: operator`: then the coordinator reports the PR ready and the operator merges.
+says `landing: operator`: then the coordinator reports the PR ready and the operator merges, by hand
+or in the worker's session, never by a relayed go.
 
 When all three hold and `reviewDecision` is blocked only by CodeRabbit's stale
 `CHANGES_REQUESTED`, the coordinator dismisses **that review only**, with a message naming the

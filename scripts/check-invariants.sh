@@ -318,6 +318,23 @@ section_rule "a resume never carries consent for a gated action or a plan approv
 section_rule "an ANSWER with no question pending is refused" ANSWER 'question pending' refuse -- \
   '0|^#+ Worker[[:space:]]*$' '1|^#+ If the `crew` skill is unavailable'
 
+# --- the integration's stop is the worker's stop -------------------------------------------------------------
+# Under an integration, a workflow's `handoff` continues into the integration's stages, so the worker's stop
+# stage is the integration's (Codex on acatl/crew#7). Read as the workflow's, the contract's Authority would
+# stop a compliant worker before its PR opens, and the ledger would evict a row whose PR rounds still run. So
+# SKILL.md's Authority and ledger.md's Eviction each say "stop stage" and "integration's" in one sentence.
+# Presence, not meaning, as section_rule; no refusal to require here.
+stop_ok=1
+for spec in '^#+ Authority[[:space:]]*$' '^#+ Eviction[[:space:]]*$'; do
+  text=$(section "$spec" 0 "${mds[@]}")
+  if [ -z "$text" ]; then
+    reworded "$SKILL/*.md" "a section headed '$spec'"; stop_ok=0
+  elif ! tr '.' '\n' <<< "$text" | grep -F 'stop stage' | grep -qF "integration's"; then
+    fail "$SKILL/*.md: the section headed '$spec' no longer says, in one sentence, that the stop stage is the integration's when there is one"; stop_ok=0
+  fi
+done
+if [ "$stop_ok" = 1 ]; then held=$((held + 1)); fi
+
 # --- the workflow reaches a worker through its brief ------------------------------------------------------
 # Workers never read CREW.md: the orchestrator resolves the workflow (CREW.md › Workflows) into the
 # brief's {WORKFLOW_PATH} and {PARAMETERS}, and the worker reads the file the brief names. So no Worker
@@ -428,6 +445,29 @@ if [ "$merge_seen" = 0 ]; then
   reworded "the workflow and integration files" "a sentence that tells the worker to merge"; merge_ok=0
 fi
 if [ "$merge_ok" = 1 ]; then held=$((held + 1)); fi
+
+# --- a relayed go is never a merge go ---------------------------------------------------------------------------
+# A card's `landing: operator` voids the merge rule, so a merge under it is a Hard Gate, and the worker can't see
+# the card. So it merges only on the orchestrator's ANSWER or the operator's yes in its own session: acting on a
+# relayed go would launder consent across sessions (SECURITY.md; Codex on acatl/crew#7). Every workflow or
+# integration file that asks "merge?" holds a sentence with "relayed go" and a refusal, and none accepts a go
+# relayed ("go relayed", "says go, which it relays"). At least one must ask, so finding none fails.
+relay_ok=1 relay_seen=0
+for f in ${stage_files[@]+"${stage_files[@]}"}; do
+  sentences=$(tr '\n' ' ' < "$f" | tr -s ' ' | sed 's/[.;] /\n/g')
+  grep -qF '"merge?"' <<< "$sentences" || continue
+  relay_seen=1
+  if ! grep -F 'relayed go' <<< "$sentences" | grep -qE -- "$refusal"; then
+    fail "$f: asks \"merge?\" but no sentence refuses a relayed go"; relay_ok=0
+  fi
+  if grep -qiE 'go relayed|says go, which it relays' <<< "$sentences"; then
+    fail "$f: accepts a relayed go for the merge"; relay_ok=0
+  fi
+done
+if [ "$relay_seen" = 0 ]; then
+  reworded "the workflow and integration files" "a \"merge?\" question"; relay_ok=0
+fi
+if [ "$relay_ok" = 1 ]; then held=$((held + 1)); fi
 
 # --- a PR opens against the brief's base ----------------------------------------------------------------------
 # Without --base, `gh pr create` (alias `gh pr new`) targets the repo's default branch or the branch's

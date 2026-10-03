@@ -62,14 +62,13 @@ Send `NEED-INPUT` before a round `rounds` doesn't allow, with each round's fixes
 - **Report:** `checkpoint round`: round, sha, push time, fixed, declined, CI, silent reviewers.
 - **Orchestrator:** verifies the sha. On a clean round it checks the merge rule itself, by running.
   Met, with no `landing: operator` on the card, it tells the worker to merge by `ANSWER` to its
-  "merge?"; met under `landing: operator`, it nudges the operator; missed, it nudges with the
-  failing condition and relays no merge.
+  "merge?"; else it nudges the operator, with the failing condition if missed, and relays no merge.
 - **Clears:** after a push, yes, monitor off first; never after a clean round.
 
 ### merge
 
-Merge only on a go to your "merge?": the orchestrator's `ANSWER` under `landing`, the operator's go
-relayed, or the operator's yes in this session. Run `gh pr merge <N> --squash --match-head-commit
+Merge only on a go to your "merge?": the orchestrator's `ANSWER` under `landing`, or the operator's
+yes in this session, never a relayed go. Run `gh pr merge <N> --squash --match-head-commit
 <sha>`, then turn the monitor off (`auto_fix: false`). Woken by a merge the operator made instead,
 confirm it and report the same.
 
@@ -83,8 +82,8 @@ confirm it and report the same.
 - **Your workflow's Rules hold here:** its loop budget, git safety, carrying and checkpoints.
 - **Record each push's time in your ledger:** after a clear, `settle` runs from it, never the commit's.
 - **Consent.** The brief grants a push to your own branch, your own PR, its binding, and writes to
-  it (replies, resolves). Anything else, a merge outside the merge rule included, is a Hard Gate:
-  the operator's yes in this session, never relayed.
+  it (replies, resolves). Anything else, a merge outside the merge rule or under `landing: operator`
+  included, is a Hard Gate: the operator's yes in this session, never relayed.
 - **The merge rule:** CI green on the head; the PR targets `<base>`; `verify` green after
   `git fetch origin <base>`; every finding dispositioned, replied to and resolved; `reviewDecision`
   not blocking; at least one non-empty review. Judge `reviewDecision` and `mergeStateStatus`, never the open-thread count: a

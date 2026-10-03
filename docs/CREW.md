@@ -53,8 +53,9 @@ its PR).
   The brief grants a push to the worker's OWN branch, opening its own PR, and binding that PR in the
   app with its review monitor on (the integration's `open`), nothing else. The worker merges only on
   the orchestrator's go, given under the operator's standing merge rule, unless the card says
-  `landing: operator`; otherwise the operator merges. That go is the written rule being applied, not
-  consent relayed from another session, so the worker acts on it.
+  `landing: operator`; then the operator merges, by hand or in the worker's session, never by a
+  relayed go. The orchestrator's go is the written rule being applied, not consent relayed from
+  another session, so the worker acts on it.
 - **A card's `integration: none`** gives a unit that pushes nothing; the operator lands it.
 - **A worker's PR review monitor** goes in the ledger's Monitors at its `checkpoint open`
   (stop: the worker turns `auto_fix` off after merging); drop the line at cleanup.
