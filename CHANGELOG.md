@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/acatl/crew/compare/crew-v1.0.0...crew-v1.1.0) (2026-10-03)
+
+
+### Features
+
+* integrations; ship a built-in PR integration that standard hands off to ([#7](https://github.com/acatl/crew/issues/7)) ([4b01ef3](https://github.com/acatl/crew/commit/4b01ef3b325970401f4aa5bb4aa04b21f34fbcfa))
+
+
+### Bug Fixes
+
+* idle notices, silent reviewers and reused-worktree ledgers ([#5](https://github.com/acatl/crew/issues/5)) ([27f0332](https://github.com/acatl/crew/commit/27f0332e3f6f56fc8ac29a55c1e7af468fcb0069))
+
 ## 1.0.0 (2026-09-30)
 
 
