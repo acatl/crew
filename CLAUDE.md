@@ -186,7 +186,8 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   queues the PR, so a `stop merge` sent right after it would have the orchestrator run Post-land on a
   PR that may still fail the queue. SKILL.md step 8's Land reads `MERGED` itself before Post-land.
   *Checked*: every sentence in a workflow or integration file that names `gh pr merge` also waits for
-  `gh pr view` to read `MERGED` and names the merge queue, and the built-in names the call itself.
+  `gh pr view` to read `MERGED` and names the merge queue; the built-in names the call itself; and
+  SKILL.md has a sentence running Post-land once `gh pr view` reads `MERGED`.
 - **The queue card shows each unit's Workflow and Landing** (under Integration mode `pr` landing is
   per unit). *Checked*: SKILL.md's queue-card table header.
 - **A workflow's `verify` falls back as the orchestrator's does.** The source is SKILL.md's

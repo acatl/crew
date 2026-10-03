@@ -84,14 +84,17 @@ you, within `rounds`, a late review on an unchanged head included.
 
 ### merge
 
-Merge only on a go to your "merge?" (§ Stopping › Merging), the way that section's last paragraph
-runs it: monitor off first, then the wait for `MERGED`. A merge queue or auto-merge only queues the
-PR, and no monitor wake in the wait is a round: no fixes, no push. Woken by a merge the operator
-made instead, wait the same way, then report.
+Merge only on a go to your "merge?" (§ Stopping › Merging). Run
+`gh pr merge <N> --squash --match-head-commit <sha>` with the PR's Conventional title and poll in the
+background until `gh pr view <N> --json state,mergeCommit` reads `MERGED`: a merge queue or
+auto-merge only queues it. `CLOSED`, or `OPEN` with neither `isInMergeQueue` nor `autoMergeRequest`
+(`gh api graphql`) → `BLOCKED`, the monitor still on. While waiting, fix and push nothing. Woken by a
+merge the operator made instead, wait the same. At `MERGED`, turn the monitor off and report.
 
 - **Ends:** merged, by you or the operator.
 - **Report:** `stop merge`: the merge sha (`mergeCommit`), monitor off, carried.
-- **Orchestrator:** runs Post-land, cleans up per the card, and carries findings into the next unit.
+- **Orchestrator:** reads `MERGED` itself, runs Post-land, cleans up per the card, and carries
+  findings into the next unit.
 - **Clears:** no
 
 ## Rules
@@ -133,8 +136,8 @@ are context the next round needs.
   - Before clearing your own context, turn the monitor off (`auto_fix: false`): a cleared worker
     woken by anything but the resume carrying its brief hedges or invents. Turn it back on when
     the resume arrives and the PR is still open.
-  - Right after `gh pr merge`, turn it off, before waiting for `gh pr view` to read `MERGED` (a
-    merge queue only queues it), and say so in the merge `DONE`.
+  - Once `gh pr view` reads `MERGED` after `gh pr merge` (a merge queue only queues it), turn it
+    off, and say so in the merge `DONE`.
 - **After each round's push** the worker reports `DONE`, with `checkpoint` in its first line, to
   the coordinator: round number, commit sha, push time, what was fixed and what was declined, CI
   state, silent reviewers. That is a checkpoint, not an exit: when the next reviews land, the same
@@ -461,10 +464,9 @@ When all three hold and `reviewDecision` is blocked only by CodeRabbit's stale
 `CHANGES_REQUESTED`, the coordinator dismisses **that review only**, with a message naming the
 resolved threads and the head sha it checked. It then confirms `mergeStateStatus` is `CLEAN` and,
 unless the card says `landing: operator`, tells the worker to merge. The worker runs
-`gh pr merge <N> --squash --match-head-commit <sha>` with the PR's Conventional title, turns the
-monitor off, and waits until `gh pr view <N> --json state,mergeCommit` reads `MERGED`, since a merge
-queue or auto-merge only queues it. `OPEN` with neither (GraphQL `isInMergeQueue`,
-`autoMergeRequest`) → `BLOCKED`. It reports `mergeCommit`'s sha as the merge sha.
+`gh pr merge <N> --squash --match-head-commit <sha>` with the PR's Conventional title, waits until
+`gh pr view <N> --json state,mergeCommit` reads `MERGED` (a merge queue only queues it, as § merge
+says), and reports `mergeCommit`'s sha as the merge sha.
 
 **`BEHIND` or a conflict is not a failure.** The worker runs `git fetch origin <base>` and merges
 `origin/<base>` into its branch: at the start of the next round when one is due (never mid-round),

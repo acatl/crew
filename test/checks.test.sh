@@ -275,16 +275,18 @@ fresh; edit "$IP" 's#`gh pr create --base <base>`#the PR#'
 red "15ei9 the built-in without the call fails, though the project copy still names one" check-invariants "$IP: the call 'gh pr create --base <base>' not found"
 # a merge is confirmed before `stop merge`: each sentence naming `gh pr merge` waits for `gh pr view` to read
 # `MERGED`, naming the merge queue (the controls cover green)
-fresh; edit "$IP" 's#`MERGED`: a merge queue or auto-merge#`MERGED`: a queue or auto-merge#'
+fresh; edit "$IP" 's#^a merge queue or auto-merge only queues it#a queue or auto-merge only queues it#'
 red "15ej1 the built-in reports its merge without the queue's wait" check-invariants "$IP: names \`gh pr merge\` without waiting"
 fresh; edit "$PR" 's#`MERGED`#merged#g'
 red "15ej2 so does a project integration" check-invariants "$PR: names \`gh pr merge\` without waiting"
-fresh; edit "$IP" 's#`MERGED`: a merge queue or auto-merge#`MERGED`. A merge queue or auto-merge#'
+fresh; edit "$IP" 's#reads `MERGED`:$#reads `MERGED`.#'
 red "15ej3 the queue and the wait in two sentences don't count" check-invariants "$IP: names \`gh pr merge\` without waiting"
 fresh; edit "$IP" 's#`gh pr merge <N>#`gh pr land <N>#'
 red "15ej4 the built-in without the call fails, though the project copy still names one" check-invariants "$IP: the call 'gh pr merge' not found"
-fresh; edit "$PR" 's#`gh pr view <N> --json state,mergeCommit` reads `MERGED`, since a merge#`gh pr view <N> --json state,mergeCommit` reads merged, since a merge#'
+fresh; edit "$PR" 's#`gh pr view <N> --json state,mergeCommit` reads `MERGED` (a merge queue only queues it, as § merge#`gh pr view <N> --json state,mergeCommit` reads merged (a merge queue only queues it, as § merge#'
 red "15ej5 one call site without its wait fails, though another sentence in the file still waits" check-invariants "$PR: names \`gh pr merge\` without waiting"
+fresh; edit "$SK" 's#(Integration mode `pr`, once `gh pr view` reads `MERGED`)#(Integration mode `pr`)#'
+red "15ej6 the orchestrator lands a PR it hasn't read as MERGED" check-invariants "$SK: no sentence runs Post-land only once"
 # the queue card shows each unit's workflow and landing
 fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Integration | Scope | Landing | Cleanup |#> | \# | Unit | Title | Workflow | Integration | Scope | Cleanup |#'
 red "15dg the queue card loses its per-unit Landing" check-invariants "the queue card has no per-unit Landing column"
@@ -454,7 +456,7 @@ fresh; edit "$WS" 's#^\#\# Parameters$#\#\# Settings#'
 red "38 a section missing" check-structure "needs ## Parameters, ## Stages, ## Rules"
 fresh; edit "$WS" 's#^name: standard$#name: std#'
 red "39 a name that isn't the file's" check-structure 'frontmatter name is "std"'
-fresh; edit "$PR" '/^- \*\*Orchestrator:\*\* runs Post-land/d'
+fresh; edit "$PR" '/^- \*\*Orchestrator:\*\* reads `MERGED` itself, runs Post-land/,+1d'
 red "40 a project workflow is checked too" check-structure "$PR:"
 fresh; rm "$S/$WS"
 red "41 no built-in workflow fails, never passes" check-structure "no workflow-*.md"

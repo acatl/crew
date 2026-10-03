@@ -8,7 +8,7 @@ description: The built-in integration. Land a workflow's work by GitHub pull req
 Your workflow's `handoff` continues into these stages when your brief names this file. `<base>` is
 your brief's Base branch. The crew contract (SKILL.md) and your workflow's Rules sit under it;
 nothing here changes them.
-To adapt it (a reviewer roster, labels), edit a copy at `docs/crew/integrations/pr.md`.
+To adapt it, edit a copy at `docs/crew/integrations/pr.md`.
 
 ## Parameters
 
@@ -71,19 +71,20 @@ Send `NEED-INPUT` before a round `rounds` doesn't allow, with each round's fixes
 
 Merge only on a go to your "merge?": the orchestrator's `ANSWER` under `landing`, or the operator's
 yes in this session, never a relayed go. Run `gh pr merge <N> --squash --match-head-commit
-<sha>`, turn the monitor off (`auto_fix: false`) and wait until `gh pr view <N> --json
-state,mergeCommit` reads `MERGED`: a merge queue or auto-merge only queues it. `OPEN` with neither
-(GraphQL `isInMergeQueue`, `autoMergeRequest`) → `BLOCKED`. Woken by a merge the operator made
-instead, wait the same.
+<sha>` and poll in the background until `gh pr view <N> --json state,mergeCommit` reads `MERGED`:
+a merge queue or auto-merge only queues it. `CLOSED`, or `OPEN` with neither `isInMergeQueue` nor
+`autoMergeRequest` (`gh api graphql`) → `BLOCKED`. While waiting, fix and push nothing. The
+operator merged instead: wait the same. At `MERGED`, turn the monitor off (`auto_fix: false`) and
+report.
 
 - **Ends:** merged.
 - **Report:** `stop merge`: `mergeCommit`'s sha, monitor off, carried.
-- **Orchestrator:** runs Post-land, cleans up per the card, and carries findings into the next unit.
+- **Orchestrator:** reads `MERGED` itself, runs Post-land, cleans up per the card, and carries
+  findings into the next unit.
 - **Clears:** no
 
 ## Rules
 
-- **Your workflow's Rules hold here:** its loop budget, git safety, carrying and checkpoints.
 - **Record each push's time in your ledger:** after a clear, `settle` runs from it, never the commit's.
 - **Consent.** The brief grants a push to your own branch, your own PR, its binding, and writes to
   it (replies, resolves). Anything else, a merge outside the merge rule or under `landing: operator`

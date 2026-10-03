@@ -321,7 +321,7 @@ section). Don't write later units' specs yet: earlier units will move the base u
 
 **When unit N's DONE verifies:**
 
-1. **Land.** A merged PR (Integration mode `pr`, `gh pr view` reads `MERGED`) → run Post-land, which pulls the merge into `<base>`; never
+1. **Land.** A merged PR (Integration mode `pr`, once `gh pr view` reads `MERGED`) → run Post-land, which pulls the merge into `<base>`; never
    ff-only. `ff-only`, delegated → in the main checkout, on a clean `<base>`, run
    `git merge --ff-only <worker-branch>`, then each `CREW.md` › Post-land command. If ff-only refuses
    (exit 128), the base moved under the worker: stop the sequence and tell the operator; never force,
@@ -351,8 +351,8 @@ Idle notices only fire when a worker stops. A worker stuck in a fix/review loop 
 notice ever arrives. Origin (hg, 2026-09-22): a unit worker ran ~15 isolated-review rounds over hours,
 hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't look for the whole stretch.
 
-- **While any worker is `running`, a watchdog process runs.** Write `roster.tsv` **first** — a missing
-  crew dir or roster is an immediate exit 2 — then launch it with the Bash tool's `run_in_background`,
+- **While any worker is `running`, a watchdog process runs.** Write `roster.tsv` **first** (a missing
+  crew dir or roster is an immediate exit 2), then launch it with the Bash tool's `run_in_background`,
   not a shell `&`: the harness re-invokes you when a backgrounded command exits, and that exit is the
   entire mechanism.
   ```bash

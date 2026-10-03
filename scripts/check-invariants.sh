@@ -536,6 +536,12 @@ done
 if [ "$mq_seen" = 0 ]; then
   reworded "$IPR" "the call 'gh pr merge'"; mq_ok=0
 fi
+# The orchestrator lands on its own read, not the worker's word: SKILL.md's Land holds a sentence that runs
+# Post-land once `gh pr view` reads `MERGED`, which covers a workflow with its own PR stages too.
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+if ! sentences_of "$SKILL/SKILL.md" | grep -F 'Post-land' | grep -F 'gh pr view' | grep -qF '`MERGED`'; then
+  fail "$SKILL/SKILL.md: no sentence runs Post-land only once \`gh pr view\` reads \`MERGED\`"; mq_ok=0
+fi
 if [ "$mq_ok" = 1 ]; then held=$((held + 1)); fi
 
 # --- the queue card shows each unit's workflow and landing ----------------------------------------------------
