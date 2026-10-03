@@ -335,12 +335,17 @@ section_rule --any "the stop stage is the integration's when there is one" 'stop
 # A queued brief has no Job section: START writes it later, from the card. A compaction in between destroys
 # the card, so a card choice the row doesn't hold falls back to CREW.md's default, and an `integration: none`
 # unit would open a PR (Codex on acatl/crew#7). Step 5's row write and ledger.md's spine each name the card's
-# lines with `integration` in one sentence, and step 8 and the START template write START from the row.
+# lines with `integration` in one sentence, step 8 spawns every unit by step 5, and step 8, the Messages
+# START row and the START template write START from the row.
 # shellcheck disable=SC2016  # the backticks are literal Markdown
 section_rule --any "the ledger row holds the card's lines, integration included" "card's lines" '`integration`' -- \
   '0|^#+ 5[.] Spawn' '0|^#+ Shape[[:space:]]*$'
-section_rule --any "START is written from the row's card lines" START "row's card lines" -- \
+section_rule --any "START is written from the row's card lines" \
+  "written now from the landed state and its row's card lines" -- '0|^#+ 8[.] Sequences'
+section_rule --any "every queued unit is spawned by step 5, which writes its row" 'Spawn every unit now' 'step 5' -- \
   '0|^#+ 8[.] Sequences'
+section_rule --any "the contract's START row is written from the unit's ledger row" 'queued brief left out' \
+  "unit's ledger row" -- '0|^#+ Messages[[:space:]]*$'
 section_rule --any "START's Job fields take the card's lines from the ledger row" 'Job and Spec fields' 'ledger row' -- \
   '0|^#+ START[[:space:]]*$'
 

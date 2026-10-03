@@ -28,7 +28,7 @@ Two variants differ only in the Job section:
 | `{SURFACE}` | step 2 estimate |
 | `{FORBIDDEN}` | step 3 overlaps the operator chose to proceed with, else `none` |
 | `{SPEC}` | the full unit spec when the brief carries it, including decisions only in the orchestrator's memory; else drop `## Spec` |
-| `{BRANCH_RULE}` | `CREW.md` › Branch naming, resolved (e.g. "rename to `kino-5`"), else "keep the branch you're on" |
+| `{BRANCH_RULE}` | `CREW.md` › Branch naming, resolved, else "keep the branch you're on" |
 | `{SETUP}` | `CREW.md` › Worktree setup |
 | `{STANDING}` | `CREW.md` › Standing boundaries, one bullet each, else drop the line |
 | `{BRIEF_PATH}` | this brief's saved path: `~/.claude/crew/<slug>/briefs/<row>.md` |
@@ -111,7 +111,8 @@ latest landed state; it replaces this section. Run the crew skill's *START steps
 
 ## START
 
-Sent to a queued worker's sessionId when its turn comes. Write it then, from the landed state.
+Sent to a queued worker's sessionId when its turn comes, written then from the landed state and the
+unit's ledger row.
 
 | Placeholder | Source |
 |---|---|
@@ -119,7 +120,7 @@ Sent to a queued worker's sessionId when its turn comes. Write it then, from the
 | `{LANDED}` | one line per unit landed since queuing: id, sha, what it changed that this unit touches |
 | `{HANDOFFS}` | anything an earlier unit left for this one (a leftover, a decision), else `none` |
 | `{CARRIED}` | one "Carried from <unit>" line per finding an earlier unit carried, else `none` |
-| Job and Spec fields | same as the brief's, computed now, the card's lines from the unit's ledger row |
+| Job and Spec fields | same as the brief's, computed now, the card's lines from the ledger row |
 
 ```markdown
 [crew] START · {TICKET} · base {SHA}

@@ -5,7 +5,7 @@ Session metadata survives that, so **identity** is always recoverable (`list_ses
 `get_session` › `parentSessionId`). **Intent** is not: scope, stop points, what was promised, what is
 owed, what has already been verified. The ledger holds only what no tool can reconstruct.
 
-**Split of truth, the rule that keeps it from rotting:** the app is authoritative for state (running,
+**Split of truth:** the app is authoritative for state (running,
 branch, PR, archived), the ledger is authoritative for intent. They join on `session`. Never copy into
 the ledger what `list_sessions` can answer — it goes stale and then lies.
 
@@ -55,7 +55,8 @@ updated: <iso> · orchestrator: <sessionId>
 
 ### r3 · #9 · running
 - session: local_271f8174-… · brief: briefs/r3.md
-- workflow: standard · integration: pr · stage: round 3
+- workflow: standard · integration: pr · mode: yolo · scope: whole · landing: operator · cleanup: keep
+- stage: round 3
 - owed: operator's merge go · review budget unspent
 - surface: hg/src/cli.ts, docs/CREW.md
 - verified: a762e48 green (2026-09-24) — tsc, 1274 tests, links, shellcheck
@@ -76,8 +77,8 @@ updated: <iso> · orchestrator: <sessionId>
 ```
 
 **Spine** (the only fields any rule reads): row id, unit, status, `session`, `brief`, `stage`, `owed`,
-and the card's lines (`workflow` and its overrides, `integration`, scope, cleanup, landing): a queued unit's
-START reads them. Row ids are stable and never reused; the unit may change (folded or renumbered),
+and the card's lines (`workflow` and its overrides, `integration`, mode, scope, cleanup, landing, `Do not
+touch`, any spec decision only in memory): a queued unit's START reads them. Row ids are stable and never reused; the unit may change (folded or renumbered),
 which is why rows join on `session`, never on a unit or a title.
 
 **Status** is one of: `chip` (spawned, not yet clicked — `session` holds the `task_id` instead),
@@ -98,7 +99,7 @@ After the card's `go` (the row and its brief) · on `ONLINE` (session id, worktr
 verify verdict (sha + result) · on landing · on cleanup · when a monitor starts or stops · when the
 operator attaches a standing rule to a worker · when a worker reports it cleared its context.
 
-Each write rewrites the file, so eviction happens as part of writing: no cleanup chore to forget.
+Each write rewrites the file, evicting as it goes.
 
 ## Eviction
 
@@ -124,12 +125,12 @@ conversation, read `ledger.md` and reconcile it against `list_sessions` / `get_s
   orphan; an evicted row is not a lost worker.
 - Anything else reads targeted: grep the unit, don't re-read the file.
 
-`Live` comes first in the file so a partial read still gets what matters.
+`Live` comes first, so a partial read gets what matters.
 
 ## The cleared-worker invariant
 
 A worker that cleared its own context has no brief and will hedge or invent if anything wakes it — a
-message, a monitor, a notification. This has happened repeatedly in practice.
+message, a monitor, a notification. Seen repeatedly.
 
 - A worker that reports it cleared gets status `cleared` and `owed: resume not sent`.
 - **Nothing may wake it except its resume** (SKILL.md step 6), sent at once, even when the next step

@@ -164,7 +164,7 @@ against workers outside it: they run one at a time.
    surface needs something that exists only on an in-flight branch)?
 4. **Base** — pick this unit's starting commit (the line it integrates into, the default branch for a
    PR cut from it, a specific sha for an audit), and write it in the brief as **a branch plus a sha**.
-   Never assume the app cut the worktree from it (see *Gotchas*); the worker re-points to it first.
+   Never assume the app cut the worktree from it (see *Gotchas*); the worker re-points to that sha first.
 
 Result: `✓ clear` · `⚠ overlap` (which worker, which paths) · `⚠ main checkout on <branch>, not <base>` ·
 `⛔ blocked on unmerged <X>`. On ⛔, don't show the card and don't spawn: say what the ticket waits on
@@ -208,8 +208,9 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 3. `mcp__ccd_session__spawn_task` with `title` = the card's title, `tldr` = one plain sentence, `prompt`
    = the filled brief. Pass `cwd` only when the worker belongs to a different repo than yours.
 4. **Write the ledger row** (status `chip`, the `task_id` in place of a session id, stage, surface,
-   and the card's lines: `workflow` and its overrides, `integration`, scope, cleanup, landing) and save
-   the brief exactly as sent to `briefs/<row>.md`.
+   and the card's lines: `workflow` and its overrides, `integration`, mode, scope, cleanup, landing,
+   `Do not touch`, any spec decision only in your memory) and save the brief exactly as sent to
+   `briefs/<row>.md`.
 5. Tell the operator the chip is up and needs a click. End your turn.
 
 ### 6. Handle messages
@@ -316,8 +317,8 @@ the app may show its own approval card. Cleanup never deletes a branch or runs `
 >
 > **→ You:** `go`, or override (`2 title: …`, `landing: delegated`, `1 landing: operator`).
 
-Follow step 4 for each Landing. **Spawn every unit now**: unit 1 with a ready brief, the rest with the **queued variant** (no Job
-section). Don't write later units' specs yet: earlier units will move the base under them.
+Follow step 4 for each Landing. **Spawn every unit now**, each by step 5: unit 1 with a ready brief, the
+rest with the **queued variant** (no Job section). Don't write later units' specs yet: earlier units will move the base under them.
 
 **When unit N's DONE verifies:**
 
@@ -373,8 +374,8 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   `roster.tsv` disappears. Read `watchdog.log` whenever a worker seems unmonitored.
 - **What neither trigger can see:** the no-commit trigger fires only while the worker is still writing
   transcripts — a fixed 15-minute window, not a tunable. A worker that has stopped writing altogether,
-  wedged or hung or dead, is invisible to both triggers however old its HEAD is. That case is yours to
-  catch on your own turns.
+  wedged or hung or dead, is invisible to both triggers however old its HEAD is: catch it on your own
+  turns.
 - **Its roster is `~/.claude/crew/<slug>/roster.tsv`** — `<ticket>` TAB `<worktree-path>` TAB
   `<start epoch>`, one line per `running` worker, and yours to maintain. Set the start to `date +%s`
   as the worker goes `running`; its no-commit clock never starts earlier. Write the ledger row and the
@@ -382,12 +383,10 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   you. Rewrite it write-to-temp-then-`mv`, never in place. It is re-read every pass, so an edit lands
   with no restart. The worktree path must be **byte-identical to the one the app reports** — the
   transcript directory is derived from it by substitution, so a trailing slash or a `/private/var` vs
-  `/var` spelling silently yields an unwatched worker. One `--base` covers the whole roster, and it is
-  used only as the baseline before a worker's first push; on a mixed-base roster, pass the base most
-  of them share.
+  `/var` spelling silently yields an unwatched worker. One `--base`, the baseline before a worker's first
+  push, covers the whole roster; on a mixed-base roster, pass the most common one.
 - **Stop it by the pid** in `~/.claude/crew/<slug>/watchdog.pid` once the last worker stops, and clear
-  its `Monitors` line. **Never `pkill -f watchdog.sh`** — every project's watchdog is a `watchdog.sh`,
-  so a name-based kill takes out every project's watchdog at once.
+  its `Monitors` line. **Never `pkill -f watchdog.sh`**: a name-based kill takes out every project's watchdog.
 - **Also check on every orchestrator turn**, cheaply: `list_events` tail (limit ~40) and
   `git log -1 --format=%cr` plus `git status --porcelain | wc -l` in each running worker's
   `worktreePath`. Count review→fix iterations since its last report. The watchdog covers the stretches
