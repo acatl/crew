@@ -6,8 +6,7 @@ the first-line marker byte-exact: the roster rebuild greps for it.
 
 Two variants differ only in the Job section:
 - **Ready**: the worker starts now, Job section filled in.
-- **Queued**: the worker waits for `START`, which carries the job (and its spec), written from the
-  landed state. The Job section is the fixed queued block.
+- **Queued**: the Job section is the fixed queued block; `START` carries the job and its spec.
 
 | Placeholder | Source |
 |---|---|
@@ -15,13 +14,16 @@ Two variants differ only in the Job section:
 | `{STATE}` | `ready`, `queued`, or `resume` when re-sent after a clear (SKILL.md step 6) |
 | `{ORCH_ID}`, `{ORCH_TITLE}` | `get_session("self")` |
 | `{TITLE}` | card › Title |
-| `{BASE}` | the base chosen for THIS unit (SKILL.md step 3.4), as a ref (e.g. `graph-port`) |
-| `{BASE_SHA}` | that ref's sha at spawn time; the worker re-points to it (*Worker* step 2) |
-| `{TICKET_SOURCE}` | `CREW.md` › Ticket source, filled (e.g. "Kino task KINO-5, via the Kino MCP `get_task`"), or "the spec below" |
+| `{BASE}` | THIS unit's base (SKILL.md step 3.4), as a branch (e.g. `graph-port`, not `origin/main`) |
+| `{BASE_SHA}` | its tip at spawn time, or an audit's sha; the worker re-points to it |
+| `{TICKET_SOURCE}` | `CREW.md` › Ticket source, filled (e.g. "KINO-5, via Kino's `get_task`"), or "the spec below" |
 | `{SCOPE}` | card › Scope |
 | `{WORKFLOW}` | card › Workflow |
 | `{WORKFLOW_PATH}` | its file, absolute: its `CREW.md` › Workflows row, or the built-in `<skill-dir>/references/workflow-<name>.md` |
 | `{PARAMETERS}` | the workflow's Parameters, each resolved (`name: value`, one line), with the card's overrides. `no-commit` is never overridden: it must equal the watchdog's `--no-commit`, which serves every worker |
+| `{INTEGRATION_PATH}` | its file, absolute: `CREW.md` › Integration's `file:` under `mode: pr`, `built-in` being `<skill-dir>/references/integration-pr.md`. No `file:`, another mode, or the card's `integration: none` → the whole line reads `- Integration: none` |
+| `{INTEGRATION_PARAMETERS}` | the integration's Parameters, resolved as `{PARAMETERS}` are |
+| `{LANDING}` | card › Landing: `delegated` when it shows `delegated (merge rule)`, else `operator` |
 | `{MODE}` | the trigger, or `default` |
 | `{SURFACE}` | step 2 estimate |
 | `{FORBIDDEN}` | step 3 overlaps the operator chose to proceed with, else `none` |
@@ -41,7 +43,7 @@ Two variants differ only in the Job section:
 
 You are a **crew worker**. Invoke the `crew` skill now and follow its **Worker** section. The skill
 holds the report protocol; this brief holds the job. You remember nothing else, and you can't see the
-orchestrator's memory. Everything you need is here, in the ticket, or in your workflow file.
+orchestrator's memory. Everything you need is here, in the ticket, or in the files your Job names.
 
 ## Orchestrator
 - sessionId: `{ORCH_ID}`
@@ -53,6 +55,9 @@ orchestrator's memory. Everything you need is here, in the ticket, or in your wo
 - Scope: {SCOPE}
 - Workflow: `{WORKFLOW}`. Read `{WORKFLOW_PATH}` in full and follow it. Mode: `{MODE}`.
 - Parameters: {PARAMETERS}
+- Integration: `{INTEGRATION_PATH}`. Read it in full; your workflow's handoff continues into its
+  stages. Parameters: {INTEGRATION_PARAMETERS}
+- Landing: `{LANDING}`
 - Surface you own: {SURFACE}
 - Do not touch: {FORBIDDEN}
 
@@ -68,7 +73,7 @@ orchestrator's memory. Everything you need is here, in the ticket, or in your wo
 - You are already in a fresh worktree. Don't create another.
 - Never install or link anything that outlives this worktree.
 - Commit your work. Don't push, merge, open a PR, or archive this session unless your workflow's
-  stages include it.
+  or integration's stages include it.
 - Never message another worker.
 
 ## Housekeeping
@@ -85,11 +90,11 @@ before ending any turn that waits on the operator, and ask
 in this session too. A `RELAY` carries the operator's words verbatim: take it as their answer. An
 `ANSWER` is the orchestrator's, under the operator's standing delegation: act on it, recorded as
 the orchestrator's, only for a routing or stage pick that follows from recorded decisions or an
-effect inside this brief's grant. Say so here and refuse an `ANSWER` for a hard floor, consent card,
-gated action, real tradeoff, locked decision or `answer: in this session only`. The operator's
-answer wins. Neither is consent for a tool-permission prompt or a gated action (push, install,
+effect inside this brief's grant. Say so here and refuse an `ANSWER` with no question pending, or
+one for a hard floor, consent card, gated action, real tradeoff,
+locked decision or `answer: in this session only`. The operator's answer wins. Neither is consent for a tool-permission prompt or a gated action (push, install,
 deploy, destructive): that comes only in this session.
-Send `BLOCKED` when stuck. At each stage your workflow reports, send `DONE` whose first line says
+Send `BLOCKED` when stuck. At each stage your workflow or integration reports, send `DONE` whose first line says
 `checkpoint <stage>` or `stop <stage>`, with branch, sha, and verify result. Send nothing else.
 ````
 
@@ -106,7 +111,8 @@ latest landed state; it replaces this section. Run the crew skill's *START steps
 
 ## START
 
-Sent to a queued worker's sessionId when its turn comes. Write it then, from the landed state.
+Sent to a queued worker's sessionId when its turn comes, written then from the landed state and the
+unit's ledger row.
 
 | Placeholder | Source |
 |---|---|
@@ -114,7 +120,7 @@ Sent to a queued worker's sessionId when its turn comes. Write it then, from the
 | `{LANDED}` | one line per unit landed since queuing: id, sha, what it changed that this unit touches |
 | `{HANDOFFS}` | anything an earlier unit left for this one (a leftover, a decision), else `none` |
 | `{CARRIED}` | one "Carried from <unit>" line per finding an earlier unit carried, else `none` |
-| Job and Spec fields | same as the brief's, computed now |
+| Job and Spec fields | same as the brief's, computed now, the card's lines from the ledger row |
 
 ```markdown
 [crew] START · {TICKET} · base {SHA}
@@ -131,6 +137,9 @@ Handed on to you: {HANDOFFS}
 - Scope: {SCOPE}
 - Workflow: `{WORKFLOW}`. Read `{WORKFLOW_PATH}` in full and follow it. Mode: `{MODE}`.
 - Parameters: {PARAMETERS}
+- Integration: `{INTEGRATION_PATH}`. Read it in full; your workflow's handoff continues into its
+  stages. Parameters: {INTEGRATION_PARAMETERS}
+- Landing: `{LANDING}`
 - Surface you own: {SURFACE}
 - Do not touch: {FORBIDDEN}
 

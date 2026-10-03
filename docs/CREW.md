@@ -12,10 +12,9 @@ that unit's brief.
 
 | Name | File | Default |
 |------|------|---------|
-| pr | `docs/crew/workflows/pr.md` | ✓ |
-| standard | built-in | |
+| standard | built-in | ✓ |
 
-`pr` is `standard` plus this repo's PR part; `standard` stops committed and verified, never pushed.
+How the work lands is the integration's (below), not the workflow's.
 
 ## Ticket source
 
@@ -26,12 +25,13 @@ orchestrator's memory, so the brief carries every decision the unit needs.
 ## Base
 
 **Chosen per unit, never fixed here.** The orchestrator picks the commit the unit must start
-from and writes it into the brief as **a ref plus a sha**. The worker's first setup step
+from and writes it into the brief as **a branch plus a sha**. The worker's first setup step
 re-points it there, guarded (crew skill › *Worker* step 2), and confirms `git rev-parse HEAD`.
 
 ## Verify
 
-Run in the worker's worktree after DONE, on a clean tree after `git fetch origin main`:
+Run in the worker's worktree after DONE, on a clean tree after `git fetch origin <base>`, the
+unit's Base:
 
 - `./scripts/verify.sh`: every CI check, in CI's order.
 
@@ -48,15 +48,16 @@ its PR).
 ## Integration
 
 - mode: pr
-- merge rule: `docs/pr-round-workflow.md` › Stopping › Merging
-- **Pull request** (the `pr` workflow). The brief grants a push to the worker's OWN branch, opening
-  its own PR, and binding that PR in the app with its review monitor on (the workflow's `open`),
-  nothing else. The worker merges only on the orchestrator's go, given under the operator's standing
-  merge rule (`docs/pr-round-workflow.md` › Stopping › Merging), unless the card says
-  `landing: operator`; otherwise the operator merges. That go is the written rule being applied, not consent relayed from
+- file: `docs/crew/integrations/pr.md`
+- **Pull request** (this repo's integration, which holds the merge rule in § Stopping › Merging).
+  The brief grants a push to the worker's OWN branch, opening its own PR, and binding that PR in the
+  app with its review monitor on (the integration's `open`), nothing else. The worker merges only on
+  the orchestrator's go, given under the operator's standing merge rule, unless the card says
+  `landing: operator`; then the operator merges, by hand or in the worker's session, never by a
+  relayed go. The orchestrator's go is the written rule being applied, not consent relayed from
   another session, so the worker acts on it.
-- **`standard`** units push nothing; the operator lands them.
-- **A `pr` worker's PR review monitor** goes in the ledger's Monitors at its `checkpoint open`
+- **A card's `integration: none`** gives a unit that pushes nothing; the operator lands it.
+- **A worker's PR review monitor** goes in the ledger's Monitors at its `checkpoint open`
   (stop: the worker turns `auto_fix` off after merging); drop the line at cleanup.
 - **One PR in flight here at a time.** The CodeRabbit review pool is account-wide (about 5
   reviews an hour, shared with `acatl/hg` and `acatl/kino`), so a worker opens its PR only
@@ -65,7 +66,9 @@ its PR).
 ## Post-land
 
 After every merge to `main`, in the main checkout: confirm the tree is clean, then
-`git pull --ff-only`, then `npm ci`. **The main checkout is the live skill**:
+`git pull --ff-only`, then `npm ci`. After a merge to another base, `git fetch origin <base>:<base>`
+there instead: it moves the local `<base>` the next unit's START sha is read from, and leaves the
+live skill alone. **The main checkout is the live skill**:
 `~/.claude/skills/crew` links to its `skills/crew/`, so the pull is what makes a merge reach
 every new session. The orchestrator runs it. Pulling and installing from the committed
 lockfile write only inside the repo.

@@ -5,13 +5,12 @@ Session metadata survives that, so **identity** is always recoverable (`list_ses
 `get_session` › `parentSessionId`). **Intent** is not: scope, stop points, what was promised, what is
 owed, what has already been verified. The ledger holds only what no tool can reconstruct.
 
-**Split of truth, the rule that keeps it from rotting:** the app is authoritative for state (running,
+**Split of truth:** the app is authoritative for state (running,
 branch, PR, archived), the ledger is authoritative for intent. They join on `session`. Never copy into
 the ledger what `list_sessions` can answer — it goes stale and then lies.
 
 **Generic by construction:** the skill's rules read only the *spine* below. Everything else in a row is
-free-form text the orchestrator writes as a situation demands, and the skill carries it without
-interpreting it. Nothing here names a tool, a stage, or a count: those are the workflow's, the
+free-form text the orchestrator writes as a situation demands. Nothing here names a tool, a stage, or a count: those are the workflow's, the
 project's (`CREW.md`), or a row's own fields.
 
 ## Where
@@ -29,7 +28,7 @@ crewdir() {
 }
 ```
 
-It fails loudly rather than returning a partial path; a silent fallback would scatter ledgers.
+It fails loudly: a partial path would scatter ledgers.
 
 ```text
 ~/.claude/crew/<slug>/
@@ -42,8 +41,8 @@ It fails loudly rather than returning a partial path; a silent fallback would sc
   watchdog.log         its stderr: which worker is unwatched, or that the roster vanished
 ```
 
-Outside the repo on purpose: this is machine-local session state, so it needs no `.gitignore`
-change in every project and survives a worktree being archived.
+Outside the repo on purpose: machine-local state needs no `.gitignore` change and survives a
+worktree's archiving.
 
 ## Shape
 
@@ -55,11 +54,12 @@ updated: <iso> · orchestrator: <sessionId>
 
 ### r3 · #9 · running
 - session: local_271f8174-… · brief: briefs/r3.md
-- workflow: pr · stage: round 3
+- workflow: standard · integration: pr · mode: yolo · scope: whole · landing: operator · cleanup: keep
+- do not touch: none · decisions: none · stage: round 3
 - owed: operator's merge go · review budget unspent
 - surface: hg/src/cli.ts, docs/CREW.md
 - verified: a762e48 green (2026-09-24) — tsc, 1274 tests, links, shellcheck
-- counters: rounds 5 of 5 → at limit, operator decides · reviewer passes 2 of 2
+- counters: rounds 5 of 5 → at limit
 - standing: bot posts on this PR come to me, not to the worker (operator, 09-24)
 - worker ledger: <its git-dir>/crew-ledger.md
 
@@ -75,9 +75,11 @@ updated: <iso> · orchestrator: <sessionId>
 - #24 · landed 07ce872 · archived
 ```
 
-**Spine** (the only fields any rule reads): row id, unit, status, `session`, `brief`, `workflow`,
-`stage`, `owed`. Row ids are stable and never reused; the unit may change (a unit gets folded or renumbered),
-which is why rows join on `session`, never on a unit or a title.
+**Spine** (the only fields any rule reads): row id, unit, status, `session`, `brief`, `stage`, `owed`,
+and the card's lines (`workflow` and its overrides, `integration`, mode, scope, cleanup, landing,
+`Do not touch`, any decision only in memory, not the spec): a queued unit's START reads them. Row ids
+are stable and never reused; the unit may change, so rows join on `session`, never on
+a unit or title.
 
 **Status** is one of: `chip` (spawned, not yet clicked — `session` holds the `task_id` instead),
 `queued`, `running`, `waiting-on-operator`, `blocked`, `cleared`, `done`, `verified`, `landed`.
@@ -92,18 +94,18 @@ collapses to the decision (`landing → delegated (operator, 09-24)`).
 
 ## Written at every transition
 
-After the card's `go` (the row and its brief) · on `ONLINE` (session id, worktree) · on `NEED-INPUT`
+After the card's `go` (the row and its brief) · on a card override after it · on `ONLINE` (session id, worktree) · on `NEED-INPUT`
 (the question verbatim, into `owed`) · on the operator's answer (collapse to the decision) · on the
 verify verdict (sha + result) · on landing · on cleanup · when a monitor starts or stops · when the
 operator attaches a standing rule to a worker · when a worker reports it cleared its context.
 
-Each write rewrites the file, so eviction happens as part of writing and there is no cleanup chore to
-forget.
+Each write rewrites the file, evicting as it goes.
 
 ## Eviction
 
-A row leaves `Live` when its workflow's stop stage is reached **and `owed` is empty**. Not when the worker is
-archived: a worker can be archived, or cleared and idle for hours, while its work is still owed.
+A row leaves `Live` when its stop stage (its integration's, if any) is reached **and `owed` is
+empty**. Not when the worker is archived: a worker can be archived, or cleared and idle for hours,
+while its work is still owed.
 
 On eviction: append the row to `archive-YYYY-MM.md`, **copying anything the orchestrator may still
 need** rather than referencing it — a worker's own ledger lives under `.git/worktrees/<name>/`, which
@@ -123,17 +125,21 @@ conversation, read `ledger.md` and reconcile it against `list_sessions` / `get_s
   orphan; an evicted row is not a lost worker.
 - Anything else reads targeted: grep the unit, don't re-read the file.
 
-`Live` comes first in the file so a partial read still gets what matters.
+`Live` comes first, so a partial read gets what matters.
 
 ## The cleared-worker invariant
 
 A worker that cleared its own context has no brief and will hedge or invent if anything wakes it — a
-message, a monitor, a notification. This has happened repeatedly in practice.
+message, a monitor, a notification. Seen repeatedly.
 
 - A worker that reports it cleared gets status `cleared` and `owed: resume not sent`.
 - **Nothing may wake it except its resume** (SKILL.md step 6), sent at once, even when the next step
   is only "wait".
 - The row is never evicted while that resume is owed.
+- A resume never carries consent for a gated action or a plan approval, not even as an operator call:
+  the worker's own ledger holds those, and a worker whose ledger lacks one re-asks in its own session.
+  Restated in a resume, it is consent laundered across sessions (an auto-mode classifier blocked one,
+  2026-10-02).
 
 Note that the orchestrator generally **cannot** clear a worker for it: a chip-started worker counts as
 started by the operator, so `clear_session` refuses it. The worker clears itself.

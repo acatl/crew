@@ -27,7 +27,7 @@ trap 'exit 143' TERM
 fresh() {
   rm -rf "$S"; mkdir -p "$S/test" "$S/docs"
   cp -R "$REPO/skills" "$REPO/scripts" "$REPO/baselines" "$S/"
-  cp -R "$REPO/docs/crew" "$REPO/docs/pr-round-workflow.md" "$S/docs/"
+  cp -R "$REPO/docs/crew" "$S/docs/"
   cp "$REPO/test/watchdog.test.sh" "$S/test/"
 }
 # edit <file> <sed expression>: in place through a temp file, since BSD and GNU sed -i disagree. An
@@ -56,7 +56,8 @@ CM=skills/crew/references/crew-md.md
 BT=skills/crew/references/brief-template.md
 LG=skills/crew/references/ledger.md
 WS=skills/crew/references/workflow-standard.md
-PR=docs/crew/workflows/pr.md
+IP=skills/crew/references/integration-pr.md
+PR=docs/crew/integrations/pr.md
 WD=skills/crew/scripts/watchdog.sh
 OV=skills/crew/scripts/overlap.sh
 
@@ -185,23 +186,132 @@ red "15z the fallback drops the gated-action half" check-invariants "the section
 
 # a merge go names its delegation: a sentence that tells the worker to merge names `landing:`
 fresh; edit "$PR" 's#with no `landing: operator` on#with no `landing: delegated` on#'
-red "15da a workflow gates the merge on the card's delegation alone" check-invariants "$PR: tells the worker to merge without naming"
-fresh; edit docs/pr-round-workflow.md 's#unless the card says `landing: operator`, tells#tells#'
-red "15db so does the round procedure" check-invariants "docs/pr-round-workflow.md: tells the worker to merge"
+red "15da a project integration gates the merge on the card's delegation alone" check-invariants "$PR: tells the worker to merge without naming"
+fresh; edit "$IP" 's#Met, with no `landing: operator` on the card and its#Met, with its#'
+red "15db so does the built-in integration" check-invariants "$IP: tells the worker to merge"
 fresh; edit "$PR" 's#it tells the worker to merge by#it tells the worker to go by#'
-edit docs/pr-round-workflow.md 's#, tells the worker to merge\.#, tells the worker to go.#'
+edit "$PR" 's#, tells the worker to merge\.#, tells the worker to go.#'
+edit "$IP" 's#^  tells the worker to merge by#  tells the worker to go by#'
 red "15dc no merge sentence at all fails, never passes" check-invariants "a sentence that tells the worker to merge not found"
-fresh; rm "$S/docs/pr-round-workflow.md"
-red "15dd a missing round procedure is reported, not skipped" check-invariants "docs/pr-round-workflow.md: the file not found"
+fresh; rm "$S/$IP"
+red "15dd a missing built-in integration is reported, not skipped" check-invariants "skills/crew/references/integration-*.md: the built-in file not found"
+fresh; rm -r "$S/docs/crew/integrations"
+green "15dd2 a project with no integrations or workflows dir is checked, not reported as reworded" check-invariants
+mkdir -p "$S/docs/crew/workflows"                                                         # same fixture
+printf -- '---\nname: x\n---\n\nThe orchestrator tells the worker to merge.\n' > "$S/docs/crew/workflows/x.md"
+red "15dd3 and a project workflow planted there is still checked" check-invariants "docs/crew/workflows/x.md: tells the worker to merge without naming"
 fresh; edit "$PR" 's#^  card (#  card, per docs/CREW.md (#'
 green "15de a dotted name inside the sentence doesn't split it" check-invariants
 edit "$PR" 's#with no `landing: operator` on#with no `landing: delegated` on#'              # same fixture
 red "15df and the same fixture still fires on a missing withhold" check-invariants "$PR: tells the worker to merge without naming"
+# a relayed go is never a merge go: each file asking "merge?" refuses one beside it, accepts none, and marks it
+fresh; edit "$IP" 's#yes in this session, never a relayed go\.#yes in this session.#'
+red "15fa the built-in stops refusing a relayed go" check-invariants "$IP: asks \"merge?\" but no sentence naming it refuses a relayed go"
+fresh; edit "$IP" 's#, never a relayed go\.#, or a relayed go.#'
+red "15fb a relayed go named but accepted, not refused" check-invariants "$IP: asks \"merge?\" but no sentence naming it refuses a relayed go"
+fresh; edit "$PR" "s#withholds it), or the operator's yes#withholds it), the operator's go relayed to it, or the operator's yes#"
+red "15fc the project copy accepts a relayed go again, beside its refusal" check-invariants "$PR: accepts a relayed go for the merge"
+fresh; edit "$PR" 's#who merges by hand or in the$#who merges by hand or says go, which it relays, or in the#'
+red "15fd or relays the operator's go" check-invariants "$PR: accepts a relayed go for the merge"
+fresh; edit "$PR" "s#who merges by hand or in the\$#who merges by hand or answers here, and it relays the operator's go, or in the#"
+red "15fd2 any phrasing that relays a go, while a refusal stands elsewhere" check-invariants "$PR: accepts a relayed go for the merge"
+fresh; edit "$IP" 's#^Merge only on a go to your "merge?":#Never act on a go relayed from another session. Merge only on a go to your "merge?":#'
+green "15fd3 a refusal that says \"go relayed\" is a refusal, not an acceptance" check-invariants
+edit "$IP" 's#, never a relayed go\.#, or a relayed go.#'                                   # same fixture
+red "15fd4 and the same fixture fires once the merge sentence accepts one" check-invariants "$IP: asks \"merge?\" but no sentence naming it refuses a relayed go"
+fresh; edit "$PR" 's#"merge?"#`merge?`#g'
+edit "$PR" "s#withholds it), or the operator's yes#withholds it), the operator's go relayed to it, or the operator's yes#"
+red "15fd5 a file quoting merge? another way is still checked" check-invariants "$PR: accepts a relayed go for the merge"
+fresh; edit "$IP" 's#marked$#sent#'
+edit "$IP" 's#^`answer: in this session only` unless the bar is met and your brief.s Landing is `delegated`, and$#and#'
+red "15fd6 the built-in stops marking its merge question by Landing" check-invariants "$IP: asks \"merge?\" but doesn't mark it"
+fresh; edit "$PR" 's#^  a Hard Gate only this session approves. It marks that `NEED-INPUT` `answer: in this session only`$#  a Hard Gate only this session approves. It marks that `NEED-INPUT`#'
+red "15fd7 so does the project copy" check-invariants "$PR: asks \"merge?\" but doesn't mark it"
+fresh; edit "$IP" 's#unless the bar is met and your brief.s Landing is `delegated`, and$#when your brief'"'"'s Landing is `delegated`, and#'
+red "15fd8 a marking with its condition reversed loses its \"unless\"" check-invariants "$IP: asks \"merge?\" but doesn't mark it"
+fresh; edit "$PR" "s#who merges by hand or in the\$#who merges by hand or in the worker's session, relays the operator's go and no other, or in the#"
+red "15fd9 a refusal word after the go doesn't refuse it" check-invariants "$PR: accepts a relayed go for the merge"
+fresh; edit "$PR" "s#who merges by hand or in the\$#who merges by hand or answers here, and it is relaying the operator's go, or in the#"
+red "15fd10 nor does \"relaying\" escape" check-invariants "$PR: accepts a relayed go for the merge"
+fresh; edit "$IP" 's#merge?#land?#g'
+edit "$PR" 's#merge?#land?#g'
+red "15fe no file asks \"merge?\": reported, not passed" check-invariants "a \"merge?\" question not found"
+# Landing reaches the worker through the brief: both Job lists carry it, and its row resolves it
+fresh; edit "$BT" '/^- Landing: `{LANDING}`$/d'
+red "15fe2 the brief and START drop the Landing line" check-invariants "$BT: the ready brief's Job list has no '- Landing: \`{LANDING}\`' line"
+fresh; edit "$BT" '/^| `{LANDING}` |/d'
+red "15fe3 the {LANDING} row goes" check-invariants "$BT: no placeholder row resolving {LANDING}"
+fresh; edit "$BT" 's#^| `{LANDING}` | card › Landing: #| `{LANDING}` | #'
+red "15fe4 a {LANDING} row that drops its source, the card" check-invariants "$BT: no placeholder row resolving {LANDING}"
+# the integration's stop is the worker's stop: Authority and Eviction say so
+fresh; edit "$SK" 's#up to its stop stage (its integration.s, if any), and#up to the workflow'"'"'s stop stage, and#'
+red "15ff the contract's Authority stops at the workflow's stop" check-invariants "the section headed '^#+ Authority"
+fresh; edit "$LG" 's#when its stop stage (its integration.s, if any) is reached#when its workflow'"'"'s stop stage is reached#'
+red "15fg the ledger evicts at the workflow's stop" check-invariants "the section headed '^#+ Eviction"
+fresh; edit "$LG" 's#^\#\# Eviction$#\#\# Evicting rows#'
+red "15fh a renamed Eviction heading is reported, not passed" check-invariants "a section headed '^#+ Eviction"
+# a queued unit's card lives in its ledger row: step 5's write, the spine, and START from the row
+fresh; edit "$SK" 's#its overrides, `integration`, mode,#its overrides, mode,#'
+red "15fi step 5's row write drops the card's integration" check-invariants "the section headed '^#+ 5[.] Spawn"
+fresh; edit "$LG" 's#its overrides, `integration`, mode,#its overrides, mode,#'
+red "15fi2 the spine drops the card's integration" check-invariants "the section headed '^#+ Shape"
+fresh; edit "$SK" 's#landed state and its row.s$#landed state and the#'
+red "15fi3 START written without the row's card lines" check-invariants "the section headed '^#+ 8[.] Sequences"
+fresh; edit "$BT" 's#computed now, the card.s lines from the ledger row |#computed now |#'
+red "15fi4 the START template computes the card's lines afresh" check-invariants "the section headed '^#+ START"
+fresh; edit "$SK" 's#landed state and the unit.s ledger row\. It replaces#current landed state. It replaces#'
+red "15fi5 the contract's START row computes the card afresh" check-invariants "the section headed '^#+ Messages"
+fresh; edit "$SK" 's#^   START) with the new base sha#   ) with the new base sha#'
+green "15fi6 a link cleanup in step 8's START line stays green" check-invariants
+fresh; edit "$SK" 's#\*\*Spawn every unit now\*\*, each by step 5 (end your turn after the last):#**Spawn every unit now**:#'
+red "15fi7 step 8 spawns the queue without step 5's row write" check-invariants "the section headed '^#+ 8[.] Sequences"
+fresh; edit "$SK" 's#integration`, mode, scope,#integration`, scope,#'
+red "15fi8 step 5's row write drops the mode" check-invariants "the section headed '^#+ 5[.] Spawn"
+fresh; edit "$LG" 's#^`Do not touch`, any decision#any decision#'
+red "15fi9 the spine drops Do not touch" check-invariants "the section headed '^#+ Shape"
+fresh; edit "$SK" 's#Job section, written now from the landed state and its row.s#Job section, written from the landed state and the row'"'"'s#'
+green "15fi10 a same-meaning reword of step 8's START line stays green" check-invariants
 
+# a PR opens against the brief's base: every `gh pr create`/`new` reads `gh pr create --base <base>` (the
+# controls cover green; no case pins a line number, so a re-wrap alone never turns one red)
+fresh; edit "$IP" 's#`gh pr create --base <base>`#`gh pr create`#'
+red "15ei1 the built-in opens its PR against the default branch" check-invariants "'gh pr create', not"
+fresh; edit "$PR" 's#`gh pr create --base <base>`#`gh pr create --fill`#'
+red "15ei2 so does a project integration, whatever else it passes" check-invariants "'gh pr create --fill', not"
+fresh; edit "$IP" 's#`gh pr create --base <base>`#`gh pr create --base main`#'
+red "15ei3 a literal branch in place of <base> is the same bug" check-invariants "'gh pr create --base main', not"
+fresh; edit "$PR" 's#`gh pr create --base <base>`#`gh pr new`#'
+red "15ei4 gh's alias gh pr new is checked too" check-invariants "'gh pr new', not"
+fresh; edit "$PR" 's#`gh pr create --base <base>`#`gh pr create --base <base> --draft`#'
+green "15ei5 flags after the base pass" check-invariants
+edit "$PR" 's#`gh pr create --base <base> --draft`#`gh pr create --draft --base <base>`#'  # same fixture
+red "15ei6 but a base after another flag is not the canonical form" check-invariants "'gh pr create --draft --base', not"
+fresh; printf '\n```bash\ngh pr create --base <base> --fill\ngh pr checks 5 --watch\n```\n' >> "$S/$PR"
+green "15ei7 other gh pr commands beside a good call are not calls to judge" check-invariants
+printf '```bash\n(gh pr create --fill)\n```\n' >> "$S/$PR"                                  # same fixture
+red "15ei7b but each call in a fence is judged alone, wherever it starts" check-invariants "'gh pr create --fill)', not"
+fresh; printf '\n- Then\n  `gh pr\n  create --fill`.\n' >> "$S/$PR"
+red "15ei8 a call wrapped across lines is still seen" check-invariants "'gh pr create --fill', not"
+fresh; edit "$IP" 's#`gh pr create --base <base>`#the PR#'
+red "15ei9 the built-in without the call fails, though the project copy still names one" check-invariants "$IP: the call 'gh pr create --base <base>' not found"
+# a merge is confirmed before `stop merge`: each sentence naming `gh pr merge` waits for `gh pr view` to read
+# `MERGED`, naming the merge queue (the controls cover green)
+fresh; edit "$IP" 's#^a merge queue or auto-merge only queues it#a queue or auto-merge only queues it#'
+red "15ej1 the built-in reports its merge without the queue's wait" check-invariants "$IP: names \`gh pr merge\` without waiting"
+fresh; edit "$PR" 's#`MERGED`#merged#g'
+red "15ej2 so does a project integration" check-invariants "$PR: names \`gh pr merge\` without waiting"
+fresh; edit "$IP" 's#reads `MERGED`:$#reads `MERGED`.#'
+red "15ej3 the queue and the wait in two sentences don't count" check-invariants "$IP: names \`gh pr merge\` without waiting"
+fresh; edit "$IP" 's#`gh pr merge <N>#`gh pr land <N>#'
+red "15ej4 the built-in without the call fails, though the project copy still names one" check-invariants "$IP: the call 'gh pr merge' not found"
+fresh; edit "$PR" 's#`gh pr view <N> --json state,mergeCommit` reads `MERGED` (a merge queue only queues it, as § merge#`gh pr view <N> --json state,mergeCommit` reads merged (a merge queue only queues it, as § merge#'
+red "15ej5 one call site without its wait fails, though another sentence in the file still waits" check-invariants "$PR: names \`gh pr merge\` without waiting"
+fresh; edit "$SK" 's#(Integration mode `pr`, once `gh pr view` reads `MERGED`)#(Integration mode `pr`)#'
+red "15ej6 the orchestrator lands a PR it hasn't read as MERGED" check-invariants "$SK: no sentence runs Post-land only once"
 # the queue card shows each unit's workflow and landing
-fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Scope | Landing | Cleanup |#> | \# | Unit | Title | Workflow | Scope | Cleanup |#'
+fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Integration | Scope | Landing | Cleanup |#> | \# | Unit | Title | Workflow | Integration | Scope | Cleanup |#'
 red "15dg the queue card loses its per-unit Landing" check-invariants "the queue card has no per-unit Landing column"
-fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Scope | Landing | Cleanup |#> | \# | Unit | Title | Scope | Landing | Cleanup |#'
+fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Integration | Scope | Landing | Cleanup |#> | \# | Unit | Title | Integration | Scope | Landing | Cleanup |#'
 red "15dh or its Workflow" check-invariants "the queue card has no per-unit Workflow column"
 # a workflow's verify falls back as the orchestrator's does
 fresh; edit "$WS" 's#| `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else asked |#| `CREW.md` › Verify |#'
@@ -212,6 +322,10 @@ fresh; edit "$SK" 's#^  `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors
 red "15dk the orchestrator's chain changes and the workflows are named" check-invariants "$WS: the \`verify\` default falls back to"
 fresh; edit "$WS" '/^| `verify` |/d'
 red "15dl the built-in without a verify row is reported, not passed" check-invariants "the \`verify\` parameter row not found"
+fresh; edit "$IP" '/^| `verify` |/d'
+red "15dl2 and so is the built-in integration without one" check-invariants "$IP: the \`verify\` parameter row not found"
+fresh; edit "$IP" 's#| `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else asked |#| `CREW.md` › Verify |#'
+red "15dl3 the built-in integration's verify default drifts" check-invariants "$IP: the \`verify\` default falls back to"
 fresh; edit "$PR" '/^| `verify` |/d'
 green "15dm a project workflow may leave verify out" check-invariants
 edit "$WS" '/^| `verify` |/d'                                                            # same fixture
@@ -238,15 +352,53 @@ red "15dz the fallback stops naming the first state too" check-invariants "the f
 fresh; edit "$BT" 's#^| `{STATE}` | `ready`, `queued`, or `resume` when#| `{STATE}` | `ready` or `queued`, never#'
 red "15du a template that drops resume while SKILL.md still sends it" check-invariants "handles brief state 'resume', which"
 # a ready PR asks before it merges: `merge bar met` comes with a merge NEED-INPUT
-fresh; edit "$PR" 's#^  merge `NEED-INPUT` that#  merge question that#'
-red "15dv the workflow drops its merge NEED-INPUT" check-invariants "$PR: names \`merge bar met\` but no sentence"
-fresh; edit "$PR" 's#merge `NEED-INPUT`#merge question#g'
-edit "$PR" 's#`merge bar met`#the bar#g'
-green "15dw a workflow that never reaches merge bar met needs no merge NEED-INPUT" check-invariants
-edit docs/pr-round-workflow.md 's#so it sends `NEED-INPUT` marked#so it sends a question marked#'   # same fixture
-red "15dx and the same fixture fires once the round procedure drops it" check-invariants "docs/pr-round-workflow.md: names \`merge bar met\` but no sentence"
-edit docs/pr-round-workflow.md 's#`merge bar met`#the bar#g'
+fresh; edit "$IP" 's#^sends the merge `NEED-INPUT`#asks the merge question#'
+red "15dv the built-in integration drops its merge NEED-INPUT" check-invariants "$IP: names \`merge bar met\` but no sentence"
+fresh; edit "$PR" 's#so it sends `NEED-INPUT` and ends#so it sends a question and ends#'
+edit "$PR" 's#^  `NEED-INPUT` that § Who runs#  question that § Who runs#'
+red "15dv2 so does a project integration" check-invariants "$PR: names \`merge bar met\` but no sentence"
+edit "$PR" 's#`merge bar met`#the bar#g'                                                    # same fixture
+green "15dw a file that never reaches merge bar met needs no merge NEED-INPUT" check-invariants
+edit "$IP" 's#^sends the merge `NEED-INPUT`#asks the merge question#'                         # same fixture
+red "15dx and the same fixture fires once the built-in drops it" check-invariants "$IP: names \`merge bar met\` but no sentence"
+edit "$IP" 's#`merge bar met`#the bar#g'
 red "15dy no file names merge bar met: reported, not passed" check-invariants "\`merge bar met\` not found"
+# an ANSWER with no question pending is refused: the Worker section and the brief's fallback say so
+fresh; edit "$SK" 's#refuse an `ANSWER` with no question pending or outside#refuse an `ANSWER` outside#'
+red "15ea the worker stops refusing an ANSWER with nothing pending" check-invariants "'^#+ Worker[[:space:]]*\$' no longer says, in one sentence, that an ANSWER with no question pending is refused"
+fresh; edit "$BT" 's#Say so here and refuse an `ANSWER` with no question pending, or$#Say so here and act on an `ANSWER` with no question pending, or#'
+red "15eb the fallback acts on one instead" check-invariants "skill is unavailable' no longer says, in one sentence, that an ANSWER with no question pending is refused"
+# a resume never carries consent: the Orchestrator section and the ledger's cleared-worker invariant say so
+fresh; edit "$SK" 's#throttle, an operator call), and any message still pending\. A resume never carries consent for a#throttle, an operator call), and any message still pending. A resume carries consent for a#'
+red "15ef the orchestrator's resume stops refusing consent" check-invariants "'^#+ Orchestrator[[:space:]]*\$' no longer says, in one sentence, that a resume never carries consent"
+fresh; edit "$LG" 's#^- A resume never carries consent for a gated action or a plan approval, not even as#- A resume carries consent for a gated action or a plan approval, even as#'
+red "15eg so does the ledger's cleared-worker invariant" check-invariants "'^#+ The cleared-worker invariant' no longer says"
+fresh; edit "$LG" 's#^\#\# The cleared-worker invariant$#\#\# Cleared workers#'
+red "15eh its heading renamed is reported, not passed" check-invariants "a section headed '^#+ The cleared-worker invariant' not found"
+
+# the integration reaches a worker through its brief: every Job block names {INTEGRATION_PATH}
+fresh; edit "$BT" '/^## START/,$ s#^- Integration: `{INTEGRATION_PATH}`\.#- Integration: none.#'
+red "15ec START drops the integration line its brief carries" check-invariants "START's Job list differs from the ready brief's"
+fresh; edit "$BT" 's#^- Integration: `{INTEGRATION_PATH}`\.#- Integration: none.#'
+red "15ed both Job lists drop it" check-invariants "the ready brief's Job list has no '- Integration: \`{INTEGRATION_PATH}\`.' line"
+fresh; edit "$BT" '/^## START/,$ s#^- Integration: `{INTEGRATION_PATH}`\.#- Integration: none.#'
+edit "$BT" '/^- Integration: `{INTEGRATION_PATH}`/p'                                     # same fixture
+red "15ec2 one list's doubled line doesn't cover the other's missing one" check-invariants "START's Job list differs from the ready brief's"
+fresh; edit "$BT" '/^## START/,$ s#^- Do not touch: {FORBIDDEN}$#- Surface note: none#'
+red "15ec3 START drops another Job line, Do not touch" check-invariants "START's Job list differs from the ready brief's"
+fresh; edit "$BT" '/^## START/,$ { /^- Workflow: `{WORKFLOW}`/d; }'
+red "15ec4 or its Workflow line" check-invariants "START's Job list differs from the ready brief's"
+fresh; edit "$BT" '/^## START/,$ s|^## Job$|### Job|'
+red "15ec5 START's Job heading renamed is reported, not passed on the brief's strength" check-invariants "START's \`## Job\` section not found"
+fresh; edit "$BT" '1,/^### Queued block/ s|^## Job$|## The job|'
+red "15ec6 the ready brief's Job heading renamed is reported" check-invariants "the ready brief's \`## Job\` section not found"
+fresh; edit "$BT" '/^## START/,$ s#^- Workflow: `{WORKFLOW}`\. Read `{WORKFLOW_PATH}` in full and follow it\. Mode: `{MODE}`\.$#- Workflow: `{WORKFLOW}`. Read `{WORKFLOW_PATH}`\
+  in full and follow it. Mode: `{MODE}`.#'
+green "15ec7 a wrapped Job line still matches its copy" check-invariants
+edit "$BT" '/^## START/,$ s#^- Integration: `{INTEGRATION_PATH}`\.#- Integration: none.#'      # same fixture
+red "15ec8 and the same fixture fires on a dropped Integration line" check-invariants "START's Job list differs from the ready brief's"
+fresh; edit "$BT" 's#its file, absolute: `CREW.md` › Integration.s `file:`#its file, absolute: `CREW.md` › Workflows row#'
+red "15ee the row sourcing {INTEGRATION_PATH} from anything but Integration" check-invariants "no placeholder row sourcing {INTEGRATION_PATH}"
 
 # --- check-section-refs ------------------------------------------------------------------------------------
 fresh; printf '\nSee `CREW.md` › Nosuch for it.\n' >> "$S/$SK"
@@ -258,7 +410,7 @@ red "18 a references/ file that doesn't exist" check-section-refs "references/mi
 fresh; printf '\nRun `<skill-dir>/scripts/gone.sh`.\n' >> "$S/$SK"
 red "19 a skill script that doesn't exist" check-section-refs "<skill-dir>/scripts/gone.sh"
 
-fresh; for f in "$SK" "$BT" "$LG" "$WS"; do edit "$f" 's#CREW\.md` ›#CREW.md` -#g'; done
+fresh; for f in "$SK" "$BT" "$LG" "$WS" "$IP"; do edit "$f" 's#CREW\.md` ›#CREW.md` -#g'; done
 red "19b no CREW.md references at all fails, never passes" check-section-refs "found no 'CREW.md › Section' references"
 fresh; grep -rl 'references/' "$S/skills/crew" | while IFS= read -r f; do edit "${f#"$S"/}" 's#references/#refs/#g'; done
 red "19c no references/ mentions at all fails, never passes" check-section-refs "found no references/<name>.md mentions"
@@ -325,10 +477,22 @@ fresh; edit "$WS" 's#^\#\# Parameters$#\#\# Settings#'
 red "38 a section missing" check-structure "needs ## Parameters, ## Stages, ## Rules"
 fresh; edit "$WS" 's#^name: standard$#name: std#'
 red "39 a name that isn't the file's" check-structure 'frontmatter name is "std"'
-fresh; edit "$PR" '/^- \*\*Orchestrator:\*\* runs Post-land/d'
+fresh; edit "$PR" '/^- \*\*Orchestrator:\*\* reads `MERGED` itself, runs Post-land/,+1d'
 red "40 a project workflow is checked too" check-structure "$PR:"
 fresh; rm "$S/$WS"
 red "41 no built-in workflow fails, never passes" check-structure "no workflow-*.md"
+fresh; rm "$S/$IP"
+red "41a no built-in integration fails, never passes" check-structure "no integration-*.md"
+fresh; edit "$IP" 's#^- \*\*Report:\*\* `checkpoint open`#- **Report:** `stop open`#'
+red "41b a built-in integration with two stops" check-structure "$IP:"
+if grep -qF "2 stages report stop" "$ROOT/out"; then ok "41c and the count is named"; else bad "41c stop count" "$(cat "$ROOT/out")"; fi
+fresh; edit "$IP" 's#^name: pr$#name: integration-pr#'
+red "41d an integration's name keeps no integration- prefix" check-structure 'frontmatter name is "integration-pr"'
+fresh; rm -r "$S/docs/crew/integrations"
+run check-structure
+if ! grep -qF "docs/crew" "$ROOT/out"; then ok "41e no project integrations dir names no file"; else bad "41e no project dir" "$(cat "$ROOT/out")"; fi
+mkdir -p "$S/docs/crew/integrations"; printf -- '---\nname: y\ndescription: d\n---\n\n## Parameters\n' > "$S/docs/crew/integrations/y.md"   # same fixture
+red "41f and a project integration planted there is checked" check-structure "docs/crew/integrations/y.md:"
 fresh; edit "$WS" 's#^\#\#\# review$#```text\
 \#\#\# not a stage\
 ```\

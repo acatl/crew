@@ -9,8 +9,13 @@ skill interviews you for on first use.
 **Workflows** set how a worker works: one Markdown file of parameters, stages (each with its end, its
 report and what the orchestrator does then) and rules. The skill ships `standard`: plan, build,
 isolated review, hand off committed and verified. A project lists its own in `docs/CREW.md`, usually
-a copy of `standard` with stages added, like this repo's `docs/crew/workflows/pr.md`. Pick one per
-spawn: `spin up a pr worker for WF2`.
+a copy of `standard` with stages added. Pick one per spawn: `spin up a <workflow> worker for WF2`.
+
+**Integrations** set how the work lands, in the same shape. The skill ships `pr`: open a GitHub pull
+request, run its review rounds, merge it on a go. `docs/CREW.md` › Integration names it (`mode: pr`,
+`file: built-in`), and `standard`'s handoff continues into it. To adapt it, copy it into the project,
+as this repo does in `docs/crew/integrations/pr.md` (CodeRabbit, its review pool, the round
+procedure).
 
 ## Usage
 
@@ -22,7 +27,7 @@ Say it to the session you want as the orchestrator:
   at a time in that order.
 - `crew status`: one row per worker, with any question waiting on you.
 
-The orchestrator answers with a card listing the title, workflow, scope, cleanup, landing and a
+The orchestrator answers with a card listing the title, workflow, integration, scope, cleanup, landing and a
 parallel-safety check. Reply `go` to accept it, or override a line. Each worker appears as a chip;
 click it to start the session.
 
@@ -33,8 +38,9 @@ Landing follows `docs/CREW.md` › Integration's mode:
 - **`operator`** (the default): you land every branch.
 - **`ff-only`**: on a card's `landing: delegated`, the orchestrator fast-forwards the verified branch
   into the base and runs Post-land.
-- **`pr`**: the worker opens a PR and merges it on the orchestrator's go, under the project's written
-  merge rule, unless the card says `landing: operator`.
+- **`pr`**: the worker opens a PR and merges it on the orchestrator's go, under the integration's
+  written merge rule, unless the card says `landing: operator`. A card's `integration: none` gives a
+  unit that pushes nothing; you land it.
 
 ## Requirements
 
@@ -48,7 +54,7 @@ Landing follows `docs/CREW.md` › Integration's mode:
 ```text
 skills/crew/                the skill: this directory is what gets installed
   SKILL.md                  the contract: messages, input invariant, authority, orchestrator + worker flows
-  references/               brief template, ledger format, docs/CREW.md interview, the built-in workflow
+  references/               brief template, ledger format, docs/CREW.md interview, the built-in workflow and integration
   scripts/
     watchdog.sh             background poller that wakes the orchestrator when a looping worker stalls
     overlap.sh              parallel-safety check: does a candidate surface collide with in-flight workers?

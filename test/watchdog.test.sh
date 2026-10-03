@@ -347,6 +347,37 @@ then ok "30f without a push in the reflog it counts from the pushed commit, and 
 subagents 0
 git -C "$WT" remote remove origin
 
+# The last alert is a number even when reported.txt is gone: BSD awk exits 2 on a missing file
+# without running END, and the empty string it printed broke `[ "$last" -gt 0 ]` and skipped the
+# older-key lookup (seen in hg, 2026-10-01, after reported.txt was deleted under a live watchdog).
+# GNU awk runs END anyway, so only a BSD run (macOS CI) can fail this case on the old code.
+reset; silence_t1; active; sleep 1; subagents 3          # at the floor: silent until it grows
+"$WD" --base main --no-commit 60 --interval 1 "$CREW" >"$ROOT/out" 2>"$ROOT/err" &
+p=$!; sleep 2; rm -f "$CREW/reported.txt"; subagents 4
+i=0; while kill -0 "$p" 2>/dev/null && [ $i -lt 8 ]; do sleep 1; i=$((i+1)); done
+if kill -0 "$p" 2>/dev/null; then
+  kill "$p" 2>/dev/null; wait "$p" 2>/dev/null
+  bad "30g reported.txt deleted mid-run" "still silent after growth past the floor"
+else
+  wait "$p" 2>/dev/null
+  if grep -q "4 sub-agents since last push (first alert" "$ROOT/out" && ! grep -q "integer expression" "$ROOT/err"
+  then ok "30g reported.txt deleted mid-run -> a first alert, no shell error"
+  else bad "30g reported.txt deleted mid-run" "$(cat "$ROOT/out" "$ROOT/err")"; fi
+fi
+# Another ticket's key at the same push is not this worker's last alert ...
+reset; silence_t1; active; sleep 1; subagents 4
+printf '#2 subs %s 4\n' "$(git -C "$WT" log -1 --format=%ct)" > "$CREW/reported.txt"
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "4 sub-agents since last push (first alert" "$ROOT/out" && ! grep -q "integer expression" "$ROOT/err"
+then ok "30h another ticket's key -> a first alert"; else bad "30h other ticket's key" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+# ... and its own key is (positive control for 30g and 30h: the lookup does find a match).
+printf '#1 subs %s 4\n' "$(git -C "$WT" log -1 --format=%ct)" > "$CREW/reported.txt"
+subagents 8
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "8 sub-agents since last push (was 4 at last alert" "$ROOT/out"
+then ok "30i its own key -> was 4 at last alert"; else bad "30i own key" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+subagents 0
+
 # --- several workers ----------------------------------------------------------------------------------
 reset; subagents 0; seed_commit 7200; commit_in "$WT2" 7200; : > "$PROJ2/sess.jsonl"; active
 printf '#1\t%s\n#2\t%s\n' "$WT" "$WT2" > "$CREW/roster.tsv"

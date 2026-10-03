@@ -27,8 +27,8 @@ metadata:
 
 One orchestrator session. One fresh worker session per unit of work (a ticket or a slice of one). The
 orchestrator writes the brief, the operator clicks the chip, the worker works its **workflow** and
-reports back. This file is the contract; a workflow file says how a worker works; `docs/CREW.md`
-holds the per-project answers.
+reports back. This file is the contract; a workflow file says how a worker works, an integration
+file how its work lands; `docs/CREW.md` holds the per-project answers.
 
 **Which role are you?**
 - Your first message starts with `<!-- crew:brief` → **worker**. Read *The contract*, then *Worker*.
@@ -56,15 +56,15 @@ Orchestrator → worker, same tool, to the worker's sessionId:
 | Kind | Sent when | Body carries |
 |---|---|---|
 | `RELAY` | the operator answered or instructed through the orchestrator | the operator's words, verbatim, nothing added |
-| `START` | a queued worker's turn has come | `base <sha>` in the first line, then the Job section its queued brief left out, written from the current landed state. It replaces the brief's Job section. Its authority is the operator's `go` on the queue card. |
+| `START` | a queued worker's turn has come | `base <sha>` in the first line, then the Job section its queued brief left out, written from the landed state and the unit's ledger row. It replaces the brief's Job section. Its authority is the operator's `go` on the queue card. |
 | `ANSWER` | a worker's pending question is clear-cut and the operator delegated such picks to the orchestrator | the orchestrator's own answer, labelled as its own. Only a routing or stage pick that follows from recorded decisions, or an answer whose effect is inside the brief's grant. Never a hard-floor answer, a consent card, a real tradeoff, or a locked-decision change: those stay the operator's. The worker records it with its source ("orchestrator, under the operator's standing delegation"), never as the operator's words. |
 
 Besides the brief and its resume (*Orchestrator* step 6), nothing else crosses. No progress narration, no "starting now", no worker-to-worker messages.
 
 ### The input invariant
 
-Every `NEED-INPUT` appears in **two places**: in the worker's own session (as the operator would see it
-if they were watching there) and in the orchestrator (the message). The orchestrator nudges the
+Every `NEED-INPUT` appears in **two places**: in the worker's own session and in the orchestrator (the
+message). The orchestrator nudges the
 operator, who answers in either place.
 
 - **Answered in the worker session** → the worker continues. It sends nothing extra; its next message
@@ -77,8 +77,7 @@ operator, who answers in either place.
   cross-session permission laundering. The worker marks these `answer: in this session only`; the
   orchestrator's nudge sends the operator to the worker session.
 
-A queued worker waiting for `START` is waiting on the orchestrator, not the operator. It sends no
-`NEED-INPUT` for that wait.
+A queued worker waiting for `START` waits on the orchestrator, not the operator: no `NEED-INPUT` for it.
 
 ### Authority
 
@@ -89,8 +88,8 @@ A queued worker waiting for `START` is waiting on the orchestrator, not the oper
   `pr`, its written merge rule for a PR-merging unit, unless the card says `landing: operator`.
   A plain `go` never delegates. Without delegation, the operator lands.
 - **The worker** follows its workflow as if the operator directed it, mode included — `yolo` means
-  yolo — up to the workflow's stop stage, and commits. Nothing past it. It never creates a worktree
-  (it already has one), never installs or links anything that outlives its worktree, never archives
+  yolo — up to its stop stage (its integration's, if any), and commits. Nothing past it. It never
+  creates a worktree, never installs or links anything that outlives its worktree, never archives
   itself, never messages another worker.
 - **The orchestrator** verifies by running, never by trusting a report. It executes only the landing and
   cleanup agreed on the card. It never merges other work to unblock a worker.
@@ -120,13 +119,13 @@ path; never assume where the skill is installed.
 ### 0. Resume from the ledger
 
 The roster lives in your conversation, which a compaction or a `/clear` destroys; the ledger
-survives. See [references/ledger.md](references/ledger.md) for its location, shape and rules.
+survives. See [references/ledger.md](references/ledger.md).
 
 If the roster isn't already in this conversation, read `ledger.md` and reconcile it against
 `list_sessions` / `get_session` before anything else. Report drift; never silently patch it. Then keep
 it written: every transition below names its write.
 
-### 1. Resolve config and workflow
+### 1. Resolve config, workflow and integration
 
 Read `docs/CREW.md` at the repo root. Missing → the first-use interview in
 [references/crew-md.md](references/crew-md.md). Still has `## Verbs` → its *Migration* first.
@@ -134,22 +133,24 @@ Workers never read `docs/CREW.md`; you resolve it into each brief.
 
 The workflow: the named one, else the ✓ row of `CREW.md` › Workflows, else `standard`. A name
 resolves to its Workflows row, else a built-in ([references/workflow-standard.md](references/workflow-standard.md)).
-Unknown → say so on the card; no spawn. Read the file: its Parameters fill the brief (ask on the
-card for a blank one); its stages say what each report means.
+Unknown → say so on the card; no spawn. The integration: `CREW.md` › Integration's `file:` under `mode: pr`
+(`built-in`: [references/integration-pr.md](references/integration-pr.md)), unless the card says
+`integration: none`; no `file:` → none (a workflow's own PR stages follow `merge rule:`). Read each file:
+its Parameters fill the brief (ask on the card for a blank one); its stages say what each report means.
 
 ### 2. Read the ticket and estimate its surface
 
 Read the ticket from the source `docs/CREW.md` names. Take its title. Estimate the **surface** — the
-paths the work will likely touch — from the ticket text plus a quick search of the codebase. Paths are
-repo-relative; a directory covers everything under it. An estimate is fine; say it's an estimate.
+paths the work will touch — from the ticket plus a quick search of the code. Paths are repo-relative;
+a directory covers everything under it. An estimate is fine; say so.
 
 When the brief carries the spec, what you write here *is* it. Write it for a session with no memory of
 this conversation, including any decision that lives only in your memory.
 
 ### 3. Parallel-safety check
 
-Run these against every in-flight worker in the roster (see *Roster*). Units of one sequence run one at
-a time, so check them against workers outside the sequence, not against each other.
+Run these against every in-flight worker in the roster, but a sequence's units only
+against workers outside it: they run one at a time.
 
 1. **Actual overlap** — what in-flight workers have already touched:
    ```bash
@@ -161,10 +162,9 @@ a time, so check them against workers outside the sequence, not against each oth
    This catches a worker that hasn't written anything yet.
 3. **Dependency** — does the ticket need work that isn't on `<base>` yet (the ticket says so, or the
    surface needs something that exists only on an in-flight branch)?
-4. **Base** — pick the commit this unit must start from, for this situation (the line it integrates
-   into, the default branch for a PR cut from it, a specific sha for an audit), and write it into the
-   brief as **a ref plus a sha**. Never assume the app cut the worktree from it (see *Gotchas*); the
-   worker re-points itself to that sha as its first setup step.
+4. **Base** — pick this unit's starting commit (the line it integrates into, the default branch for a
+   PR cut from it, a specific sha for an audit), and write it in the brief as **a branch plus a sha**.
+   Never assume the app cut the worktree from it (see *Gotchas*); the worker re-points to that sha first.
 
 Result: `✓ clear` · `⚠ overlap` (which worker, which paths) · `⚠ main checkout on <branch>, not <base>` ·
 `⛔ blocked on unmerged <X>`. On ⛔, don't show the card and don't spawn: say what the ticket waits on
@@ -180,18 +180,20 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 > |---|---|
 > | Title | `KINO-5 — Add export command` |
 > | Workflow | `standard` (plan → build → review → handoff) |
+> | Integration | none |
 > | Scope | Whole ticket |
 > | Cleanup | Archive when merged |
 > | Landing | Operator decides |
 > | Safety | ✓ clear — 2 workers in flight, no shared paths; main checkout on `main` |
 >
-> **→ You:** `go`, or override a line or a workflow parameter but `no-commit` (`workflow: pr`, `plan: skip`, `cleanup: keep`).
+> **→ You:** `go`, or override a line or a workflow parameter but `no-commit` (`integration: none`, `plan: skip`, `cleanup: keep`).
 
 - **Title** default: `CREW.md` › Defaults, else `{TICKET} — {ticket title}`. It becomes the chip label
   and the session title, so lead with the ticket id — the sidebar sorts, and the roster finds it.
 - **Scope**: whole ticket, or a slice described in one line.
 - **Cleanup** default by scope (`CREW.md` › Defaults, else whole ticket → `archive when merged`,
   slice → `keep`). Options: `archive when verified` · `archive when merged` · `keep`.
+- **Integration**: `pr (built-in)`, `pr (<path>)` or `none` (step 1); `none` → no PR, the operator lands.
 - **Landing** defaults to `operator decides`; under Integration mode `pr`, a PR-merging unit shows
   `delegated (merge rule)`, which `landing: operator` withholds. `ff-only`: add what
   `landing: delegated` would run (`git merge --ff-only`, then Post-land); only the operator writes it.
@@ -205,11 +207,11 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
    gets a value or `none`; no placeholder survives.
 3. `mcp__ccd_session__spawn_task` with `title` = the card's title, `tldr` = one plain sentence, `prompt`
    = the filled brief. Pass `cwd` only when the worker belongs to a different repo than yours.
-4. **Write the ledger row** (status `chip`, the `task_id` in place of a session id, workflow, stage,
-   surface, scope, cleanup, landing) and save the brief exactly as sent to `briefs/<row>.md`.
+4. **Write the ledger row** (status `chip`, the `task_id` in place of a session id, stage, surface,
+   and the card's lines: `workflow` and its overrides, `integration`, mode, scope, cleanup, landing,
+   `Do not touch`, any decision only in your memory, not the spec) and save the brief exactly as sent to
+   `briefs/<row>.md`.
 5. Tell the operator the chip is up and needs a click. End your turn.
-
-`spawn_task` returns a task id, not a session id. You learn the worker's session from its `ONLINE`.
 
 ### 6. Handle messages
 
@@ -244,8 +246,10 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   the saved brief with its marker line set to `state=resume` and any queued Job block swapped for its
   START (`briefs/<row>-start.md`) whole, then a `## Resume` section: where to pick up, the approved
   plan's path, the worker's ledger path, facts learned since the brief (an environment quirk, a
-  throttle, an operator call), and any message still pending. Once it's sent: drop `resume not sent`
-  from `owed`, status `running` unless `owed` still holds a question, roster start epoch reset.
+  throttle, an operator call), and any message still pending. A resume never carries consent for a
+  gated action or a plan approval, not even as an operator call: the worker's own ledger holds those,
+  and a worker whose ledger lacks one re-asks in its own session. Once it's sent: drop `resume not
+  sent` from `owed`, status `running` unless `owed` still holds a question, roster start epoch reset.
 - **Idle notice** → ignore it for a worker that's queued, landed or archived, or verified with nothing
   sent to it since (exits fire notices too). One busy now (`ListAgents`), yet to start on your last message, or for a turn that
   ended before you sent it (`list_events` times) is stale (*Gotchas*): see *Subscribing*. Check its
@@ -274,8 +278,8 @@ notice; none → tell the operator once what it waits on, and re-arm at its next
 
 **Monitors.** Record every watch you set (the *Watchdog* below, a CI poller, anything recurring) in the
 ledger's `Monitors` while it runs, and remove the line when it ends. A compacted orchestrator otherwise
-forgets it has one, or starts a second. Record what it takes to **stop** it — for a process, its pid.
-You can't kill what you can't name, and a watchdog refuses to start while a live one holds its pidfile.
+forgets it has one, or starts a second. Record how to **stop** it (a process: its pid): a watchdog
+refuses to start while a live one holds its pidfile.
 
 **Standing rules.** When the operator attaches an instruction to one worker mid-flight ("bot posts come
 to me, not to it"), write it to that row. It exists nowhere else.
@@ -290,12 +294,11 @@ Execute only what the card agreed, and name it as you do it.
 - `keep` → leave it running; follow-up work goes to it by `RELAY`.
 - **Roster and watchdog** → drop the worker's line from `roster.tsv`, and stop its wake, as it stops.
   When the last one goes, stop the watchdog by the pid in `watchdog.pid`, clear its `Monitors` line,
-  and delete `reported.txt` and `active.tsv`. Both serve only the sequence that just ended: nothing
-  truncates them, and a later worker reusing a ticket id would be deduped or clocked against them.
+  then delete `reported.txt` and `active.tsv`, never under a live watchdog. Both serve only the sequence
+  that just ended: nothing truncates them, and a later worker reusing a ticket id would be deduped or clocked against them.
 
-Archiving detaches the worktree (the branch is kept) and hands the directory to the app's reuse pool.
-It's reversible (`unarchive_session`), and the app may show its own approval card. Cleanup never
-deletes a branch and never runs `git worktree remove`; the pool is the app's to reap.
+Archiving detaches the worktree into the app's reuse pool, branch kept, reversibly (`unarchive_session`);
+the app may show its own approval card. Cleanup never deletes a branch or runs `git worktree remove`.
 
 ### 8. Sequences and landing
 
@@ -303,23 +306,24 @@ deletes a branch and never runs `git worktree remove`; the pool is the app's to 
 
 > **Queue 3 workers** · in order · mode `default`
 >
-> | # | Unit | Title | Workflow | Scope | Landing | Cleanup |
-> |---|---|---|---|---|---|---|
-> | 1 | SK2b | `SK2b — short verb skills` | `standard` | whole | operator decides | archive when merged |
-> | 2 | DR1 | `DR1 — restructure the driver` | `standard` | whole | operator decides | archive when merged |
-> | 3 | SK3 | `SK3 — versioned install layer` | `standard` | whole | operator decides | archive when merged |
+> | # | Unit | Title | Workflow | Integration | Scope | Landing | Cleanup |
+> |---|---|---|---|---|---|---|---|
+> | 1 | SK2b | `SK2b — short verb skills` | `standard` | none | whole | operator decides | archive when merged |
+> | 2 | DR1 | `DR1 — restructure the driver` | `standard` | none | whole | operator decides | archive when merged |
+> | 3 | SK3 | `SK3 — versioned install layer` | `standard` | none | whole | operator decides | archive when merged |
 >
 > `CREW.md` allows `delegated`: `git merge --ff-only`, then `cd hg && npm run build`
 > Safety: ✓ clear against 0 workers outside the sequence · main checkout on `graph-port` ✓
 >
 > **→ You:** `go`, or override (`2 title: …`, `landing: delegated`, `1 landing: operator`).
 
-Follow step 4 for each Landing. **Spawn every unit now**: unit 1 with a ready brief, the rest with the **queued variant** (no Job
-section). Don't write later units' specs yet: earlier units will move the base under them.
+Follow step 4 for each Landing. **Spawn every unit now**, each by step 5 (end your turn after the last):
+unit 1 with a ready brief, the rest with the **queued variant** (no Job section). Don't write later
+units' specs yet: earlier units will move the base under them.
 
 **When unit N's DONE verifies:**
 
-1. **Land.** A merged PR (Integration mode `pr`) → run Post-land, which pulls the merge into `<base>`; never
+1. **Land.** A merged PR (Integration mode `pr`, once `gh pr view` reads `MERGED`) → run Post-land, which pulls the merge into `<base>`; never
    ff-only. `ff-only`, delegated → in the main checkout, on a clean `<base>`, run
    `git merge --ff-only <worker-branch>`, then each `CREW.md` › Post-land command. If ff-only refuses
    (exit 128), the base moved under the worker: stop the sequence and tell the operator; never force,
@@ -327,9 +331,10 @@ section). Don't write later units' specs yet: earlier units will move the base u
    has landed it (`git branch --merged <base>` lists it).
 2. **Clean up** unit N per its card.
 3. **Start** unit N+1: send `START` ([references/brief-template.md](references/brief-template.md) ›
-   START) with the new base sha and its Job section, written now from the landed state. Include what
-   earlier units changed and handed on, and each finding unit N carried as a "Carried from N" line
-   (also a checklist line on N+1's ticket). Save it as `briefs/<row>-start.md`. Then set it
+   START) with the new base sha and its Job section, written now from the landed state and its row's
+   card lines, after re-running step 3 outside the sequence (a new overlap goes to the operator).
+   Include what earlier units changed and handed on, and each finding unit N carried as a "Carried from
+   N" line (also a checklist line on N+1's ticket). Save it as `briefs/<row>-start.md`. Then set it
    `running`, add its roster line, and subscribe to its idle notice.
 
 **Hold the base still.** While a sequence is in flight, nothing commits to `<base>` except landings.
@@ -345,14 +350,13 @@ also spawned non-crew chips, confirm with the `crew:brief` marker in the worker'
 
 ### Watchdog — a looping worker never goes idle
 
-Idle notices only fire when a worker stops. A worker stuck in a fix/review loop never stops, so no
-notice ever arrives. Origin (hg, 2026-09-22): a unit worker ran ~15 isolated-review rounds over hours,
+Idle notices fire only when a worker stops; one stuck in a fix/review loop never does. Origin (hg, 2026-09-22): a unit worker ran ~15 isolated-review rounds over hours,
 hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't look for the whole stretch.
 
-- **While any worker is `running`, a watchdog process runs.** Write `roster.tsv` **first** — a missing
-  crew dir or roster is an immediate exit 2 — then launch it with the Bash tool's `run_in_background`,
-  not a shell `&`: the harness re-invokes you when a backgrounded command exits, and that exit is the
-  entire mechanism.
+- **While any worker is `running`, a watchdog process runs.** Write `roster.tsv` **first** (a missing
+  crew dir or roster is an immediate exit 2), then launch it with the Bash tool's `run_in_background`,
+  not a shell `&`: the harness re-invokes you when a backgrounded command exits; that exit is the whole
+  mechanism.
   ```bash
   <skill-dir>/scripts/watchdog.sh --base <base> \
     [--interval <s>] [--no-commit <s>] [--subagent-step <n>] \
@@ -362,18 +366,17 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   **Confirm it is still alive before you record it** in the ledger's `Monitors` with its pid. A launch
   that fails exits at once — `2` bad usage, missing crew dir or roster, state not writable · `3` a live
   watchdog already holds the pidfile · `4` no usable `stat(1)` — and a `Monitors` line naming a pid
-  that died a second ago reads exactly like a healthy one.
-  It polls every roster worker without waking you, stays silent, and exits with one `WATCHDOG …` line
-  the moment a trigger shows — which wakes you with the finding already in hand. Handle it, then
-  **launch a fresh one**: it is one-shot by design. Don't use a recurring `CronCreate` here. It would
-  wake you every cadence to usually learn nothing, and every wake re-reads your whole context.
-- **It can go blind, and says so only on stderr** — which is why the launch line redirects. It warns
+  that died a second ago reads exactly like a healthy one. It polls every roster worker without waking
+  you and exits with one `WATCHDOG …` line the moment a trigger shows, which wakes you with the
+  finding in hand. Handle it, then **launch a fresh one**: it is one-shot by design.
+  Never a recurring `CronCreate` here: each wake re-reads your whole context, usually to learn nothing.
+- **It can go blind, and says so only on stderr**, which is why the launch line redirects. It warns
   there when a roster worker has no transcript directory, meaning that worker is unwatched, and when
   `roster.tsv` disappears. Read `watchdog.log` whenever a worker seems unmonitored.
 - **What neither trigger can see:** the no-commit trigger fires only while the worker is still writing
   transcripts — a fixed 15-minute window, not a tunable. A worker that has stopped writing altogether,
-  wedged or hung or dead, is invisible to both triggers however old its HEAD is. That case is yours to
-  catch on your own turns.
+  wedged or hung or dead, is invisible to both triggers however old its HEAD is: catch it on your own
+  turns.
 - **Its roster is `~/.claude/crew/<slug>/roster.tsv`** — `<ticket>` TAB `<worktree-path>` TAB
   `<start epoch>`, one line per `running` worker, and yours to maintain. Set the start to `date +%s`
   as the worker goes `running`; its no-commit clock never starts earlier. Write the ledger row and the
@@ -381,12 +384,10 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   you. Rewrite it write-to-temp-then-`mv`, never in place. It is re-read every pass, so an edit lands
   with no restart. The worktree path must be **byte-identical to the one the app reports** — the
   transcript directory is derived from it by substitution, so a trailing slash or a `/private/var` vs
-  `/var` spelling silently yields an unwatched worker. One `--base` covers the whole roster, and it is
-  used only as the baseline before a worker's first push; on a mixed-base roster, pass the base most
-  of them share.
+  `/var` spelling silently yields an unwatched worker. One `--base`, used only as the baseline before a
+  worker's first push, covers the whole roster; on a mixed-base roster, pass the most common one.
 - **Stop it by the pid** in `~/.claude/crew/<slug>/watchdog.pid` once the last worker stops, and clear
-  its `Monitors` line. **Never `pkill -f watchdog.sh`** — every project's watchdog is a `watchdog.sh`,
-  so a name-based kill takes out every project's watchdog at once.
+  its `Monitors` line. **Never `pkill -f watchdog.sh`**: a name-based kill takes out every project's watchdog.
 - **Also check on every orchestrator turn**, cheaply: `list_events` tail (limit ~40) and
   `git log -1 --format=%cr` plus `git status --porcelain | wc -l` in each running worker's
   `worktreePath`. Count review→fix iterations since its last report. The watchdog covers the stretches
@@ -427,7 +428,7 @@ A brief marked `state=resume` is a resume: you cleared earlier. Send no `ONLINE`
    (`git branch -m <name>`) and worktree setup; never create another worktree. Move a ledger already at
    `$(git rev-parse --git-dir)/crew-ledger.md` onto `mktemp <that dir>/crew-ledger.XXXXXX`: the app
    reuses worktree dirs, so it's an earlier worker's. Never read it.
-3. **Work your workflow.** Read the file your brief names, in full, and follow it with your parameters;
+3. **Work your workflow.** Read the files your brief names, in full, and follow them with your parameters;
    a resume names where to pick up. No workflow named in your
    brief → your brief's Job/Spec, Boundaries and Checkpoints are the workflow; follow them as written.
 4. **Waiting on the operator?** Send `NEED-INPUT` *before* ending the turn — every time, including
@@ -438,7 +439,7 @@ A brief marked `state=resume` is a resume: you cleared earlier. Send no `ONLINE`
    action. If they answer your pending question, continue. If you already got an answer here, say so
    in this session and don't act on the relay twice.
    **ANSWER arrives** → the orchestrator's own, never the operator's words: record it as "orchestrator,
-   under the operator's standing delegation", and act on it. Say so here and refuse an `ANSWER` outside
+   under the operator's standing delegation", and act on it. Say so here and refuse an `ANSWER` with no question pending or outside
    its *Messages* row, for a tool-permission prompt, a gated action or `answer: in this session only`.
    The operator's answer wins.
 6. **Stuck** → `BLOCKED`, end the turn. Don't work around it; don't ask the operator directly
@@ -459,7 +460,7 @@ first line.
 3. START's Job section and sha replace the brief's Job section and base sha. Continue at *Worker*
    step 2, which re-points you to that sha.
 
-Never: push, merge, or open a PR past the stop stage · touch the `Do not touch` paths · install or link
+Never: push, merge, or open a PR past your stop stage · touch the `Do not touch` paths · install or link
 anything that outlives this worktree (global installs, links from your home directory into it), since
 the worktree gets archived and the link would dangle · message another worker · archive yourself · send
 anything besides the four kinds.
@@ -499,8 +500,7 @@ anything besides the four kinds.
 - **Worker sessions don't share your memory.** A worktree session gets its own project folder under
   `~/.claude/projects/`, with no `memory/` in it (verified), so it most likely can't see memory the
   orchestrator saved (inferred). Put every decision a unit needs in its brief or START.
-- **Global installs from a worktree dangle.** Seen in hg: its skill installer, run from a worktree,
-  would link the operator's home at an archived directory. Run them in the main checkout (Post-land).
+- **Global installs from a worktree dangle** (seen in hg, its skill installer): run them in the main checkout.
 - **You can't clear a worker's context for it.** `clear_session` accepts "a session this session
   started", but a chip-started worker counts as started by the *operator's click*, so it's refused.
   The worker clears itself last, and you re-send its brief. *(Reported live 2026-09-23; not reproduced.)*

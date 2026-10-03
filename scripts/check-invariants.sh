@@ -17,6 +17,7 @@ WATCHDOG=$SKILL/scripts/watchdog.sh
 OVERLAP=$SKILL/scripts/overlap.sh
 BRIEF=$SKILL/references/brief-template.md
 LEDGER=$SKILL/references/ledger.md
+IPR=$SKILL/references/integration-pr.md
 WDTEST=test/watchdog.test.sh
 mds=()
 while IFS= read -r f; do mds+=("$f"); done < <(find "$SKILL" -name '*.md' -type f | LC_ALL=C sort)
@@ -263,24 +264,28 @@ section() {
     }
     w' "${@:3}" | tr '\n' ' ' | tr -s ' '
 }
-# sentence_with <text> <fixed string>... : 0 when one sentence holds every string and a refusal
+# sentence_with [--any] <text> <fixed string>... : 0 when one sentence holds every string and a refusal
+# (--any: no refusal needed)
 sentence_with() {
-  local sentences; sentences=$(tr '.' '\n' <<< "$1"); shift
+  local any=0 sentences; if [ "$1" = --any ]; then any=1; shift; fi
+  sentences=$(tr '.' '\n' <<< "$1"); shift
   while [ $# -gt 0 ]; do sentences=$(grep -F -- "$1" <<< "$sentences" || true); shift; done
-  grep -qE -- "$refusal" <<< "$sentences"
+  if [ "$any" = 1 ]; then [ -n "$sentences" ]; else grep -qE -- "$refusal" <<< "$sentences"; fi
 }
-# section_rule <what the rule says> <strings> -- <in-fence ok>|<heading ERE>...: every section states the
-# rule; one held invariant when all do. Presence, not meaning: a string check pins that the sentence is
-# there, and reviewers judge what it says.
+# section_rule [--any] <what the rule says> <strings> -- <in-fence ok>|<heading ERE>...: every section
+# states the rule; one held invariant when all do. Presence, not meaning: a string check pins that the
+# sentence is there, and reviewers judge what it says. --any passes on to sentence_with.
 section_rule() {
-  local says=$1 strings=() spec where text ok=1; shift
+  local any=() says strings=() spec where text ok=1
+  if [ "$1" = --any ]; then any=(--any); shift; fi
+  says=$1; shift
   while [ "$1" != -- ]; do strings+=("$1"); shift; done; shift
   for spec in "$@"; do
     where=${spec#*|}
     text=$(section "$where" "${spec%%|*}" "${mds[@]}")
     if [ -z "$text" ]; then
       reworded "$SKILL/*.md" "a section headed '$where'"; ok=0
-    elif ! sentence_with "$text" "${strings[@]}"; then
+    elif ! sentence_with ${any[@]+"${any[@]}"} "$text" "${strings[@]}"; then
       fail "$SKILL/*.md: the section headed '$where' no longer says, in one sentence, that $says"; ok=0
     fi
   done
@@ -298,6 +303,52 @@ section_rule "ANSWER never answers an $marker question" "$marker" ANSWER -- \
 section_rule "a relayed answer is never consent for a tool-permission prompt or a gated action" \
   consent tool-permission gate -- \
   '0|^#+ The contract' '0|^#+ Worker[[:space:]]*$' '1|^#+ If the `crew` skill is unavailable'
+
+# --- a resume never carries consent ------------------------------------------------------------------------
+# The orchestrator's resume for a cleared worker restates facts learned since the brief, an operator call
+# among them. Restating the operator's Hard Gate yes there is the same consent laundering (an auto-mode
+# classifier blocked one, 2026-10-02). The Orchestrator section and ledger.md's cleared-worker invariant each
+# say so in one sentence holding "resume", "never carries consent", "gated action" and "plan approval": the
+# refusal is pinned in the phrase, since the sentence's "not even" would satisfy a bare refusal match.
+section_rule "a resume never carries consent for a gated action or a plan approval" \
+  resume 'never carries consent' 'gated action' 'plan approval' -- \
+  '0|^#+ Orchestrator[[:space:]]*$' '0|^#+ The cleared-worker invariant'
+
+# --- an ANSWER with no question pending is refused ----------------------------------------------------------
+# An ANSWER's trigger is a pending question (its Messages row); one that arrives with none is off-contract,
+# not an instruction (seen from an orchestrator in hg, 2026-10-01). The Worker section and the brief's
+# fallback each say so in one sentence holding ANSWER, "question pending" and "refuse".
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+section_rule "an ANSWER with no question pending is refused" ANSWER 'question pending' refuse -- \
+  '0|^#+ Worker[[:space:]]*$' '1|^#+ If the `crew` skill is unavailable'
+
+# --- the integration's stop is the worker's stop -------------------------------------------------------------
+# Under an integration, a workflow's `handoff` continues into the integration's stages, so the worker's stop
+# stage is the integration's (Codex on acatl/crew#7). Read as the workflow's, the contract's Authority would
+# stop a compliant worker before its PR opens, and the ledger would evict a row whose PR rounds still run. So
+# SKILL.md's Authority and ledger.md's Eviction each say "stop stage" and "integration's" in one sentence.
+# Presence, not meaning; no refusal to require here.
+section_rule --any "the stop stage is the integration's when there is one" 'stop stage' "integration's" -- \
+  '0|^#+ Authority[[:space:]]*$' '0|^#+ Eviction[[:space:]]*$'
+
+# --- a queued unit's card lives in its ledger row -------------------------------------------------------------
+# A queued brief has no Job section: START writes it later, from the card. A compaction in between destroys
+# the card, so a card choice the row doesn't hold falls back to CREW.md's default, and an `integration: none`
+# unit would open a PR (Codex on acatl/crew#7). Step 5's row write and ledger.md's spine each name the card's
+# lines with `integration` in one sentence, step 8 spawns every unit by step 5, and step 8, the Messages
+# START row and the START template write START from the row.
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+section_rule --any "the ledger row holds the card's lines: integration, mode, Do not touch, decisions" \
+  "card's lines" '`integration`' mode '`Do not touch`' 'decision only in' -- \
+  '0|^#+ 5[.] Spawn' '0|^#+ Shape[[:space:]]*$'
+section_rule --any "START is written from the row's card lines" 'new base sha' "row's card lines" -- \
+  '0|^#+ 8[.] Sequences'
+section_rule --any "every queued unit is spawned by step 5, which writes its row" 'Spawn every unit now' 'step 5' -- \
+  '0|^#+ 8[.] Sequences'
+section_rule --any "the contract's START row is written from the unit's ledger row" 'queued brief left out' \
+  "unit's ledger row" -- '0|^#+ Messages[[:space:]]*$'
+section_rule --any "START's Job fields take the card's lines from the ledger row" 'Job and Spec fields' 'ledger row' -- \
+  '0|^#+ START[[:space:]]*$'
 
 # --- the workflow reaches a worker through its brief ------------------------------------------------------
 # Workers never read CREW.md: the orchestrator resolves the workflow (CREW.md › Workflows) into the
@@ -346,26 +397,171 @@ for form in '`DONE · checkpoint: <boundary>`' 'plain `DONE` is a stop'; do
 done
 if [ "$wf_ok" = 1 ]; then held=$((held + 1)); fi
 
+# --- the integration reaches a worker through its brief too ------------------------------------------------
+# The orchestrator resolves CREW.md › Integration into the brief's {INTEGRATION_PATH}, beside the workflow.
+# The ready brief's Job list names {WORKFLOW_PATH} and {INTEGRATION_PATH}, and START's Job list, which replaces
+# it for a queued worker, is the same list: one that drifted would drop the integration (or the workflow, or
+# `Do not touch`) its brief carried. Each list is its `## Job` section, read as section() reads one (fence-
+# aware, wrapped lines joined), less its `<Ready: …>` annotation. The ready one is cut off at the queued
+# block's heading; a renamed heading pulls the queued Job in, which fails as a mismatch, never passes.
+ip_ok=1
+job_list() { section '^## Job[[:space:]]*$' 1 "$1" | sed -E 's/<[A-Z][a-z]+: [^>]*> ?//g'; }
+ready_job=$(job_list <(awk '/^### Queued block/ {exit} 1' "$BRIEF"))
+start_job=$(job_list <(awk '/^## START[[:space:]]*$/ {p = 1} p' "$BRIEF"))
+if [ -z "$ready_job" ]; then reworded "$BRIEF" "the ready brief's \`## Job\` section"; ip_ok=0; fi
+if [ -z "$start_job" ]; then reworded "$BRIEF" "START's \`## Job\` section"; ip_ok=0; fi
+if [ -n "$ready_job" ]; then
+  # shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
+  for want in '- Workflow: `{WORKFLOW}`. Read `{WORKFLOW_PATH}` in full' '- Integration: `{INTEGRATION_PATH}`.' \
+    '- Landing: `{LANDING}`'; do
+    if ! grep -qF -- "$want" <<< "$ready_job"; then
+      fail "$BRIEF: the ready brief's Job list has no '$want' line"; ip_ok=0
+    fi
+  done
+fi
+if [ -n "$ready_job" ] && [ -n "$start_job" ] && [ "$ready_job" != "$start_job" ]; then
+  fail "$BRIEF: START's Job list differs from the ready brief's, which it replaces"$'\n'"  brief: $ready_job"$'\n'"  START: $start_job"
+  ip_ok=0
+fi
+# shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
+if [ -z "$(scan "$(ws '[|] `[{]INTEGRATION_PATH[}]` [|] [^|]*`[^`|]*CREW\.md` › Integration')" "$BRIEF")" ]; then
+  fail "$BRIEF: no placeholder row sourcing {INTEGRATION_PATH} from \`CREW.md\` › Integration"; ip_ok=0
+fi
+# shellcheck disable=SC2016  # backticks here are literal Markdown in the pattern
+if [ -z "$(scan "$(ws '[|] `[{]LANDING[}]` [|] card › Landing[^|]*`delegated`[^|]*`operator`')" "$BRIEF")" ]; then
+  fail "$BRIEF: no placeholder row resolving {LANDING} from card › Landing to \`delegated\` or \`operator\`"; ip_ok=0
+fi
+if [ "$ip_ok" = 1 ]; then held=$((held + 1)); fi
+
+# --- the files that hold stages -------------------------------------------------------------------------------
+# The built-in workflow and integration must exist, or the checks over them would check nothing. A project's
+# own (docs/crew/workflows/, docs/crew/integrations/) may be absent: that dir is found, never globbed, so a
+# deleted one reads as empty, not as a reworded file.
+stage_files=()
+for f in "$SKILL"/references/workflow-*.md "$SKILL"/references/integration-*.md; do
+  if [ -f "$f" ]; then stage_files+=("$f"); else reworded "$f" "the built-in file"; fi
+done
+while IFS= read -r f; do stage_files+=("$f"); done < <(
+  for d in docs/crew/workflows docs/crew/integrations; do
+    if [ -d "$d" ]; then find "$d" -name '*.md' -type f; fi
+  done | LC_ALL=C sort)
+
+# sentences_of <file>: its sentences, one a line, wrapped lines joined; a sentence ends at ". " or "; "
+sentences_of() { tr '\n' ' ' < "$1" | tr -s ' ' | sed 's/[.;] /\n/g'; }
+
 # --- a merge go names its delegation -----------------------------------------------------------------------
 # Landing needs delegation (the contract's Authority), and under Integration mode `pr` the written merge
 # rule delegates every card that doesn't say `landing: operator`. So every sentence that tells the worker
-# to merge, in a workflow file or the PR round procedure, names that withholding: a merge ordered on the
-# rule alone would bypass the card. The round procedure must exist, or half of this checks nothing.
-merge_ok=1 merge_seen=0 merge_files=("$SKILL"/references/workflow-*.md docs/crew/workflows/*.md docs/pr-round-workflow.md)
-for f in "${merge_files[@]}"; do
-  if [ ! -f "$f" ]; then reworded "$f" "the file"; merge_ok=0; continue; fi
+# to merge, in a workflow or integration file, names that withholding: a merge ordered on the rule alone
+# would bypass the card.
+merge_ok=1 merge_seen=0
+for f in ${stage_files[@]+"${stage_files[@]}"}; do
   while IFS= read -r sentence; do
     merge_seen=1
     # shellcheck disable=SC2016  # the backticks are literal Markdown
     if ! grep -qiF '`landing: operator`' <<< "$sentence"; then
       fail "$f: tells the worker to merge without naming \`landing: operator\`: '$sentence'"; merge_ok=0
     fi
-  done < <(tr '\n' ' ' < "$f" | tr -s ' ' | sed 's/[.;] /\n/g' | grep -iE 'tells? the worker to merge' || true)
+  done < <(sentences_of "$f" | grep -iE 'tells? the worker to merge' || true)
 done
 if [ "$merge_seen" = 0 ]; then
-  reworded "${merge_files[*]}" "a sentence that tells the worker to merge"; merge_ok=0
+  reworded "the workflow and integration files" "a sentence that tells the worker to merge"; merge_ok=0
 fi
 if [ "$merge_ok" = 1 ]; then held=$((held + 1)); fi
+
+# --- a relayed go is never a merge go ---------------------------------------------------------------------------
+# A card's `landing: operator` voids the merge rule, so a merge under it is a Hard Gate; so is a merge on a missed
+# bar. Acting on a relayed go would launder consent across sessions (SECURITY.md; Codex on acatl/crew#7). The
+# brief carries the card's Landing, so every workflow or integration file that asks "merge?" (any quoting):
+# - refuses a relayed go in a sentence that names the "merge?" too, so a refusal elsewhere can't stand in;
+# - accepts none: no clause relays a go without a refusal in it ("relays the operator's go");
+# - marks the question `answer: in this session only` by the brief's Landing, in one sentence holding
+#   NEED-INPUT, that marker, "Landing", "unless" and `delegated`, which leaves the orchestrator nothing to
+#   relay. Presence, not meaning: the strings pin the sentence's shape, and reviewers judge its logic.
+# At least one file must ask, so finding none fails.
+relay_ok=1 relay_seen=0
+go_refused='(^|[^A-Za-z])([Nn]ever|[Nn]either|[Nn]o|[Nn]ot|[Rr]efuse)([^A-Za-z].*)?[^A-Za-z][Gg]o([^A-Za-z]|$)'
+for f in ${stage_files[@]+"${stage_files[@]}"}; do
+  sentences=$(sentences_of "$f")
+  grep -qiE 'merge\?' <<< "$sentences" || continue
+  relay_seen=1
+  if ! grep -iE 'merge\?' <<< "$sentences" | grep -F 'relayed go' | grep -qE -- "$refusal"; then
+    fail "$f: asks \"merge?\" but no sentence naming it refuses a relayed go"; relay_ok=0
+  fi
+  # Judged per clause (split at ", ", ": " and parentheses), so a refusal in the same sentence can't cover an
+  # acceptance beside it ("…, the operator's go relayed to it, …, never a relayed go"), and the refusal must
+  # come before the go ("relays no go"; not "relays the operator's go and no other"). The one shape a comma
+  # splits ("says go, which it relays") is matched whole. The `answer: here or relay` marker names a channel,
+  # not a relay: it is dropped first.
+  # shellcheck disable=SC2016  # the backticks are literal Markdown
+  clauses=$(sed -E 's/, |: |[()]/\n/g' <<< "${sentences//'`answer: here or relay`'/}")
+  if grep -iE '(^|[^a-z])relay(s|ed|ing)?([^a-z]|$)' <<< "$clauses" | grep -iE '(^|[^a-z])go([^a-z]|$)' \
+    | grep -vqE -- "$go_refused" || grep -qiF 'says go, which it relays' <<< "$sentences"; then
+    fail "$f: accepts a relayed go for the merge"; relay_ok=0
+  fi
+  # shellcheck disable=SC2016  # the backticks are literal Markdown
+  if ! grep -F 'NEED-INPUT' <<< "$sentences" | grep -F "$marker" | grep -F 'Landing' | grep -F 'unless' \
+    | grep -qF '`delegated`'; then
+    fail "$f: asks \"merge?\" but doesn't mark it $marker by the brief's Landing"; relay_ok=0
+  fi
+done
+if [ "$relay_seen" = 0 ]; then
+  reworded "the workflow and integration files" "a \"merge?\" question"; relay_ok=0
+fi
+if [ "$relay_ok" = 1 ]; then held=$((held + 1)); fi
+
+# --- a PR opens against the brief's base ----------------------------------------------------------------------
+# Without --base, `gh pr create` (alias `gh pr new`) targets the repo's default branch or the branch's
+# gh-merge-base, not the base the brief chose (SKILL.md step 3.4). The files spell the call one way,
+# `gh pr create --base <base>`, prose included: one canonical form is checkable exactly, where judging gh's
+# every spelling means parsing shell. Each call is matched on its own, with its own line, wrapped or not. The
+# built-in must name the call itself; a project's file can't stand in for it.
+pr_ok=1
+pr_canon='gh pr create --base <base>'
+# the call and its first two arguments, each a run of non-space; a backtick ends a code span
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+pr_re='gh[[:space:]]+pr[[:space:]]+(create|new)([[:space:]]+[^[:space:]`]+)?([[:space:]]+[^[:space:]`]+)?'
+for f in ${stage_files[@]+"${stage_files[@]}"}; do
+  while IFS=$'\t' read -r at call; do
+    if [ "$call" != "$pr_canon" ]; then
+      fail "$at: opens a PR as '$call', not '$pr_canon': without the brief's base it opens against the default branch"
+      pr_ok=0
+    fi
+  done < <(scan "$pr_re" "$f")
+done
+if [ -z "$(scan "$(ws 'gh pr create --base <base>')" "$IPR")" ]; then
+  reworded "$IPR" "the call '$pr_canon'"; pr_ok=0
+fi
+if [ "$pr_ok" = 1 ]; then held=$((held + 1)); fi
+
+# --- a merge is confirmed before `stop merge` -------------------------------------------------------------------
+# On a base that requires a merge queue, `gh pr merge` only queues the PR (gh's own help), so a worker that reports
+# `stop merge` right after it has the orchestrator run Post-land and start the next unit on a PR that may still
+# fail the queue (Codex on acatl/crew#7). Every sentence in a workflow or integration file that names
+# `gh pr merge` also waits for `gh pr view` to read `MERGED` and names the merge queue: judged per sentence, so a
+# wait at one call site can't stand in for another. Presence, not meaning. The built-in names the call itself,
+# so the check can't pass on finding none.
+mq_ok=1 mq_seen=0
+for f in ${stage_files[@]+"${stage_files[@]}"}; do
+  while IFS= read -r sentence; do
+    if [ "$f" = "$IPR" ]; then mq_seen=1; fi
+    # shellcheck disable=SC2016  # the backticks are literal Markdown
+    if ! grep -F 'gh pr view' <<< "$sentence" | grep -F '`MERGED`' | grep -qiF 'merge queue'; then
+      fail "$f: names \`gh pr merge\` without waiting for \`gh pr view\` to read \`MERGED\` past a merge queue: '$sentence'"
+      mq_ok=0
+    fi
+  done < <(sentences_of "$f" | grep -F 'gh pr merge' || true)
+done
+if [ "$mq_seen" = 0 ]; then
+  reworded "$IPR" "the call 'gh pr merge'"; mq_ok=0
+fi
+# The orchestrator lands on its own read, not the worker's word: SKILL.md's Land holds a sentence that runs
+# Post-land once `gh pr view` reads `MERGED`, which covers a workflow with its own PR stages too.
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+if ! sentences_of "$SKILL/SKILL.md" | grep -F 'Post-land' | grep -F 'gh pr view' | grep -qF '`MERGED`'; then
+  fail "$SKILL/SKILL.md: no sentence runs Post-land only once \`gh pr view\` reads \`MERGED\`"; mq_ok=0
+fi
+if [ "$mq_ok" = 1 ]; then held=$((held + 1)); fi
 
 # --- the queue card shows each unit's workflow and landing ----------------------------------------------------
 # Under Integration mode `pr` landing is per unit (a PR-merging unit is delegated by the merge rule), so one
@@ -385,9 +581,9 @@ fi
 
 # --- a workflow's verify falls back as the orchestrator's does ------------------------------------------------
 # A worker's build ends on `verify` green, and the orchestrator verifies a stop by the brief's `verify`, else
-# its own chain (SKILL.md's "DONE `stop <stage>`" bullet, the source). A workflow's `verify` default names
-# the same sources, or a project missing one leaves the two sides verifying different things. The built-in
-# must carry the row, so the check can't pass on finding none.
+# its own chain (SKILL.md's "DONE `stop <stage>`" bullet, the source). A workflow's or integration's `verify`
+# default names the same sources, or a project missing one leaves the two sides verifying different things.
+# Each built-in must carry the row, so the check can't pass on finding none.
 v_ok=1
 # shellcheck disable=SC2016  # the backticks are literal Markdown
 stop=$(section '^#+ Orchestrator[[:space:]]*$' 0 "${mds[@]}" | grep -oE '[*][*]DONE `stop <stage>`[*][*][^-]*' | head -n 1 || true)
@@ -395,8 +591,7 @@ chain=$(grep -oE '(CREW\.md|docs/HARNESS\.md)` › [A-Z][a-z]+' <<< "$stop" | LC
 if [ -z "$chain" ]; then
   reworded "$SKILL/SKILL.md" "the Orchestrator's DONE \`stop <stage>\` verify chain"; v_ok=0
 fi
-for f in "$SKILL"/references/workflow-*.md docs/crew/workflows/*.md; do
-  [ -f "$f" ] || continue
+for f in ${stage_files[@]+"${stage_files[@]}"}; do
   # shellcheck disable=SC2016  # the backticks are literal Markdown
   row=$(grep -E '^\| `verify` \|' "$f" || true)
   if [ -z "$row" ]; then
@@ -412,14 +607,13 @@ if [ "$v_ok" = 1 ]; then held=$((held + 1)); fi
 
 # --- a ready PR asks before it merges ----------------------------------------------------------------------
 # After `merge bar met` the worker waits on the merge, so it sends NEED-INPUT (SKILL.md Worker step 4), and
-# the merge go is an ANSWER to that question: no other kind can carry it. Every workflow file or round
-# procedure that names `merge bar met` holds a sentence that sends NEED-INPUT for the merge (the worker's;
+# the merge go is an ANSWER to that question: no other kind can carry it. Every workflow or integration
+# file that names `merge bar met` holds a sentence that sends NEED-INPUT for the merge (the worker's;
 # the orchestrator's "answers only the worker's merge NEED-INPUT" doesn't count). At least one must
 # name it, so the check can't pass on finding none.
 ask_ok=1 ask_seen=0
-for f in "${merge_files[@]}"; do
-  [ -f "$f" ] || continue
-  sentences=$(tr '\n' ' ' < "$f" | tr -s ' ' | sed 's/[.;] /\n/g')
+for f in ${stage_files[@]+"${stage_files[@]}"}; do
+  sentences=$(sentences_of "$f")
   grep -qF 'merge bar met' <<< "$sentences" || continue
   ask_seen=1
   if ! grep -F 'NEED-INPUT' <<< "$sentences" | grep -E '(^|[^a-z])sends ' | grep -qiE 'merge([^a-z]|$)'; then
@@ -427,7 +621,7 @@ for f in "${merge_files[@]}"; do
   fi
 done
 if [ "$ask_seen" = 0 ]; then
-  reworded "${merge_files[*]}" "\`merge bar met\`"; ask_ok=0
+  reworded "the workflow and integration files" "\`merge bar met\`"; ask_ok=0
 fi
 if [ "$ask_ok" = 1 ]; then held=$((held + 1)); fi
 
