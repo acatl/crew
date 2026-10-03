@@ -6,8 +6,7 @@ the first-line marker byte-exact: the roster rebuild greps for it.
 
 Two variants differ only in the Job section:
 - **Ready**: the worker starts now, Job section filled in.
-- **Queued**: the worker waits for `START`, which carries the job (and its spec), written from the
-  landed state. The Job section is the fixed queued block.
+- **Queued**: the Job section is the fixed queued block; `START` carries the job and its spec.
 
 | Placeholder | Source |
 |---|---|
@@ -120,7 +119,7 @@ Sent to a queued worker's sessionId when its turn comes. Write it then, from the
 | `{LANDED}` | one line per unit landed since queuing: id, sha, what it changed that this unit touches |
 | `{HANDOFFS}` | anything an earlier unit left for this one (a leftover, a decision), else `none` |
 | `{CARRIED}` | one "Carried from <unit>" line per finding an earlier unit carried, else `none` |
-| Job and Spec fields | same as the brief's, computed now |
+| Job and Spec fields | same as the brief's, computed now, the card's lines from the unit's ledger row |
 
 ```markdown
 [crew] START · {TICKET} · base {SHA}

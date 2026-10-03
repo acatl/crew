@@ -29,7 +29,7 @@ crewdir() {
 }
 ```
 
-It fails loudly rather than returning a partial path; a silent fallback would scatter ledgers.
+It fails loudly: a partial path would scatter ledgers.
 
 ```text
 ~/.claude/crew/<slug>/
@@ -42,8 +42,8 @@ It fails loudly rather than returning a partial path; a silent fallback would sc
   watchdog.log         its stderr: which worker is unwatched, or that the roster vanished
 ```
 
-Outside the repo on purpose: this is machine-local session state, so it needs no `.gitignore`
-change in every project and survives a worktree being archived.
+Outside the repo on purpose: machine-local state needs no `.gitignore` change and survives a
+worktree's archiving.
 
 ## Shape
 
@@ -75,8 +75,9 @@ updated: <iso> · orchestrator: <sessionId>
 - #24 · landed 07ce872 · archived
 ```
 
-**Spine** (the only fields any rule reads): row id, unit, status, `session`, `brief`, `workflow`,
-`stage`, `owed`. Row ids are stable and never reused; the unit may change (a unit gets folded or renumbered),
+**Spine** (the only fields any rule reads): row id, unit, status, `session`, `brief`, `stage`, `owed`,
+and the card's lines (`workflow` and its overrides, `integration`, scope, cleanup, landing): a queued unit's
+START reads them. Row ids are stable and never reused; the unit may change (folded or renumbered),
 which is why rows join on `session`, never on a unit or a title.
 
 **Status** is one of: `chip` (spawned, not yet clicked — `session` holds the `task_id` instead),

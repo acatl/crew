@@ -56,7 +56,7 @@ Orchestrator → worker, same tool, to the worker's sessionId:
 | Kind | Sent when | Body carries |
 |---|---|---|
 | `RELAY` | the operator answered or instructed through the orchestrator | the operator's words, verbatim, nothing added |
-| `START` | a queued worker's turn has come | `base <sha>` in the first line, then the Job section its queued brief left out, written from the current landed state. It replaces the brief's Job section. Its authority is the operator's `go` on the queue card. |
+| `START` | a queued worker's turn has come | `base <sha>` in the first line, then the Job section its queued brief left out, written from the landed state and the unit's ledger row. It replaces the brief's Job section. Its authority is the operator's `go` on the queue card. |
 | `ANSWER` | a worker's pending question is clear-cut and the operator delegated such picks to the orchestrator | the orchestrator's own answer, labelled as its own. Only a routing or stage pick that follows from recorded decisions, or an answer whose effect is inside the brief's grant. Never a hard-floor answer, a consent card, a real tradeoff, or a locked-decision change: those stay the operator's. The worker records it with its source ("orchestrator, under the operator's standing delegation"), never as the operator's words. |
 
 Besides the brief and its resume (*Orchestrator* step 6), nothing else crosses. No progress narration, no "starting now", no worker-to-worker messages.
@@ -141,16 +141,16 @@ its Parameters fill the brief (ask on the card for a blank one); its stages say 
 ### 2. Read the ticket and estimate its surface
 
 Read the ticket from the source `docs/CREW.md` names. Take its title. Estimate the **surface** — the
-paths the work will likely touch — from the ticket text plus a quick search of the codebase. Paths are
-repo-relative; a directory covers everything under it. An estimate is fine; say it's an estimate.
+paths the work will touch — from the ticket plus a quick search of the code. Paths are repo-relative;
+a directory covers everything under it. An estimate is fine; say so.
 
 When the brief carries the spec, what you write here *is* it. Write it for a session with no memory of
 this conversation, including any decision that lives only in your memory.
 
 ### 3. Parallel-safety check
 
-Run these against every in-flight worker in the roster (see *Roster*). Units of one sequence run one at
-a time, so check them against workers outside the sequence, not against each other.
+Run these against every in-flight worker in the roster (see *Roster*), but a sequence's units only
+against workers outside it: they run one at a time.
 
 1. **Actual overlap** — what in-flight workers have already touched:
    ```bash
@@ -162,10 +162,9 @@ a time, so check them against workers outside the sequence, not against each oth
    This catches a worker that hasn't written anything yet.
 3. **Dependency** — does the ticket need work that isn't on `<base>` yet (the ticket says so, or the
    surface needs something that exists only on an in-flight branch)?
-4. **Base** — pick the commit this unit must start from, for this situation (the line it integrates
-   into, the default branch for a PR cut from it, a specific sha for an audit), and write it into the
-   brief as **a branch plus a sha**. Never assume the app cut the worktree from it (see *Gotchas*); the
-   worker re-points itself to that sha as its first setup step.
+4. **Base** — pick this unit's starting commit (the line it integrates into, the default branch for a
+   PR cut from it, a specific sha for an audit), and write it in the brief as **a branch plus a sha**.
+   Never assume the app cut the worktree from it (see *Gotchas*); the worker re-points to it first.
 
 Result: `✓ clear` · `⚠ overlap` (which worker, which paths) · `⚠ main checkout on <branch>, not <base>` ·
 `⛔ blocked on unmerged <X>`. On ⛔, don't show the card and don't spawn: say what the ticket waits on
@@ -208,8 +207,9 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
    gets a value or `none`; no placeholder survives.
 3. `mcp__ccd_session__spawn_task` with `title` = the card's title, `tldr` = one plain sentence, `prompt`
    = the filled brief. Pass `cwd` only when the worker belongs to a different repo than yours.
-4. **Write the ledger row** (status `chip`, the `task_id` in place of a session id, workflow, stage,
-   surface, scope, cleanup, landing) and save the brief exactly as sent to `briefs/<row>.md`.
+4. **Write the ledger row** (status `chip`, the `task_id` in place of a session id, stage, surface,
+   and the card's lines: `workflow` and its overrides, `integration`, scope, cleanup, landing) and save
+   the brief exactly as sent to `briefs/<row>.md`.
 5. Tell the operator the chip is up and needs a click. End your turn.
 
 ### 6. Handle messages
@@ -329,10 +329,10 @@ section). Don't write later units' specs yet: earlier units will move the base u
    has landed it (`git branch --merged <base>` lists it).
 2. **Clean up** unit N per its card.
 3. **Start** unit N+1: send `START` ([references/brief-template.md](references/brief-template.md) ›
-   START) with the new base sha and its Job section, written now from the landed state. Include what
-   earlier units changed and handed on, and each finding unit N carried as a "Carried from N" line
-   (also a checklist line on N+1's ticket). Save it as `briefs/<row>-start.md`. Then set it
-   `running`, add its roster line, and subscribe to its idle notice.
+   START) with the new base sha and its Job section, written now from the landed state and its row's
+   card lines. Include what earlier units changed and handed on, and each finding unit N carried as a
+   "Carried from N" line (also a checklist line on N+1's ticket). Save it as `briefs/<row>-start.md`.
+   Then set it `running`, add its roster line, and subscribe to its idle notice.
 
 **Hold the base still.** While a sequence is in flight, nothing commits to `<base>` except landings.
 That includes you; tell the operator the same. One stray commit and the next ff-only landing is refused.

@@ -331,6 +331,19 @@ section_rule "an ANSWER with no question pending is refused" ANSWER 'question pe
 section_rule --any "the stop stage is the integration's when there is one" 'stop stage' "integration's" -- \
   '0|^#+ Authority[[:space:]]*$' '0|^#+ Eviction[[:space:]]*$'
 
+# --- a queued unit's card lives in its ledger row -------------------------------------------------------------
+# A queued brief has no Job section: START writes it later, from the card. A compaction in between destroys
+# the card, so a card choice the row doesn't hold falls back to CREW.md's default, and an `integration: none`
+# unit would open a PR (Codex on acatl/crew#7). Step 5's row write and ledger.md's spine each name the card's
+# lines with `integration` in one sentence, and step 8 and the START template write START from the row.
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+section_rule --any "the ledger row holds the card's lines, integration included" "card's lines" '`integration`' -- \
+  '0|^#+ 5[.] Spawn' '0|^#+ Shape[[:space:]]*$'
+section_rule --any "START is written from the row's card lines" START "row's card lines" -- \
+  '0|^#+ 8[.] Sequences'
+section_rule --any "START's Job fields take the card's lines from the ledger row" 'Job and Spec fields' 'ledger row' -- \
+  '0|^#+ START[[:space:]]*$'
+
 # --- the workflow reaches a worker through its brief ------------------------------------------------------
 # Workers never read CREW.md: the orchestrator resolves the workflow (CREW.md › Workflows) into the
 # brief's {WORKFLOW_PATH} and {PARAMETERS}, and the worker reads the file the brief names. So no Worker

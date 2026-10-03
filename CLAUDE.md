@@ -177,6 +177,12 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
 - **Under an integration, the worker's stop is the integration's.** SKILL.md's *Authority* (how far a
   worker goes) and `ledger.md`'s *Eviction* (when a row leaves `Live`) each say "stop stage" and
   "integration's" in one sentence. *Checked*, by section heading.
+- **A queued unit's card lives in its ledger row.** A queued brief has no Job section; START writes it
+  later, after a compaction may have destroyed the card. So SKILL.md step 5's row write and `ledger.md`'s
+  spine each name "card's lines" and `integration` in one sentence, step 8 writes START from the
+  "row's card lines", and the brief template's START row takes "Job and Spec fields" from the "ledger
+  row". Lost, an `integration: none` unit would fall back to `CREW.md`'s default and open a
+  PR. *Checked*, by section heading.
 - **A PR opens against the brief's base.** `gh pr create` (alias `gh pr new`) without `--base`
   targets the repo's default branch, not the base the brief chose, so the brief's `{BASE}` is a bare
   branch (never `origin/…`). *Checked*: every `gh pr create` or `gh pr new` a workflow or

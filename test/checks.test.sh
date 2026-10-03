@@ -250,6 +250,15 @@ fresh; edit "$LG" 's#when its stop stage (its integration.s, if any) is reached#
 red "15fg the ledger evicts at the workflow's stop" check-invariants "the section headed '^#+ Eviction"
 fresh; edit "$LG" 's#^\#\# Eviction$#\#\# Evicting rows#'
 red "15fh a renamed Eviction heading is reported, not passed" check-invariants "a section headed '^#+ Eviction"
+# a queued unit's card lives in its ledger row: step 5's write, the spine, and START from the row
+fresh; edit "$SK" 's#and the card.s lines: `workflow` and its overrides, `integration`, scope,#and `workflow`, scope,#'
+red "15fi step 5's row write drops the card's integration" check-invariants "the section headed '^#+ 5[.] Spawn"
+fresh; edit "$LG" 's#and the card.s lines (`workflow` and its overrides, `integration`, scope, cleanup, landing)#and `workflow`#'
+red "15fi2 the spine drops the card's integration" check-invariants "the section headed '^#+ Shape"
+fresh; edit "$SK" 's#landed state and its row.s$#landed state and the#'
+red "15fi3 START written without the row's card lines" check-invariants "the section headed '^#+ 8[.] Sequences"
+fresh; edit "$BT" 's#computed now, the card.s lines from the unit.s ledger row |#computed now |#'
+red "15fi4 the START template computes the card's lines afresh" check-invariants "the section headed '^#+ START"
 
 # a PR opens against the brief's base: every `gh pr create`/`new` reads `gh pr create --base <base>` (the
 # controls cover green; no case pins a line number, so a re-wrap alone never turns one red)
