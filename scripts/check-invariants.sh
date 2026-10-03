@@ -518,20 +518,22 @@ if [ "$pr_ok" = 1 ]; then held=$((held + 1)); fi
 # --- a merge is confirmed before `stop merge` -------------------------------------------------------------------
 # On a base that requires a merge queue, `gh pr merge` only queues the PR (gh's own help), so a worker that reports
 # `stop merge` right after it has the orchestrator run Post-land and start the next unit on a PR that may still
-# fail the queue (Codex on acatl/crew#7). Every workflow or integration file that names `gh pr merge` holds a
-# sentence that waits for `gh pr view` to read `MERGED` and names the merge queue. Presence, not meaning. The
-# built-in names the call itself, so the check can't pass on finding none.
-mq_ok=1
+# fail the queue (Codex on acatl/crew#7). Every sentence in a workflow or integration file that names
+# `gh pr merge` also waits for `gh pr view` to read `MERGED` and names the merge queue: judged per sentence, so a
+# wait at one call site can't stand in for another. Presence, not meaning. The built-in names the call itself,
+# so the check can't pass on finding none.
+mq_ok=1 mq_seen=0
 for f in ${stage_files[@]+"${stage_files[@]}"}; do
-  sentences=$(sentences_of "$f")
-  grep -qF 'gh pr merge' <<< "$sentences" || continue
-  # shellcheck disable=SC2016  # the backticks are literal Markdown
-  if ! grep -F 'gh pr view' <<< "$sentences" | grep -F '`MERGED`' | grep -qiF 'merge queue'; then
-    fail "$f: names \`gh pr merge\` but no sentence waits for \`gh pr view\` to read \`MERGED\` past a merge queue"
-    mq_ok=0
-  fi
+  while IFS= read -r sentence; do
+    if [ "$f" = "$IPR" ]; then mq_seen=1; fi
+    # shellcheck disable=SC2016  # the backticks are literal Markdown
+    if ! grep -F 'gh pr view' <<< "$sentence" | grep -F '`MERGED`' | grep -qiF 'merge queue'; then
+      fail "$f: names \`gh pr merge\` without waiting for \`gh pr view\` to read \`MERGED\` past a merge queue: '$sentence'"
+      mq_ok=0
+    fi
+  done < <(sentences_of "$f" | grep -F 'gh pr merge' || true)
 done
-if ! grep -qF 'gh pr merge' <<< "$(sentences_of "$IPR")"; then
+if [ "$mq_seen" = 0 ]; then
   reworded "$IPR" "the call 'gh pr merge'"; mq_ok=0
 fi
 if [ "$mq_ok" = 1 ]; then held=$((held + 1)); fi

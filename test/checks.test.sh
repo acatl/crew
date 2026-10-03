@@ -273,16 +273,18 @@ fresh; printf '\n- Then\n  `gh pr\n  create --fill`.\n' >> "$S/$PR"
 red "15ei8 a call wrapped across lines is still seen" check-invariants "'gh pr create --fill', not"
 fresh; edit "$IP" 's#`gh pr create --base <base>`#the PR#'
 red "15ei9 the built-in without the call fails, though the project copy still names one" check-invariants "$IP: the call 'gh pr create --base <base>' not found"
-# a merge is confirmed before `stop merge`: a file naming `gh pr merge` waits for `gh pr view` to read `MERGED`,
-# naming the merge queue, in one sentence (the controls cover green)
-fresh; edit "$IP" 's#, since a merge queue only$#, since a queue only#'
-red "15ej1 the built-in reports its merge without the queue's wait" check-invariants "$IP: names \`gh pr merge\` but no sentence waits"
+# a merge is confirmed before `stop merge`: each sentence naming `gh pr merge` waits for `gh pr view` to read
+# `MERGED`, naming the merge queue (the controls cover green)
+fresh; edit "$IP" 's#`MERGED`: a merge queue or auto-merge#`MERGED`: a queue or auto-merge#'
+red "15ej1 the built-in reports its merge without the queue's wait" check-invariants "$IP: names \`gh pr merge\` without waiting"
 fresh; edit "$PR" 's#`MERGED`#merged#g'
-red "15ej2 so does a project integration" check-invariants "$PR: names \`gh pr merge\` but no sentence waits"
-fresh; edit "$IP" 's#`MERGED`, since a merge queue only$#`MERGED`. A merge queue only#'
-red "15ej3 the queue and the wait in two sentences don't count" check-invariants "$IP: names \`gh pr merge\` but no sentence waits"
+red "15ej2 so does a project integration" check-invariants "$PR: names \`gh pr merge\` without waiting"
+fresh; edit "$IP" 's#`MERGED`: a merge queue or auto-merge#`MERGED`. A merge queue or auto-merge#'
+red "15ej3 the queue and the wait in two sentences don't count" check-invariants "$IP: names \`gh pr merge\` without waiting"
 fresh; edit "$IP" 's#`gh pr merge <N>#`gh pr land <N>#'
 red "15ej4 the built-in without the call fails, though the project copy still names one" check-invariants "$IP: the call 'gh pr merge' not found"
+fresh; edit "$PR" 's#`gh pr view <N> --json state,mergeCommit` reads `MERGED`, since a merge#`gh pr view <N> --json state,mergeCommit` reads merged, since a merge#'
+red "15ej5 one call site without its wait fails, though another sentence in the file still waits" check-invariants "$PR: names \`gh pr merge\` without waiting"
 # the queue card shows each unit's workflow and landing
 fresh; edit "$SK" 's#^> | \# | Unit | Title | Workflow | Integration | Scope | Landing | Cleanup |#> | \# | Unit | Title | Workflow | Integration | Scope | Cleanup |#'
 red "15dg the queue card loses its per-unit Landing" check-invariants "the queue card has no per-unit Landing column"

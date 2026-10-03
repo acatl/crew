@@ -321,7 +321,7 @@ section). Don't write later units' specs yet: earlier units will move the base u
 
 **When unit N's DONE verifies:**
 
-1. **Land.** A merged PR (Integration mode `pr`) → run Post-land, which pulls the merge into `<base>`; never
+1. **Land.** A merged PR (Integration mode `pr`, `gh pr view` reads `MERGED`) → run Post-land, which pulls the merge into `<base>`; never
    ff-only. `ff-only`, delegated → in the main checkout, on a clean `<base>`, run
    `git merge --ff-only <worker-branch>`, then each `CREW.md` › Post-land command. If ff-only refuses
    (exit 128), the base moved under the worker: stop the sequence and tell the operator; never force,
@@ -365,10 +365,10 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   that fails exits at once — `2` bad usage, missing crew dir or roster, state not writable · `3` a live
   watchdog already holds the pidfile · `4` no usable `stat(1)` — and a `Monitors` line naming a pid
   that died a second ago reads exactly like a healthy one. It polls every roster worker without waking
-  you, stays silent, and exits with one `WATCHDOG …` line the moment a trigger shows — which wakes you
-  with the finding already in hand. Handle it, then **launch a fresh one**: it is one-shot by design.
+  you and exits with one `WATCHDOG …` line the moment a trigger shows, which wakes you with the
+  finding in hand. Handle it, then **launch a fresh one**: it is one-shot by design.
   Never a recurring `CronCreate` here: each wake re-reads your whole context, usually to learn nothing.
-- **It can go blind, and says so only on stderr** — which is why the launch line redirects. It warns
+- **It can go blind, and says so only on stderr**, which is why the launch line redirects. It warns
   there when a roster worker has no transcript directory, meaning that worker is unwatched, and when
   `roster.tsv` disappears. Read `watchdog.log` whenever a worker seems unmonitored.
 - **What neither trigger can see:** the no-commit trigger fires only while the worker is still writing

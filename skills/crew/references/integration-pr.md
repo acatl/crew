@@ -6,7 +6,8 @@ description: The built-in integration. Land a workflow's work by GitHub pull req
 # Integration: pr
 
 Your workflow's `handoff` continues into these stages when your brief names this file. `<base>` is
-your brief's Base branch. The crew contract (SKILL.md) sits under it; nothing here changes it.
+your brief's Base branch. The crew contract (SKILL.md) and your workflow's Rules sit under it;
+nothing here changes them.
 To adapt it (a reviewer roster, labels), edit a copy at `docs/crew/integrations/pr.md`.
 
 ## Parameters
@@ -38,13 +39,12 @@ prompt, which blocks it. Send `NEED-INPUT` marked `answer: in this session only`
 
 ### round
 
-Arm a settle timer first, on entering and after a resume too: a background command (the Bash tool's
-`run_in_background`) that exits once `settle` minutes have passed since the push, or earlier once
-every reviewer of the previous push has reviewed the head (none yet: the full window). A silent
-reviewer wakes no one. End each waiting turn with
-`waiting: settle timer, until <push time + settle>`. Woken by the monitor mid-settle → keep waiting.
+Arm a settle timer first, on entering and after a resume too: a background command
+(`run_in_background`) that exits once `settle` minutes have passed since the push, or earlier once
+every reviewer of the previous push has reviewed the head (none yet: the full window). End each
+waiting turn with `waiting: settle timer, until <push time + settle>`. Woken by the monitor mid-settle → keep waiting.
 
-Read every review thread and review body (some findings have no thread).
+Read every review thread and body (some findings have no thread).
 Triage each finding: fix it, decline it with a reason cited to code or a rule, or defer it (the
 operator's call). Fix, review the fixes as your workflow's review does, run `verify`, and push
 once. Reply to each finding, then resolve exactly the threads this round dispositioned. A base that
@@ -71,12 +71,13 @@ Send `NEED-INPUT` before a round `rounds` doesn't allow, with each round's fixes
 
 Merge only on a go to your "merge?": the orchestrator's `ANSWER` under `landing`, or the operator's
 yes in this session, never a relayed go. Run `gh pr merge <N> --squash --match-head-commit
-<sha>` and wait until `gh pr view <N> --json state` reads `MERGED`, since a merge queue only
-queues it (dropped → `BLOCKED`), then turn the monitor off (`auto_fix: false`). Woken by the
-operator's merge, confirm it and report the same.
+<sha>`, turn the monitor off (`auto_fix: false`) and wait until `gh pr view <N> --json
+state,mergeCommit` reads `MERGED`: a merge queue or auto-merge only queues it. `OPEN` with neither
+(GraphQL `isInMergeQueue`, `autoMergeRequest`) → `BLOCKED`. Woken by a merge the operator made
+instead, wait the same.
 
 - **Ends:** merged.
-- **Report:** `stop merge`: merge sha, monitor off, carried.
+- **Report:** `stop merge`: `mergeCommit`'s sha, monitor off, carried.
 - **Orchestrator:** runs Post-land, cleans up per the card, and carries findings into the next unit.
 - **Clears:** no
 
