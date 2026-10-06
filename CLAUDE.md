@@ -80,6 +80,9 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
     `active.tsv`. A stretch starts when the watchdog first sees the worker active after an idle
     pass, or after a gap in sightings longer than `--interval` + 15 min. Before exiting on a finding
     it sights the whole roster, so a prompt relaunch keeps every clock.
+  - The sub-agent trigger counts from the last push (else the merge-base's time), floored at the
+    roster start too: a reused worktree's transcript dir keeps earlier sessions' sub-agents, and a
+    reused branch name inherits an earlier worker's push.
 - **`scripts/overlap.sh` is the parallel-safety check** (orchestrator step 3). It lists files
   in-flight workers have touched that fall under a candidate surface.
 - **Outside the skill:** `test/` holds the suites, so they don't ship with the skill. `scripts/` holds

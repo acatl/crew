@@ -602,5 +602,43 @@ if [ "$rc" = 0 ] && grep -qF 'was 4 at last alert' "$ROOT/out"
 then ok "58 growth past its floor fires again"; else bad "58 backslash growth" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 subagents 0; seed_commit 7200; roster1
 
+# --- trigger 2's baseline is floored at the roster start ------------------------------------------------
+# The app reuses worktrees, and a reused one's transcript dir keeps earlier sessions' sub-agents. Before
+# a worker's first push the baseline is the merge-base's time, so those counted toward the new worker
+# and it drew a review-loop alert before it had spawned anything (acatl/crew#9). The gaps keep the
+# merge-base, the sub-agents and the start in separate seconds.
+reset; silence_t1; sleep 1; subagents 4; sleep 1; started "$(date +%s)"
+if silent
+then ok "59 sub-agents older than the roster start, newer than the merge-base -> silent"; else bad "59 start floor" "fired: $(cat "$ROOT/out")"; fi
+sleep 1; subagents 4                             # positive control for 59: born after the start
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: 4 sub-agents since it started (first alert" "$ROOT/out"
+then ok "60 same count born after the start fires, timed from the start"; else bad "60 start floor control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+reset; silence_t1; sleep 1; subagents 4; sleep 1; roster1
+run; rc=$?                                       # no start: the merge-base baseline, as before
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: 4 sub-agents since last push (first alert" "$ROOT/out"
+then ok "61 with no roster start the merge-base baseline counts them, as before"; else bad "61 no-start baseline" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+# A reused branch name inherits an earlier worker's push: origin/<branch>'s reflog lives in the common
+# git dir. A push older than the start is floored the same way, from the reflog or the commit's time.
+git init -q --bare "$ROOT/bare3.git"; git -C "$WT" remote add origin "$ROOT/bare3.git"
+reset; silence_t1; git -C "$WT" push -q origin main; sleep 1; subagents 4; sleep 1; started "$(date +%s)"
+if silent
+then ok "62 a push older than the roster start is floored at it"; else bad "62 push floor" "fired: $(cat "$ROOT/out")"; fi
+roster1
+run; rc=$?                                       # positive control for 62: without the start they count
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: 4 sub-agents since last push (first alert" "$ROOT/out"
+then ok "63 same fixture with no start counts from the push"; else bad "63 push floor control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+git -C "$WT" remote remove origin; git init -q --bare "$ROOT/bare4.git"; git -C "$WT" remote add origin "$ROOT/bare4.git"
+reset; silence_t1; git -C "$WT" -c core.logAllRefUpdates=false push -q origin main
+sleep 1; subagents 4; sleep 1; started "$(date +%s)"
+if silent
+then ok "64 a pushed commit's time older than the roster start is floored at it"; else bad "64 commit-time floor" "fired: $(cat "$ROOT/out")"; fi
+roster1
+run; rc=$?                                       # positive control for 64
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: 4 sub-agents since last push (first alert" "$ROOT/out" \
+   && grep -q "no push in origin/main's reflog for #1" "$ROOT/err"
+then ok "65 same fixture with no start counts from the pushed commit"; else bad "65 commit-time control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+git -C "$WT" remote remove origin; subagents 0; seed_commit 7200; roster1
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" = 0 ]

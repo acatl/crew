@@ -379,7 +379,7 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   turns.
 - **Its roster is `~/.claude/crew/<slug>/roster.tsv`** — `<ticket>` TAB `<worktree-path>` TAB
   `<start epoch>`, one line per `running` worker, and yours to maintain. Set the start to `date +%s`
-  as the worker goes `running`; its no-commit clock never starts earlier. Write the ledger row and the
+  as the worker goes `running`; neither trigger counts from earlier. Write the ledger row and the
   roster line in the same step: a missing line is a worker nobody is watching, and nothing will tell
   you. Rewrite it write-to-temp-then-`mv`, never in place. It is re-read every pass, so an edit lands
   with no restart. The worktree path must be **byte-identical to the one the app reports** — the

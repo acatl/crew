@@ -12,8 +12,8 @@
 # State, all in <crew-dir> (this project's ~/.claude/crew/<slug>/, see references/ledger.md):
 #   roster.tsv    input:  <ticket> <TAB> <worktree-path> [<TAB> <start epoch>], one line per
 #                 RUNNING worker, written by the orchestrator. The start, optional, is when the
-#                 worker went running; it floors trigger 1's clock. A start that isn't a past epoch
-#                 is ignored and warned about. A leading "#" is part of a ticket id, not a comment;
+#                 worker went running; it floors both triggers' clocks. A start that isn't a past
+#                 epoch is ignored and warned about. A leading "#" is part of a ticket id, not a comment;
 #                 a ticket id may not contain whitespace. Re-read every pass, so a worker can be
 #                 added or dropped with no restart and no signal. The orchestrator rewrites it
 #                 write-to-temp-then-mv, never in place.
@@ -24,8 +24,9 @@
 #                 It outlives the process too, so a relaunch keeps a worker's clock. Keyed by ticket
 #                 AND worktree, and pruned to a non-empty roster every pass, so a worker spawned again
 #                 for the same ticket starts its own clock rather than inheriting the last one's.
-#   watchdog.pid  lock:   one watchdog per project. NEVER kill by name — every project's watchdog
-#                 is a watchdog.sh, so `pkill -f watchdog.sh` takes out all of them at once.
+#   watchdog.pid  lock:   one watchdog per project. NEVER kill by a process-name match (`pkill -f`,
+#                 `pgrep … | xargs kill`, `ps | grep`): every project's watchdog is a watchdog.sh,
+#                 and only the pid in this crew dir's watchdog.pid is yours.
 #                 Stop one with:  kill "$(cat <crew-dir>/watchdog.pid)"
 #
 # Triggers, per worker:
@@ -50,6 +51,9 @@
 #      worker's self-review runs between its commit and its push, and counting from the commit
 #      reported that review as a loop after every push. A fetch moves the ref too, but isn't a
 #      push. With no push in the reflog it falls back to the commit's time and says so.
+#      With no push at all it falls back to the merge-base commit's time. Whatever the source, the
+#      baseline is floored at the worker's roster start: a reused worktree's transcript dir keeps
+#      earlier sessions' sub-agents, and a reused branch name inherits an earlier worker's push.
 #      A worker with no resolvable push baseline is SKIPPED for this trigger and warned about,
 #      never counted from zero — that would be the absolute count again.
 #
@@ -327,7 +331,7 @@ while true; do
 
     # trigger 2: sub-agents piling up since the last push (a review loop, roughly)
     br=$(git -C "$wt" branch --show-current 2>/dev/null)
-    push_ts="" commit_ct=""
+    push_ts="" commit_ct="" baseline="last push"
     if [ -n "$br" ]; then   # the newest push (see the header); the pattern takes an epoch, not @{0}
       push_ts=$(git -C "$wt" reflog -1 --grep-reflog='^update by push' --format=%gd --date=unix \
                   "refs/remotes/origin/$br" 2>/dev/null | sed -n 's/.*@{\([1-9][0-9]\{8,\}\)}$/\1/p')
@@ -341,6 +345,13 @@ while true; do
     if [ -z "$push_ts" ] && mb=$(git -C "$wt" merge-base HEAD "$base" 2>/dev/null); then
       push_ts=$(git -C "$wt" log -1 --format=%ct "$mb" 2>/dev/null || true)
     fi
+    # Floored at the roster start, whatever the source: the app reuses worktrees, whose transcript dir
+    # still holds earlier sessions' sub-agents, and a reused branch name inherits an earlier worker's
+    # push (the remote-tracking reflog is shared). None of those before this worker went running is its own.
+    case "${push_ts:-}" in
+      ''|*[!0-9]*) ;;
+      *) if (( start > push_ts )); then push_ts=$start baseline="it started"; fi ;;
+    esac
     case "${push_ts:-}" in
       ''|*[!0-9]*)
         # Counting from 0 here would mean "every sub-agent that ever existed", i.e. the absolute
@@ -362,7 +373,7 @@ while true; do
     if (( subs > floor )); then
       printf '%s subs %s %s\n' "$ticket" "$push_ts" "$subs" >> "$reported"
       if [ "$last" -gt 0 ]; then seen="was $last at last alert"; else seen="first alert"; fi
-      alert="WATCHDOG $ticket: $subs sub-agents since last push ($seen, threshold +$step) at head $rev — check for a review loop"
+      alert="WATCHDOG $ticket: $subs sub-agents since $baseline ($seen, threshold +$step) at head $rev — check for a review loop"
     fi
   done <<< "$snapshot"
 
