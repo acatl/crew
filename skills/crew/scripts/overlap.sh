@@ -7,8 +7,12 @@
 #   files committed on its branch since the merge-base with <ref>
 #   + tracked files modified or staged but not committed
 #   + untracked, non-ignored files
-# A touched file overlaps a candidate path when it equals the path or sits under it
-# (a trailing "/" on the path is optional). Paths are relative to the repo root.
+# A touched file overlaps a candidate path when it equals the path or sits under it. Paths are
+# relative to the repo root, and each is first put in the form git lists files in: leading "./",
+# trailing "/" or "/.", and doubled "/" or "/./" are dropped, so "./src/", "src//" and "src" are the
+# same path, and "." (or "./") is the whole repo. An absolute path, or one holding "..", can never
+# equal a listed file, so it is a usage error rather than a silent clear. An empty entry (a stray
+# comma) is skipped.
 #
 # Output: one TSV line per overlap: <branch> <TAB> <file> <TAB> <matched-path>. A backslash, tab or
 #         newline in a path prints as \\, \t or \n, so every overlap stays one line of three fields.
@@ -30,6 +34,34 @@ done
 if [ -z "$base" ] || [ -z "$paths" ] || [ $# -eq 0 ]; then usage; fi
 
 IFS=',' read -r -a candidates <<< "$paths"
+
+# canon <path>: sets c to the path as git lists it, "" for the whole repo (a variable, not a command
+# substitution, which would drop a trailing newline from a name). Without it a "./src" or a "."
+# matched nothing, and the check reported clear while the worker had touched those files.
+canon() {
+  local p=$1
+  while [[ $p == *//* ]]; do p=${p//\/\//\/}; done
+  while [[ $p == */./* ]]; do p=${p//\/.\//\/}; done
+  while :; do
+    case "$p" in
+      ./*) p=${p#./} ;;
+      */.) p=${p%/.} ;;
+      ?*/) p=${p%/} ;;
+      *) break ;;
+    esac
+  done
+  [ "$p" = . ] && p=""
+  c=$p
+}
+surface=()
+for p in "${candidates[@]}"; do
+  [ -n "$p" ] || continue
+  case "$p" in /*) echo "not a repo-relative path: $p" >&2; exit 2 ;; esac
+  canon "$p"
+  case "/$c/" in */../*) echo "a path holding '..' can't match a touched file: $p" >&2; exit 2 ;; esac
+  surface+=("$c")
+done
+[ "${#surface[@]}" -gt 0 ] || usage
 
 g() { git -C "$wt" "$@"; }   # git in the worktree being listed
 tsv() { local s=${1//\\/\\\\}; s=${s//$'\t'/\\t}; printf '%s' "${s//$'\n'/\\n}"; }   # one TSV field
@@ -63,9 +95,10 @@ for wt in "$@"; do
     echo "could not merge the files $branch touched in $wt" >&2; exit 2
   fi
   while IFS= read -r -d '' f; do
-    for p in "${candidates[@]}"; do
-      p="${p%/}"
-      [ -n "$p" ] || continue
+    for p in "${surface[@]}"; do
+      if [ -z "$p" ]; then   # the whole repo
+        printf '%s\t%s\t.\n' "$branch" "$(tsv "$f")"; found=1; continue
+      fi
       case "$f" in
         "$p"|"$p"/*) printf '%s\t%s\t%s\n' "$branch" "$(tsv "$f")" "$(tsv "$p")"; found=1 ;;
       esac
