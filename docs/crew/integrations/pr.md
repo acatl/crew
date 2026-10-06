@@ -446,7 +446,7 @@ itself, by running, never from the worker's report:
 
 1. **Sensors green on the PR's head sha, against `<base>`.** The PR's `baseRefName` is `<base>`,
    every CI check concluded `SUCCESS`, and `./scripts/verify.sh` passes on that sha after
-   `git fetch origin <base>`.
+   `git fetch origin <base>`, run in a subshell (`(cd <worktree> && …)`), never a bare `cd`.
 2. **Enough review rounds.** At least **two** completed rounds (the opening review and the review
    of the round-1 push), with at least one non-empty review on the PR. CodeRabbit reviewed the
    opening push (a non-empty review), unless the PR opened during the pause (§ Who runs the rounds)

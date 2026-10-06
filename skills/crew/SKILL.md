@@ -236,9 +236,9 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 - **DONE `checkpoint <stage>`** → write `stage`, do what that stage's Orchestrator line says. No
   landing, no cleanup. From an older brief, `DONE · checkpoint: <boundary>` or a plain `DONE` saying
   it will clear is a checkpoint; any other plain `DONE` is a stop.
-- **DONE `stop <stage>`** → verify by running the brief's `verify` in the worker's cwd (none:
-  `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else ask). Write the verdict and sha to the
-  row, against the worker's claim. On pass: land if delegated, clean up, start any next unit (steps 7, 8).
+- **DONE `stop <stage>`** → verify by running the brief's `verify` in a subshell in the worker's cwd,
+  `(cd <worktreePath> && <verify>)` (none: `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else
+  ask). Write the verdict and sha to the row, against the worker's claim. On pass: land if delegated, clean up, start any next unit (steps 7, 8).
 - **A worker reports it cleared (or is clearing) its own context** → status `cleared`,
   `owed: resume not sent`. Send the resume **immediately**, even when the next step is only waiting: a
   worker woken by anything else, without its brief, hedges or invents (seen repeatedly). First confirm
@@ -312,7 +312,7 @@ the app may show its own approval card. Cleanup never deletes a branch or runs `
 > | 2 | DR1 | `DR1 — restructure the driver` | `standard` | none | whole | operator decides | archive when merged |
 > | 3 | SK3 | `SK3 — versioned install layer` | `standard` | none | whole | operator decides | archive when merged |
 >
-> `CREW.md` allows `delegated`: `git merge --ff-only`, then `cd hg && npm run build`
+> `CREW.md` allows `delegated`: `git merge --ff-only`, then `(cd hg && npm run build)`
 > Safety: ✓ clear against 0 workers outside the sequence · main checkout on `graph-port` ✓
 >
 > **→ You:** `go`, or override (`2 title: …`, `landing: delegated`, `1 landing: operator`).
@@ -387,10 +387,10 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   `/var` spelling silently yields an unwatched worker. One `--base`, used only as the baseline before a
   worker's first push, covers the whole roster; on a mixed-base roster, pass the most common one.
 - **Stop it by the pid** in `~/.claude/crew/<slug>/watchdog.pid` once the last worker stops, and clear
-  its `Monitors` line. **Never `pkill -f watchdog.sh`**: a name-based kill takes out every project's watchdog.
-- **Also check on every orchestrator turn**, cheaply: `list_events` tail (limit ~40) and
-  `git log -1 --format=%cr` plus `git status --porcelain | wc -l` in each running worker's
-  `worktreePath`. Count review→fix iterations since its last report. The watchdog covers the stretches
+  its `Monitors` line. **Never kill by process name** (*Gotchas*).
+- **Also check on every orchestrator turn**, cheaply: `list_events` tail (limit ~40) and, per running
+  worker, `git -C <worktreePath> log -1 --format=%cr` plus `git -C <worktreePath> status --porcelain |
+  wc -l`. Count review→fix iterations since its last report. The watchdog covers the stretches
   between your turns; this covers the turn you are in.
 - **Surface to the operator** — don't wait for the worker to ask — when any loop-budget trigger in
   the worker's workflow shows, whether the watchdog or your own turn found it. Between your turns the
@@ -519,5 +519,10 @@ anything besides the four kinds.
   list` still showed it, at a detached HEAD, with the branch intact. `get_storage_usage` counts it as
   "kept ready for new sessions", the app's reuse pool, not as a leak. Pooled worktrees are not workers:
   build the roster from `parentSessionId`, never from `git worktree list`.
+- **Your shell acts only on your own state.** A persisting `cd` into a worker's worktree moves your
+  session's working directory, and every later bare `git` runs on its branch: use `git -C <path>` or
+  `(cd <path> && …)`. Seen live: crew INT1 (acatl/crew#7, 2026-10-03); twice in allspark's per-turn
+  check. Never kill by process name (`pkill -f`, `pgrep … | xargs kill`, `ps | grep`), only by your
+  `watchdog.pid`: seen live 2026-10-02, hg's `pgrep -f 'bash .*watchdog.sh' | head -1` killed crew's.
 - **Uncommitted config doesn't reach workers.** A worktree is cut from committed state, so an
   uncommitted `docs/CREW.md` or `.env` isn't there. The brief carries all; `.env` files go in setup.

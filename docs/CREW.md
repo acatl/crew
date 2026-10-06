@@ -30,8 +30,8 @@ re-points it there, guarded (crew skill › *Worker* step 2), and confirms `git 
 
 ## Verify
 
-Run in the worker's worktree after DONE, on a clean tree after `git fetch origin <base>`, the
-unit's Base:
+Run in the worker's worktree after DONE, in a subshell (`(cd <worktree> && …)`), never a bare
+`cd`, on a clean tree after `git fetch origin <base>`, the unit's Base:
 
 - `./scripts/verify.sh`: every CI check, in CI's order.
 

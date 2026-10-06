@@ -239,6 +239,7 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   `checks.test.sh` is paired with a case on the same fixture that must fire, because a blind watchdog
   or check is silent too.
 - **After editing `watchdog.sh`, restart any running watchdog**, because bash reads a running script
-  from disk. Stop it by its pid (`kill "$(cat ~/.claude/crew/<slug>/watchdog.pid)"`), never
-  `pkill -f watchdog.sh`, which kills every project's watchdog.
+  from disk. Stop it by its pid (`kill "$(cat ~/.claude/crew/<slug>/watchdog.pid)"`), never by a
+  process-name match (`pkill -f`, `pgrep … | xargs kill`, `ps | grep`), which finds every project's
+  watchdog.
 - **Never `--no-verify`.** The hooks run what CI runs.

@@ -66,7 +66,7 @@ main checkout's branch, depending on the setup). The worker re-points itself to 
 first.
 
 ## Verify
-Run in the worker's worktree after DONE:
+Run in the worker's worktree after DONE, in a subshell (`(cd <worktree> && …)`), never a bare `cd`:
 - `npm run check`
 
 ## Worktree setup
