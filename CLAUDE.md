@@ -189,6 +189,13 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   from the "row's card lines", re-running step 3; SKILL.md's *Messages* START row and the brief template's
   START section take it from the "ledger row". Lost, an `integration: none` unit would fall back to
   `CREW.md`'s default and open a PR. *Checked*, by section heading.
+- **A queued unit's spec lives in `briefs/<row>-spec.md`.** A queued brief drops its Spec and the
+  row's card lines leave it out, so a spec from "the spec below" lived only in the orchestrator's
+  conversation, gone after a compaction before START. SKILL.md step 5 says, in one sentence holding
+  "queued brief" and `briefs/<row>-spec`, that the spec is saved there; step 8 and `ledger.md`'s spine
+  each take START's "Spec from `briefs/<row>-spec`"; the brief template's START section sources
+  `{SPEC}` from `briefs/<row>-spec`, "never from memory". START recomputes only landed-state details.
+  *Checked*, by section heading.
 - **A PR opens against the brief's base.** `gh pr create` (alias `gh pr new`) without `--base`
   targets the repo's default branch, not the base the brief chose, so the brief's `{BASE}` is a bare
   branch (never `origin/…`). *Checked*: every `gh pr create` or `gh pr new` a workflow or

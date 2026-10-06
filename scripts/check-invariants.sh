@@ -350,6 +350,22 @@ section_rule --any "the contract's START row is written from the unit's ledger r
 section_rule --any "START's Job fields take the card's lines from the ledger row" 'Job and Spec fields' 'ledger row' -- \
   '0|^#+ START[[:space:]]*$'
 
+# --- a queued unit's spec lives in briefs/<row>-spec.md ------------------------------------------------------
+# A queued brief drops its Spec, and the row's card lines leave the spec out, so a spec that lived only in the
+# orchestrator's conversation (a ticket source of "the spec below") was gone after a compaction before START
+# (Codex on acatl/crew#7). Step 5 saves it when the unit is queued; step 8, ledger.md's spine and the START
+# template's placeholder table take START's Spec from that file. The strings stop short of ".md": a
+# sentence ends at a period.
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+section_rule --any "a queued brief's spec is saved to briefs/<row>-spec.md" 'queued brief' 'briefs/<row>-spec' -- \
+  '0|^#+ 5[.] Spawn'
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+section_rule --any "START takes its Spec from briefs/<row>-spec.md" 'Spec from `briefs/<row>-spec' -- \
+  '0|^#+ 8[.] Sequences' '0|^#+ Shape[[:space:]]*$'
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+section_rule --any "the START template sources {SPEC} from briefs/<row>-spec.md" '`{SPEC}`' 'briefs/<row>-spec' \
+  'never from memory' -- '0|^#+ START[[:space:]]*$'
+
 # --- the workflow reaches a worker through its brief ------------------------------------------------------
 # Workers never read CREW.md: the orchestrator resolves the workflow (CREW.md › Workflows) into the
 # brief's {WORKFLOW_PATH} and {PARAMETERS}, and the worker reads the file the brief names. So no Worker

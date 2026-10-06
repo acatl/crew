@@ -210,7 +210,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 4. **Write the ledger row** (status `chip`, the `task_id` in place of a session id, stage, surface,
    and the card's lines: `workflow` and its overrides, `integration`, mode, scope, cleanup, landing,
    `Do not touch`, any decision only in your memory, not the spec) and save the brief exactly as sent to
-   `briefs/<row>.md`.
+   `briefs/<row>.md`. A queued brief drops its spec: save that `{SPEC}` to `briefs/<row>-spec.md`.
 5. Tell the operator the chip is up and needs a click. End your turn.
 
 ### 6. Handle messages
@@ -236,9 +236,9 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 - **DONE `checkpoint <stage>`** → write `stage`, do what that stage's Orchestrator line says. No
   landing, no cleanup. From an older brief, `DONE · checkpoint: <boundary>` or a plain `DONE` saying
   it will clear is a checkpoint; any other plain `DONE` is a stop.
-- **DONE `stop <stage>`** → verify by running the brief's `verify` in a subshell in the worker's cwd,
-  `(cd <worktreePath> && <verify>)` (none: `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else
-  ask). Write the verdict and sha to the row, against the worker's claim. On pass: land if delegated, clean up, start any next unit (steps 7, 8).
+- **DONE `stop <stage>`** → verify: run the brief's `verify` as `(cd <worktreePath> && <verify>)` (none:
+  `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else ask). Write the verdict and sha to the
+  row, against the worker's claim. On pass: land if delegated, clean up, start any next unit (steps 7, 8).
 - **A worker reports it cleared (or is clearing) its own context** → status `cleared`,
   `owed: resume not sent`. Send the resume **immediately**, even when the next step is only waiting: a
   worker woken by anything else, without its brief, hedges or invents (seen repeatedly). First confirm
@@ -318,8 +318,8 @@ the app may show its own approval card. Cleanup never deletes a branch or runs `
 > **→ You:** `go`, or override (`2 title: …`, `landing: delegated`, `1 landing: operator`).
 
 Follow step 4 for each Landing. **Spawn every unit now**, each by step 5 (end your turn after the last):
-unit 1 with a ready brief, the rest with the **queued variant** (no Job section). Don't write later
-units' specs yet: earlier units will move the base under them.
+unit 1 with a ready brief, the rest with the **queued variant** (no Job section, its spec kept on
+disk). Their landed-state details wait for START: earlier units will move the base under them.
 
 **When unit N's DONE verifies:**
 
@@ -332,10 +332,11 @@ units' specs yet: earlier units will move the base under them.
 2. **Clean up** unit N per its card.
 3. **Start** unit N+1: send `START` ([references/brief-template.md](references/brief-template.md) ›
    START) with the new base sha and its Job section, written now from the landed state and its row's
-   card lines, after re-running step 3 outside the sequence (a new overlap goes to the operator).
-   Include what earlier units changed and handed on, and each finding unit N carried as a "Carried from
-   N" line (also a checklist line on N+1's ticket). Save it as `briefs/<row>-start.md`. Then set it
-   `running`, add its roster line, and subscribe to its idle notice.
+   card lines, its Spec from `briefs/<row>-spec.md`, after re-running step 3 outside the sequence (a
+   new overlap goes to the operator). Include what earlier units changed and handed on, and each
+   finding unit N carried as a "Carried from N" line (also a checklist line on N+1's ticket). Save it
+   as `briefs/<row>-start.md`. Then set it `running`, add its roster line, and subscribe to its idle
+   notice.
 
 **Hold the base still.** While a sequence is in flight, nothing commits to `<base>` except landings.
 That includes you; tell the operator the same. One stray commit and the next ff-only landing is refused.
@@ -389,9 +390,9 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
 - **Stop it by the pid** in `~/.claude/crew/<slug>/watchdog.pid` once the last worker stops, and clear
   its `Monitors` line. **Never kill by process name** (*Gotchas*).
 - **Also check on every orchestrator turn**, cheaply: `list_events` tail (limit ~40) and, per running
-  worker, `git -C <worktreePath> log -1 --format=%cr` plus `git -C <worktreePath> status --porcelain |
-  wc -l`. Count review→fix iterations since its last report. The watchdog covers the stretches
-  between your turns; this covers the turn you are in.
+  worker, `git -C <worktreePath> log -1 --format=%cr` plus
+  `git -C <worktreePath> status --porcelain | wc -l`. Count review→fix iterations since its last
+  report. The watchdog covers the stretches between your turns; this covers the turn you are in.
 - **Surface to the operator** — don't wait for the worker to ask — when any loop-budget trigger in
   the worker's workflow shows, whether the watchdog or your own turn found it. Between your turns the
   watchdog covers a commit gap past the brief's no-commit threshold, and review iterations only
