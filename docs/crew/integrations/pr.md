@@ -338,23 +338,25 @@ Agent tool) that gets only the scope, so the reviewer stays apart from the doer.
 `isolation: "worktree"`, over a commit RANGE). A reviewer sharing your worktree can lose your
 uncommitted fixes.
 
-**The sub-agent's brief is the scope and the level, nothing else:**
+**The range as shas, the reviewer's cut point, its never running a command in your worktree, and
+removing its worktree and branch afterwards, never forced, are your workflow's review rules**
+(`standard` › review). On top of them, the sub-agent's brief is the scope and the level, nothing
+else:
 
-- the commit range, and "first `git checkout --detach <the range's tip>`";
+- the range, `<base sha>..<head sha>`, and `standard`'s cut-point line;
 - "run `npm ci` before any check";
-- "run `/code-review high` on exactly that range; to test whether a pin pins, restore the
-  pre-fix file (`git checkout <range base> -- <file>`) and run the test";
-- "your final message lists every finding as text";
-- "as your very last step, remove your own worktree (`git worktree remove --force <its path>`)".
+- "run `/code-review high <base sha>..<head sha>`; to test whether a pin pins, restore the pre-fix
+  file in your own worktree (`git checkout <base sha> -- <file>`), run the test, then put it back
+  (`git checkout <head sha> -- <file>`)";
+- "your final message lists every finding as text".
 
 Never your reasoning, your conclusions or your triage: a reviewer handed your conclusion returns
 it confirmed. **You judge and fix what it returns**, and every valid finding is fixed, whatever
-its severity. Once its findings are in, remove only a worktree it left behind
-(`git worktree remove <its path>`); one you can't remove goes in the next `DONE` by path.
+its severity.
 
 Two passes, then no third:
 
-1. **Pass 1: the round's fix diff.** Range: `<the pushed PR head's sha>..HEAD`. **Never merge or
+1. **Pass 1: the round's fix diff.** Range: `<the pushed PR head's sha>..<your HEAD's sha>`. **Never merge or
    rebase `<base>` mid-round**; if the base must move, do it before the round's first fix.
 2. **Pass 2: pass 1's fixes only.** If pass 1 fixed nothing, skip it. Fix what it raises,
    re-run § 5, and push with **no third review**: the PR's bots are the next look.
