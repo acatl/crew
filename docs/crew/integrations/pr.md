@@ -158,13 +158,11 @@ are context the next round needs.
   Stopping › Merging): the coordinator's `ANSWER` to that "merge?" under the merge rule (a card's
   `landing: operator`, the brief's Landing `operator`, withholds it), or the operator's yes in this
   session, never a relayed go.
-- **CodeRabbit reviews the opening push only** (operator, 2026-10-02, from 2026-10-03). Just
+- **CodeRabbit reviews the opening push only** (operator, 2026-10-02). Just
   BEFORE the first push after the opening one (round 1's fixes, or a sync push), the worker applies
   the `dont-review` label (`gh pr edit <N> --repo acatl/crew --add-label dont-review`;
   `.coderabbit.yaml` excludes that label from auto-review). No `@coderabbitai review` after that
-  without the operator. The label saves the account-wide pool for the next PR. **Until 2026-10-03
-  CodeRabbit's PR reviews are paused** (operator, 2026-09-30): a PR opens with `dont-review` already
-  on, and the merge bar has no CodeRabbit line.
+  without the operator. The label saves the account-wide pool for the next PR.
 - **The pool check: before any push CodeRabbit will review, read the pool.** CodeRabbit's PR
   reviews come from one account-wide hourly pool (about 5 an hour) shared by `acatl/hg`,
   `acatl/crew` and `acatl/kino`. For each of those repos, read the newest `coderabbitai` review:
@@ -451,10 +449,9 @@ itself, by running, never from the worker's report:
    `git fetch origin <base>`, run in a subshell (`(cd <worktree> && …)`), never a bare `cd`.
 2. **Enough review rounds.** At least **two** completed rounds (the opening review and the review
    of the round-1 push), with at least one non-empty review on the PR. CodeRabbit reviewed the
-   opening push (a non-empty review), unless the PR opened during the pause (§ Who runs the rounds)
-   or targets a base other than `main` (CodeRabbit skips those: `.coderabbit.yaml` sets no
-   `base_branches`, so such a PR is one piece of a stack whose PR into `main` gets the review). No
-   valid finding is still open.
+   opening push (a non-empty review), unless the PR targets a base other than `main` (CodeRabbit
+   skips those: `.coderabbit.yaml` sets no `base_branches`, so such a PR is one piece of a stack
+   whose PR into `main` gets the review). No valid finding is still open.
 3. **Every thread dispositioned** (fixed, declined on the merits, deferred with the operator's
    yes, or merge-and-carry), each with its reply, and resolved.
 
