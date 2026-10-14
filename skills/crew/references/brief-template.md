@@ -70,7 +70,7 @@ orchestrator's memory. Everything you need is here, in the ticket, or in the fil
 - Branch: {BRANCH_RULE}
 - Worktree setup: {SETUP}
 - {STANDING}
-- You are already in a fresh worktree. Don't create another but a reviewer's.
+- You are already in a fresh worktree. Don't create another, except a reviewer's.
 - Never install or link anything that outlives this worktree.
 - Commit your work. Don't push, merge, open a PR, or archive this session unless your workflow's
   or integration's stages include it.

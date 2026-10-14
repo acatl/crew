@@ -345,7 +345,8 @@ else:
 - "run `npm ci` before any check";
 - "run `/code-review high <base sha>..<head sha>`; to test whether a pin pins, restore the pre-fix
   file in your own worktree (`git checkout <base sha> -- <file>`, or `rm` one the range added), run
-  the test, then put it back (`git checkout <head sha> -- <file>`)";
+  the test, then put it back (`git checkout <head sha> -- <file>`, or `git rm -f` one the range
+  deleted)";
 - "your final message lists every finding as text".
 
 Never your reasoning, your conclusions or your triage: a reviewer handed your conclusion returns
