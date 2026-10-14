@@ -338,7 +338,7 @@ uncommitted fixes.
 
 **The range as shas, the reviewer's cut point, its never running a command in your worktree, and
 removing its worktree and branch afterwards, never forced, are your workflow's review rules**
-(`standard` › review). On top of them, the sub-agent's brief is the scope and the level, nothing
+(`standard` › review; a workflow without them follows `standard`'s). On top of them, the sub-agent's brief is the scope and the level, nothing
 else:
 
 - the range, `<base sha>..<head sha>`, and `standard`'s cut-point line;

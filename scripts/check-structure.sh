@@ -6,8 +6,9 @@
 #
 # TWO warnings are exempt, and every run prints them: SKILL.md's body is over the spec's recommended
 # token count, and over its recommended line count (500; the base sat exactly there when FIX3 added
-# to it, operator 2026-10-14). Splitting SKILL.md into references/ is the next PR (PR 3), which
-# deletes both. Until then scripts/check-budget.sh keeps SKILL.md from growing.
+# to it, operator 2026-10-14) up to max_lines below. Splitting SKILL.md into references/ is the next
+# PR (PR 3), which deletes both. Until then scripts/check-budget.sh keeps SKILL.md's words from
+# growing, and max_lines its lines: the word budget can't see a rewrap. Raising it is the operator's.
 #
 # Then every workflow and integration file (the built-ins skills/crew/references/workflow-*.md and
 # integration-*.md, and this repo's docs/crew/workflows/*.md and docs/crew/integrations/*.md) has the
@@ -35,7 +36,11 @@ if ! jq -e '.results | type == "array"' >/dev/null 2>&1 <<< "$json"; then
   echo "✖ skill-validator produced no result list:" >&2; printf '%s\n' "$json" >&2; exit 1
 fi
 
-exempt='.level == "warning" and .category == "Tokens" and .file == "SKILL.md" and (.message | test("^SKILL\\.md body is [0-9,]+ (tokens|lines) "))'
+max_lines=506   # the line exemption's ceiling (see the header)
+tok='(.message | test("^SKILL\\.md body is [0-9,]+ tokens "))'
+lin='(.message | test("^SKILL\\.md body is [0-9,]+ lines "))'
+num='(.message | capture("^SKILL\\.md body is (?<n>[0-9,]+) lines ") | .n | gsub(","; "") | tonumber)'
+exempt=".level == \"warning\" and .category == \"Tokens\" and .file == \"SKILL.md\" and ($tok or ($lin and $num <= $max_lines))"
 jq -r ".results[] | select($exempt) | \"known: \(.message) (PR 3 removes this exemption)\"" <<< "$json"
 bad=$(jq -r ".results[] | select((.level == \"error\" or .level == \"warning\") and ($exempt | not))
              | \"✖ \(.file // \"skills/crew\"): \(.level): \(.message)\"" <<< "$json")

@@ -343,7 +343,7 @@ while true; do
       fi
     fi
     if [ -z "$push_ts" ] && mb=$(git -C "$wt" merge-base HEAD "$base" 2>/dev/null); then
-      push_ts=$(git -C "$wt" log -1 --format=%ct "$mb" 2>/dev/null || true)
+      push_ts=$(git -C "$wt" log -1 --format=%ct "$mb" 2>/dev/null || true) baseline="the merge-base"
     fi
     # Floored at the roster start, whatever the source: the app reuses worktrees, whose transcript dir
     # still holds earlier sessions' sub-agents, and a reused branch name inherits an earlier worker's
@@ -366,7 +366,8 @@ while true; do
     last=$(last_alert "$ticket" "$push_ts")
     # Before push times came from the reflog, an alert keyed the push by its commit's time; that
     # key still stands for the same push.
-    if [ "$last" = 0 ] && [ -n "$commit_ct" ] && [ "$commit_ct" != "$push_ts" ]; then
+    # Not for a floored baseline: an earlier worker's commit-time key would raise this one's floor.
+    if [ "$last" = 0 ] && [ "$baseline" = "last push" ] && [ -n "$commit_ct" ] && [ "$commit_ct" != "$push_ts" ]; then
       last=$(last_alert "$ticket" "$commit_ct")
     fi
     floor=$(( last > 0 ? last + step : step ))

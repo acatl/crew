@@ -272,7 +272,7 @@ fresh; edit "$LG" 's#takes its Spec from `briefs/<row>-spec.md`, never from memo
 red "15fj3 the spine takes START's Spec from memory" check-invariants "the section headed '^#+ Shape"
 fresh; edit "$BT" 's#^| `{SPEC}` | never from memory, which#| `{SPEC}` | from memory, unless#'
 red "15fj4 the START template sources {SPEC} from memory" check-invariants "the section headed '^#+ START"
-fresh; edit "$SK" 's#(no Job section, its spec kept on#(no Job section; spec kept on#'
+fresh; edit "$SK" 's#Their landed state$#Their landed-state details#'
 green "15fj5 a rewording outside the pinned sentences stays green" check-invariants
 fresh; edit "$SK" 's#\*\*Spawn every unit now\*\*, each by step 5 (end your turn after the last):#**Spawn every unit now**:#'
 red "15fi7 step 8 spawns the queue without step 5's row write" check-invariants "the section headed '^#+ 8[.] Sequences"
@@ -473,14 +473,15 @@ fresh; printf 'scratch\n' > "$S/skills/crew/notes.txt"
 red "29 a stray file at the skill root" check-structure "notes.txt"
 fresh; run check-structure
 if grep -qF "PR 3 removes this exemption" "$ROOT/out"; then ok "30 the exemption is printed on every run"; else bad "30 exemption" "$(cat "$ROOT/out")"; fi
-# The body's line count is exempt too, until PR 3: a body well past 500 lines passes, printed as known.
-fresh; for i in $(seq 1 40); do printf '\nPadding paragraph %s.\n' "$i"; done >> "$S/$SK"
-run check-structure; rc=$?
+# The body's line count is exempt too, until PR 3, up to max_lines: today's body passes, printed as known.
+fresh; run check-structure; rc=$?
 if [ "$rc" = 0 ] && grep -qE "^known: SKILL\.md body is [0-9,]+ lines .*PR 3 removes this exemption" "$ROOT/out"
-then ok "30b a body over the line count passes, printed as known"; else bad "30b line exemption" "rc=$rc $(cat "$ROOT/out")"; fi
-edit scripts/check-structure.sh 's#(tokens|lines) #tokens #'   # same fixture, the exemption gone
-chmod +x "$S/scripts/check-structure.sh"                        # edit's mv drops the mode
+then ok "30b a body over 500 lines, within max_lines, passes, printed as known"; else bad "30b line exemption" "rc=$rc $(cat "$ROOT/out")"; fi
+edit scripts/check-structure.sh 's#^max_lines=[0-9]*#max_lines=0#'   # same fixture, no room left
+chmod +x "$S/scripts/check-structure.sh"                              # edit's mv drops the mode
 red "30c and fails without its exemption" check-structure "SKILL.md: warning: SKILL.md body is"
+fresh; for i in $(seq 1 40); do printf '\nPadding paragraph %s.\n' "$i"; done >> "$S/$SK"
+red "30d a body grown past max_lines fails: the word budget can't see a rewrap" check-structure "lines (spec recommends"
 
 # --- check-structure: the workflow files' shape ----------------------------------------------------------
 fresh; edit "$WS" '/^- \*\*Ends:\*\* committed, `verify` green\.$/d'

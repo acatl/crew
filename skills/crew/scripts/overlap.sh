@@ -11,8 +11,8 @@
 # relative to the repo root, and each is first put in the form git lists files in: leading "./",
 # trailing "/" or "/.", and doubled "/" or "/./" are dropped, so "./src/", "src//" and "src" are the
 # same path, and "." (or "./") is the whole repo. An absolute path, or one holding "..", can never
-# equal a listed file, so it is a usage error rather than a silent clear. An empty entry (a stray
-# comma) is skipped.
+# equal a listed file, so it is a usage error rather than a silent clear. Whitespace around an
+# entry is dropped ("src, api"), and an empty entry (a stray comma) is skipped.
 #
 # Output: one TSV line per overlap: <branch> <TAB> <file> <TAB> <matched-path>. A backslash, tab or
 #         newline in a path prints as \\, \t or \n, so every overlap stays one line of three fields.
@@ -55,6 +55,7 @@ canon() {
 }
 surface=()
 for p in "${candidates[@]}"; do
+  p=${p#"${p%%[![:space:]]*}"}; p=${p%"${p##*[![:space:]]}"}   # "src, api" is two paths, not " api"
   [ -n "$p" ] || continue
   case "$p" in /*) echo "not a repo-relative path: $p" >&2; exit 2 ;; esac
   canon "$p"

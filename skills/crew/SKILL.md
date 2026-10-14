@@ -89,8 +89,8 @@ A queued worker waiting for `START` waits on the orchestrator, not the operator:
   A plain `go` never delegates. Without delegation, the operator lands.
 - **The worker** follows its workflow as if the operator directed it, mode included — `yolo` means
   yolo — up to its stop stage (its integration's, if any), and commits. Nothing past it. It never
-  creates a worktree, never installs or links anything that outlives its worktree, never archives
-  itself, never messages another worker.
+  creates a worktree but a reviewing sub-agent's own (removed after, with its branch), never installs
+  or links anything that outlives its worktree, never archives itself, never messages another worker.
 - **The orchestrator** verifies by running, never by trusting a report. It executes only the landing and
   cleanup agreed on the card. It never merges other work to unblock a worker.
 - **A workflow** can't change this contract: the messages, the input invariant, this authority.
@@ -318,8 +318,8 @@ the app may show its own approval card. Cleanup never deletes a branch or runs `
 > **→ You:** `go`, or override (`2 title: …`, `landing: delegated`, `1 landing: operator`).
 
 Follow step 4 for each Landing. **Spawn every unit now**, each by step 5 (end your turn after the last):
-unit 1 with a ready brief, the rest with the **queued variant** (no Job section, its spec kept on
-disk). Their landed-state details wait for START: earlier units will move the base under them.
+unit 1 with a ready brief, the rest with the **queued variant** (no Job section). Their landed state
+waits for START: earlier units will move the base under them.
 
 **When unit N's DONE verifies:**
 
@@ -521,9 +521,9 @@ anything besides the four kinds.
   "kept ready for new sessions", the app's reuse pool, not as a leak. Pooled worktrees are not workers:
   build the roster from `parentSessionId`, never from `git worktree list`.
 - **Your shell acts only on your own state.** A persisting `cd` into a worker's worktree moves your
-  session's working directory, and every later bare `git` runs on its branch: use `git -C <path>` or
-  `(cd <path> && …)`. Seen live: crew INT1 (acatl/crew#7, 2026-10-03); twice in allspark's per-turn
-  check. Never kill by process name (`pkill -f`, `pgrep … | xargs kill`, `ps | grep`), only by your
-  `watchdog.pid`: seen live 2026-10-02, hg's `pgrep -f 'bash .*watchdog.sh' | head -1` killed crew's.
+  cwd, so later bare `git` runs on its branch: use `git -C <path>` or `(cd <path> && …)`. Seen live:
+  crew INT1 (acatl/crew#7, 2026-10-03); twice in allspark's per-turn check. Never kill by process name
+  (`pkill -f`, `pgrep … | xargs kill`, `ps | grep`), only by your `watchdog.pid`: seen live
+  2026-10-02, hg's `pgrep -f 'bash .*watchdog.sh'` killed crew's.
 - **Uncommitted config doesn't reach workers.** A worktree is cut from committed state, so an
   uncommitted `docs/CREW.md` or `.env` isn't there. The brief carries all; `.env` files go in setup.

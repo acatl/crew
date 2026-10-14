@@ -120,7 +120,7 @@ unit's ledger row.
 | `{LANDED}` | one line per unit landed since queuing: id, sha, what it changed that this unit touches |
 | `{HANDOFFS}` | anything an earlier unit left for this one (a leftover, a decision), else `none` |
 | `{CARRIED}` | one "Carried from <unit>" line per finding an earlier unit carried, else `none` |
-| `{SPEC}` | never from memory, which a compaction since may have destroyed: `briefs/<row>-spec.md`, saved when the unit was queued (SKILL.md step 5) |
+| `{SPEC}` | never from memory, which a compaction may have lost: `briefs/<row>-spec.md` (SKILL.md step 5); none saved → drop `## Spec` |
 | Job and Spec fields | same as the brief's but `{SPEC}`, computed now, the card's lines from the ledger row |
 
 ```markdown
