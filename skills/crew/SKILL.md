@@ -89,7 +89,7 @@ A queued worker waiting for `START` waits on the orchestrator, not the operator:
   A plain `go` never delegates. Without delegation, the operator lands.
 - **The worker** follows its workflow as if the operator directed it, mode included — `yolo` means
   yolo — up to its stop stage (its integration's, if any), and commits. Nothing past it. It never
-  creates a worktree but a reviewing sub-agent's own (removed after, with its branch), never installs
+  creates a worktree but a reviewing sub-agent's own (removed with its branch), never installs
   or links anything that outlives its worktree, never archives itself, never messages another worker.
 - **The orchestrator** verifies by running, never by trusting a report. It executes only the landing and
   cleanup agreed on the card. It never merges other work to unblock a worker.
@@ -210,7 +210,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 4. **Write the ledger row** (status `chip`, the `task_id` in place of a session id, stage, surface,
    and the card's lines: `workflow` and its overrides, `integration`, mode, scope, cleanup, landing,
    `Do not touch`, any decision only in your memory, not the spec) and save the brief exactly as sent to
-   `briefs/<row>.md`. A queued brief drops its spec: save that `{SPEC}` to `briefs/<row>-spec.md`.
+   `briefs/<row>.md`. Save a queued brief's `{SPEC}` to `briefs/<row>-spec.md`.
 5. Tell the operator the chip is up and needs a click. End your turn.
 
 ### 6. Handle messages
@@ -318,8 +318,8 @@ the app may show its own approval card. Cleanup never deletes a branch or runs `
 > **→ You:** `go`, or override (`2 title: …`, `landing: delegated`, `1 landing: operator`).
 
 Follow step 4 for each Landing. **Spawn every unit now**, each by step 5 (end your turn after the last):
-unit 1 with a ready brief, the rest with the **queued variant** (no Job section). Their landed state
-waits for START: earlier units will move the base under them.
+unit 1 with a ready brief, the rest with the **queued variant** (no Job section; spec on disk). Their
+landed state waits for START: earlier units will move the base under them.
 
 **When unit N's DONE verifies:**
 
@@ -426,9 +426,9 @@ A brief marked `state=resume` is a resume: you cleared earlier. Send no `ONLINE`
 2. **Set up.** First the base, guarded: if `git status --porcelain` is empty and your branch carries no
    work of yours, run `git switch -C "$(git branch --show-current)" <brief's base sha>`; if it carries
    work, `BLOCKED`. Confirm `git rev-parse HEAD` is that sha. Then apply the brief's branch rule
-   (`git branch -m <name>`) and worktree setup; never create another worktree. Move a ledger already at
-   `$(git rev-parse --git-dir)/crew-ledger.md` onto `mktemp <that dir>/crew-ledger.XXXXXX`: the app
-   reuses worktree dirs, so it's an earlier worker's. Never read it.
+   (`git branch -m <name>`) and worktree setup; never create another worktree but a reviewer's. Move a
+   ledger already at `$(git rev-parse --git-dir)/crew-ledger.md` onto `mktemp <that dir>/crew-ledger.XXXXXX`:
+   the app reuses worktree dirs, so it's an earlier worker's. Never read it.
 3. **Work your workflow.** Read the files your brief names, in full, and follow them with your parameters;
    a resume names where to pick up. No workflow named in your
    brief → your brief's Job/Spec, Boundaries and Checkpoints are the workflow; follow them as written.
@@ -521,9 +521,9 @@ anything besides the four kinds.
   "kept ready for new sessions", the app's reuse pool, not as a leak. Pooled worktrees are not workers:
   build the roster from `parentSessionId`, never from `git worktree list`.
 - **Your shell acts only on your own state.** A persisting `cd` into a worker's worktree moves your
-  cwd, so later bare `git` runs on its branch: use `git -C <path>` or `(cd <path> && …)`. Seen live:
-  crew INT1 (acatl/crew#7, 2026-10-03); twice in allspark's per-turn check. Never kill by process name
-  (`pkill -f`, `pgrep … | xargs kill`, `ps | grep`), only by your `watchdog.pid`: seen live
-  2026-10-02, hg's `pgrep -f 'bash .*watchdog.sh'` killed crew's.
+  cwd, and bare `git` follows it: use `git -C <path>` or `(cd <path> && …)`. Seen live: crew INT1
+  (acatl/crew#7, 2026-10-03); twice in allspark's per-turn check. Never kill by process name
+  (`pkill -f`, `pgrep … | xargs kill`, `ps | grep`), only by your `watchdog.pid`: seen live 2026-10-02,
+  hg's `pgrep -f 'bash .*watchdog.sh' | head -1` killed crew's.
 - **Uncommitted config doesn't reach workers.** A worktree is cut from committed state, so an
   uncommitted `docs/CREW.md` or `.env` isn't there. The brief carries all; `.env` files go in setup.

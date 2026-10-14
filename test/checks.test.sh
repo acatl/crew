@@ -264,15 +264,15 @@ red "15fi5 the contract's START row computes the card afresh" check-invariants "
 fresh; edit "$SK" 's#^   START) with the new base sha#   ) with the new base sha#'
 green "15fi6 a link cleanup in step 8's START line stays green" check-invariants
 # a queued unit's spec lives in briefs/<row>-spec.md: step 5 saves it, step 8, the spine and START read it
-fresh; edit "$SK" 's#A queued brief drops its spec: save that `{SPEC}` to `briefs/<row>-spec.md`\.#A queued brief drops its spec.#'
+fresh; edit "$SK" 's#Save a queued brief.s `{SPEC}` to `briefs/<row>-spec.md`\.#A queued brief drops its spec.#'
 red "15fj step 5 no longer saves a queued unit's spec" check-invariants "the section headed '^#+ 5[.] Spawn"
 fresh; edit "$SK" 's#card lines, its Spec from `briefs/<row>-spec.md`, after#card lines, after#'
 red "15fj2 START written without the saved spec" check-invariants "the section headed '^#+ 8[.] Sequences"
 fresh; edit "$LG" 's#takes its Spec from `briefs/<row>-spec.md`, never from memory#writes its Spec from memory#'
 red "15fj3 the spine takes START's Spec from memory" check-invariants "the section headed '^#+ Shape"
-fresh; edit "$BT" 's#^| `{SPEC}` | never from memory, which#| `{SPEC}` | from memory, unless#'
+fresh; edit "$BT" 's#^| `{SPEC}` | never from memory:#| `{SPEC}` | from memory, unless#'
 red "15fj4 the START template sources {SPEC} from memory" check-invariants "the section headed '^#+ START"
-fresh; edit "$SK" 's#Their landed state$#Their landed-state details#'
+fresh; edit "$SK" 's#^landed state waits for START#landed-state details wait for START#'
 green "15fj5 a rewording outside the pinned sentences stays green" check-invariants
 fresh; edit "$SK" 's#\*\*Spawn every unit now\*\*, each by step 5 (end your turn after the last):#**Spawn every unit now**:#'
 red "15fi7 step 8 spawns the queue without step 5's row write" check-invariants "the section headed '^#+ 8[.] Sequences"
