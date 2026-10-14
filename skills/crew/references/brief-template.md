@@ -70,7 +70,7 @@ orchestrator's memory. Everything you need is here, in the ticket, or in the fil
 - Branch: {BRANCH_RULE}
 - Worktree setup: {SETUP}
 - {STANDING}
-- You are already in a fresh worktree. Don't create another.
+- You are already in a fresh worktree. Don't create another but a reviewer's.
 - Never install or link anything that outlives this worktree.
 - Commit your work. Don't push, merge, open a PR, or archive this session unless your workflow's
   or integration's stages include it.
@@ -120,7 +120,7 @@ unit's ledger row.
 | `{LANDED}` | one line per unit landed since queuing: id, sha, what it changed that this unit touches |
 | `{HANDOFFS}` | anything an earlier unit left for this one (a leftover, a decision), else `none` |
 | `{CARRIED}` | one "Carried from <unit>" line per finding an earlier unit carried, else `none` |
-| `{SPEC}` | never from memory: `briefs/<row>-spec.md` (SKILL.md step 5); missing → drop `## Spec` for a tracker ticket, else ask the operator |
+| `{SPEC}` | never from memory: `briefs/<row>-spec.md`; missing → drop `## Spec` for a tracker ticket, else ask the operator |
 | Job and Spec fields | same as the brief's but `{SPEC}`, computed now, the card's lines from the ledger row |
 
 ```markdown

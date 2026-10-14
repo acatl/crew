@@ -274,6 +274,12 @@ fresh; edit "$BT" 's#^| `{SPEC}` | never from memory:#| `{SPEC}` | from memory, 
 red "15fj4 the START template sources {SPEC} from memory" check-invariants "the section headed '^#+ START"
 fresh; edit "$SK" 's#^landed state waits for START#landed-state details wait for START#'
 green "15fj5 a rewording outside the pinned sentences stays green" check-invariants
+fresh; edit "$SK" 's#briefs/<row>-spec\.md#briefs/<row>-spec.txt#g'
+red "15fj6 SKILL.md's spec file changes extension" check-invariants "$SK: no longer names briefs/<row>-spec.md"
+fresh; edit "$LG" 's#briefs/<row>-spec\.md#briefs/<row>-spec.txt#g'
+red "15fj7 ledger.md's spec file changes extension" check-invariants "$LG: no longer names briefs/<row>-spec.md"
+fresh; edit "$BT" 's#briefs/<row>-spec\.md#briefs/<row>-spec.txt#g'
+red "15fj8 the START template's spec file changes extension" check-invariants "$BT: no longer names briefs/<row>-spec.md"
 fresh; edit "$SK" 's#\*\*Spawn every unit now\*\*, each by step 5 (end your turn after the last):#**Spawn every unit now**:#'
 red "15fi7 step 8 spawns the queue without step 5's row write" check-invariants "the section headed '^#+ 8[.] Sequences"
 fresh; edit "$SK" 's#integration`, mode, scope,#integration`, scope,#'

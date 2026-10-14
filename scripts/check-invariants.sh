@@ -365,6 +365,14 @@ section_rule --any "START takes its Spec from briefs/<row>-spec.md" 'Spec from `
 # shellcheck disable=SC2016  # the backticks are literal Markdown
 section_rule --any "the START template sources {SPEC} from briefs/<row>-spec.md" '`{SPEC}`' 'briefs/<row>-spec' \
   'never from memory' -- '0|^#+ START[[:space:]]*$'
+# The sentences above stop short of ".md"; the file name itself, extension included, is pinned here.
+spec_ok=1
+for f in "$SKILL/SKILL.md" "$SKILL/references/ledger.md" "$SKILL/references/brief-template.md"; do
+  if ! grep -qF 'briefs/<row>-spec.md' "$f"; then
+    fail "$f: no longer names briefs/<row>-spec.md, the file a queued unit's spec is saved to and read from"; spec_ok=0
+  fi
+done
+if [ "$spec_ok" = 1 ]; then held=$((held + 1)); fi
 
 # --- the workflow reaches a worker through its brief ------------------------------------------------------
 # Workers never read CREW.md: the orchestrator resolves the workflow (CREW.md › Workflows) into the

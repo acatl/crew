@@ -195,7 +195,8 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   "queued brief" and `briefs/<row>-spec`, that the spec is saved there; step 8 and `ledger.md`'s spine
   each take START's "Spec from `briefs/<row>-spec`"; the brief template's START section sources
   `{SPEC}` from `briefs/<row>-spec`, "never from memory". START recomputes only landed-state details.
-  *Checked*, by section heading.
+  *Checked*, by section heading; and the full name `briefs/<row>-spec.md`, extension included, in all
+  three files (the sentence checks stop short of its period).
 - **A PR opens against the brief's base.** `gh pr create` (alias `gh pr new`) without `--base`
   targets the repo's default branch, not the base the brief chose, so the brief's `{BASE}` is a bare
   branch (never `origin/…`). *Checked*: every `gh pr create` or `gh pr new` a workflow or

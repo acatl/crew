@@ -344,8 +344,8 @@ else:
 - the range, `<base sha>..<head sha>`, and `standard`'s cut-point line;
 - "run `npm ci` before any check";
 - "run `/code-review high <base sha>..<head sha>`; to test whether a pin pins, restore the pre-fix
-  file in your own worktree (`git checkout <base sha> -- <file>`), run the test, then put it back
-  (`git checkout <head sha> -- <file>`)";
+  file in your own worktree (`git checkout <base sha> -- <file>`, or `rm` one the range added), run
+  the test, then put it back (`git checkout <head sha> -- <file>`)";
 - "your final message lists every finding as text".
 
 Never your reasoning, your conclusions or your triage: a reviewer handed your conclusion returns
