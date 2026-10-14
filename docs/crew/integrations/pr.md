@@ -354,8 +354,9 @@ its severity.
 
 Two passes, then no third:
 
-1. **Pass 1: the round's fix diff.** Range: `<the pushed PR head's sha>..<your HEAD's sha>`. **Never merge or
-   rebase `<base>` mid-round**; if the base must move, do it before the round's first fix.
+1. **Pass 1: the round's fix diff.** Range: `<the pushed PR head's sha>..<your HEAD's sha>`.
+   **Never merge or rebase `<base>` mid-round**; if the base must move, do it before the round's
+   first fix.
 2. **Pass 2: pass 1's fixes only.** If pass 1 fixed nothing, skip it. Fix what it raises,
    re-run § 5, and push with **no third review**: the PR's bots are the next look.
 
