@@ -10,7 +10,7 @@ to `docs/crew/workflows/<name>.md` and extend the copy.
 
 ## Parameters
 
-The orchestrator resolves each into your brief; read the values there, never `CREW.md`.
+Your brief holds the resolved values; never read `CREW.md`.
 
 | Name | Meaning | Default |
 |---|---|---|
@@ -45,8 +45,8 @@ Implement the approved plan, committing as you go.
 
 Self-review, then run `/code-review high <base>..<head>` in a sub-agent: the range as shas, `<head>`
 your committed HEAD. It gets only that range, its own worktree (`isolation: "worktree"`), and "list
-findings as text", never your reasoning. Its brief: first, if `git rev-parse HEAD` isn't `<head>`,
-`git checkout --detach <head>` in its own worktree; never run a command in the worker's worktree.
+findings as text once the review returns", never your reasoning. Its brief: first, if
+`git rev-parse HEAD` isn't `<head>`, `git checkout --detach <head>` in its own worktree; never run a command in the worker's worktree.
 Fix and commit. Run it once more over those fixes alone. Any other reviewer's fixes get the same
 look: fixes are code no one has reviewed. After each run, remove its worktree (`git worktree remove
 <path>`), then its branch (`git branch -d <branch>`). A refused removal (a dirty tree, a commit of its
@@ -78,8 +78,8 @@ nothing, and the integration's stop is yours. Otherwise report and stop.
   finding is fixed, not escalated.
 - **Every valid finding is fixed**, whatever its severity. Write the fix before declining one.
   Never weaken a test. Check that a pinning test fails without its fix.
-- **Carrying** a valid finding instead of fixing it is the operator's call. A carried finding goes
-  in `DONE` under `carried:`.
+- **Carrying** a valid finding instead of fixing it is the operator's call; it goes in `DONE`
+  under `carried:`.
 - **Git safety.** No test or mutation run with `GIT_DIR` or a git-hook variable in the environment.
   A mutation that removes a scrub runs only in a throwaway `git init` copy. Never `reset --soft` to
   set work aside, never `checkout HEAD -- <path>` over uncommitted work, never `--no-verify`, no
@@ -91,7 +91,6 @@ nothing, and the integration's stop is yours. Otherwise report and stop.
 - **An `ANSWER`** is recorded as the orchestrator's, never the operator's.
 - **Checkpoints** (`clear: checkpoints`). Clear only where a stage says yes. Never clear while
   waiting on the operator, with an uncommitted tree, while sub-agents run, or one step from the
-  stop. Before clearing, your ledger (`$(git rev-parse --git-dir)/crew-ledger.md`) holds the
-  operator's answers verbatim, each approved Hard Gate and its scope, the last commit, and an
-  **EXACT NEXT STEP** line. Send the stage's `DONE` saying you will clear, then clear as your very
-  last action.
+  stop. Before clearing, your ledger holds the operator's answers verbatim, each approved Hard Gate and its scope, the last commit, and an
+  **EXACT NEXT STEP** line. Send the stage's `DONE` saying you will clear, then clear as your last
+  action (terminal: end your turn instead).

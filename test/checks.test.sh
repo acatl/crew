@@ -546,6 +546,40 @@ green "42 a heading-like line in a code fence is no stage" check-structure
 edit "$WS" '/^- \*\*Ends:\*\* every valid finding fixed/d'                         # same fixture
 red "42b the same fixture still fails on a stage with no end" check-structure "stage review names no Ends"
 
+# --- check-invariants: the host layer ----------------------------------------------------------------------
+HO=skills/crew/references/host.md
+fresh; edit "$HO" 's#^| \*pr-state\* | `gh pr view <N> --json state` | the same |$#| *pr-state* | `gh pr view <N> --json state` |  |#'
+red "43 a verb with no terminal mechanism" check-invariants "the verb *pr-state* doesn't say how both hosts do it"
+fresh; edit "$HO" 's#^| \*pr-state\* |#| *ghost* | a | b |\
+| *pr-state* |#'
+red "44 a verb no file cites" check-invariants "the verb *ghost* is cited nowhere else"
+fresh; edit "$SK" 's#^\*roster\* before anything else#`get_session` before anything else#'
+red "45 an app tool named outside host.md" check-invariants "$SK:128: names a host's tool outside references/host.md (get_session)"
+fresh; edit "$BT" 's#^(\*spawn\*)\. A field#(spawn_task). A field#'
+red "46 the brief names one outside its fallback section, which alone may" check-invariants "$BT:4: names a host's tool"
+fresh; edit "$BT" '/^- host: `{HOST}`$/d'
+red "47 the brief loses its host line" check-invariants "no '- host: \`{HOST}\`' line"
+fresh; edit "$BT" 's#^| `{HOST}` | \*self\*:#| `{HOST}` | the card:#'
+red "48 the {HOST} row stops sourcing it from self" check-invariants "no placeholder row sourcing {HOST}"
+fresh; edit "$SK" 's#a brief with none is `desktop`#a brief with none is unclear#'
+red "49 the Worker section drops the no-host-line default" check-invariants "a brief with no host line is desktop"
+fresh; edit "$BT" 's#^- Keep your ledger in `{WORKER_LEDGER}`, the one#- Keep your ledger nearby, the one#'
+red "49b the brief's Housekeeping loses the worker ledger" check-invariants "Housekeeping section doesn't name {WORKER_LEDGER}"
+fresh; edit "$BT" 's#^| `{WORKER_LEDGER}` | `~/\.claude/crew/#| `{WORKER_LEDGER}` | `<git dir>/#'
+red "49c the {WORKER_LEDGER} row stops sourcing it from the crew dir" check-invariants "no placeholder row sourcing {WORKER_LEDGER}"
+fresh; edit "$SK" "s#brief's Housekeeping names#brief's Boundaries names#"
+red "49d the Worker section stops reading its ledger from the brief" check-invariants "a worker's ledger is the one its brief names"
+fresh; edit "$SK" 's#to its title, with no ids or paths#to its title, with your ids#'
+red "50 a terminal ONLINE may carry ids again" check-invariants "a terminal report carries no ids or paths"
+fresh; edit "$BT" 's#with no ids or paths in a body#with ids in a body#'
+red "50b and so may the fallback's" check-invariants "a terminal report carries no ids or paths"
+fresh; edit "$SK" 's#on the desktop host also its own sessionId#on the desktop host also its own id#'
+red "51 desktop ONLINE loses the worker's sessionId" check-invariants "desktop ONLINE carries the worker's own sessionId"
+fresh; edit "$LG" '/^  waiting.tsv /d'
+red "52 the crew dir listing drops a watchdog state file" check-invariants "$LG: the crew dir listing doesn't name waiting.tsv"
+fresh; edit "$SK" 's#`active.tsv` and `waiting.tsv`, never#`active.tsv`, never#'
+red "53 step 7 stops deleting it" check-invariants "step 7 doesn't delete waiting.tsv"
+
 # --- check-skill-frontmatter ----------------------------------------------------------------------------------
 fresh; edit "$SK" '/^license: MIT$/d'
 red "31 a missing license" check-skill-frontmatter "missing frontmatter: license"

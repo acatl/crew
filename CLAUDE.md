@@ -19,8 +19,8 @@ Keep this checkout on `main`. To try a risky change, use a worktree and repoint 
 
 ```bash
 npm ci                          # the toolchain and the git hooks (husky); needs Node >= 22.12
-./scripts/verify.sh             # every CI check in CI's order, stopping at the first failure (~95 s)
-npm run check                   # the fast checks: markdownlint, cspell, links, shellcheck, skill checks
+./scripts/verify.sh             # every CI check in CI's order, stopping at the first failure (~40 min: test/checks.test.sh, #15)
+npm run check                   # markdownlint, cspell, links, shellcheck, skill checks; the last runs test/checks.test.sh (~35 min)
 npm test                        # both test suites: test/watchdog.test.sh (~75 s), test/overlap.test.sh
 scripts/link-skills.sh          # (re)create ~/.claude/skills/crew -> skills/crew; never clobbers
 scripts/link-skills.sh check    # exit 0 only if linked
@@ -53,9 +53,16 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
   starter: `open` → `round` → `merge`), or a project copy (this repo: `docs/crew/integrations/pr.md`,
   with CodeRabbit, the review pool and the round procedure). No `file:` → no integration: a workflow
   with its own PR stages (hg's `light`) follows `merge rule:` as before.
-- **Sessions talk only through `send_message` by sessionId,** using seven message kinds: worker →
-  orchestrator `ONLINE`/`NEED-INPUT`/`BLOCKED`/`DONE`, orchestrator → worker `RELAY`/`START`/`ANSWER`.
+- **Sessions talk only through the host's messaging** (desktop: `send_message` by sessionId;
+  terminal: `SendMessage` by title), using seven message kinds: worker → orchestrator
+  `ONLINE`/`NEED-INPUT`/`BLOCKED`/`DONE`, orchestrator → worker `RELAY`/`START`/`ANSWER`.
   Tool-permission prompts and gated consent are never relayed, and never answered by an `ANSWER`.
+- **A host is where crew runs: the desktop app's Code tab or the terminal CLI** (`claude --bg`,
+  `claude agents --json`). `references/host.md` maps each verb the skill uses in *italics*
+  (*spawn*, *identify*, *message*, *tail*, *stop*, *restart*, …) to each host's mechanism, and holds
+  each host's gotchas. The rest of the skill names verbs, never a host's tools; the brief carries
+  the host (`- host:`), and a brief without one is desktop. A terminal worker can't clear itself,
+  so the orchestrator stops it and starts a fresh session on its worktree with the resume.
 - **`references/` holds what the orchestrator fills or persists:**
   - `brief-template.md`: the worker's first message, in a ready and a queued variant, plus `START`.
     It names the workflow and integration files and their resolved parameters.
@@ -63,8 +70,9 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
     because skill-validator warns on any other directory, or a nested one.
   - `crew-md.md`: the first-use interview that writes each consuming project's `docs/CREW.md`, the
     per-project config. Only the orchestrator reads it and resolves it into briefs; workers never do.
-  - `ledger.md`: orchestrator state in `~/.claude/crew/<slug>/`. The app is authoritative for session
-    *state*, the ledger for *intent*, and the ledger never copies what `list_sessions` can answer.
+  - `host.md`: the verbs, each host's mechanism for them, and each host's gotchas (above).
+  - `ledger.md`: orchestrator state in `~/.claude/crew/<slug>/`. The host is authoritative for session
+    *state*, the ledger for *intent*, and the ledger never copies what the host (*roster*) can answer.
 - **`scripts/watchdog.sh` is a one-shot background poller.** A worker stuck in a review loop never
   goes idle, so no idle notice ever fires. The orchestrator launches the watchdog with
   `run_in_background`, and its exit is what wakes the orchestrator: it prints one `WATCHDOG …` line on
@@ -83,6 +91,9 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
   - The sub-agent trigger counts from the last push (else the merge-base's time), floored at the
     roster start too: a reused worktree's transcript dir keeps earlier sessions' sub-agents, and a
     reused branch name inherits an earlier worker's push.
+  - With `--permission-wait` (the terminal host) it also reports a worker on a tool-permission
+    prompt, read from `claude agents --json` (a `background` session whose `cwd` is the worktree,
+    `status` `waiting`), deduped in `waiting.tsv`.
 - **`scripts/overlap.sh` is the parallel-safety check** (orchestrator step 3). It lists files
   in-flight workers have touched that fall under a candidate surface.
 - **Outside the skill:** `test/` holds the suites, so they don't ship with the skill. `scripts/` holds
@@ -226,6 +237,29 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   order; each stage's Ends, Report, Orchestrator; exactly one `stop`). *Checked* by
   `check-structure.sh`, over both built-ins (each must exist), `docs/crew/workflows/` and
   `docs/crew/integrations/` (either may be absent).
+
+- **The host layer holds every host's tools.** `references/host.md`'s verb table gives each verb a
+  desktop and a terminal mechanism, and the rest of the skill names the verb (*spawn*, *tail*).
+  *Checked*: each verb row has both columns, each verb is cited outside host.md, and no skill or
+  `docs/crew/` file names an app session tool (`mcp__ccd_`, `get_session`, `send_message`, …) outside
+  host.md and the brief's fallback section, which names both hosts' send mechanisms because a
+  worker without the skill can't read host.md.
+- **The brief carries its host.** Its Orchestrator section has `- host: {HOST}`, sourced from *self*,
+  and a brief with no host line (every brief from before hosts) is desktop. *Checked*: the line, the
+  placeholder row, and the Worker section's default sentence.
+- **A terminal report carries no ids or paths; desktop ONLINE keeps the worker's sessionId.** Auto
+  mode's classifier refused an identity-heavy `ONLINE` as data exfiltration (2026-10-14), so a
+  terminal orchestrator reads ids and paths itself (*identify*); a desktop orchestrator learns the
+  worker's id only from its `ONLINE`. *Checked*: the Worker section and the brief's fallback each say
+  "no ids or paths" for the terminal, and the Messages section keeps desktop's sessionId.
+- **A worker's ledger is the one its brief names.** A terminal worker can write only inside its
+  worktree or outside the repo (2026-10-15), so the brief's Housekeeping names
+  `~/.claude/crew/<slug>/briefs/<row>-worker-ledger.md` (`{WORKER_LEDGER}`), on both hosts; a brief
+  without it keeps `<git dir>/crew-ledger.md`. *Checked*: the Housekeeping line, its placeholder row,
+  and the Worker section reading the ledger from Housekeeping.
+- **The watchdog's state files are listed and cleaned up.** Each file in `watchdog.sh`'s header
+  state list but `roster.tsv` (`reported.txt`, `active.tsv`, `waiting.tsv`) is named in
+  `ledger.md`'s crew-dir listing and deleted by SKILL.md step 7. *Checked*, file by file.
 
 ## Conventions
 

@@ -16,7 +16,7 @@ continue the spawn: the brief carries everything, so workers don't need it commi
 | Base (usual default only: the orchestrator picks per unit) | `git symbolic-ref --short refs/remotes/origin/HEAD` less `origin/`, the main checkout's current branch | `main` |
 | Verify | `docs/HARNESS.md` › Sensors, `package.json` `check`/`test`, `Makefile` `test` | ask now; `verify` needs it |
 | Worktree setup | a lockfile (`package-lock.json` → `npm ci`, `pnpm-lock.yaml` → `pnpm install`, …) in the root and in any workspace package, gitignored runtime files at the root (`.env`) | `none` |
-| Branch naming | — | keep the `claude/…` branch |
+| Branch naming | — | keep the host's branch |
 | Integration (how work lands) | `docs/HARNESS.md` merge mode (workers merge PRs under a written rule → `pr`); a GitHub remote with `gh` → offer `pr` | `operator`. `pr` offers `file: built-in`; to adapt it, copy the skill's `references/integration-pr.md` to `docs/crew/integrations/pr.md` and name that |
 | Post-land | anything the main checkout serves from a gitignored build (a CLI or skill linked globally from here → its build command) | `none` |
 | Standing boundaries | install or link commands that write outside the repo (`<tool> install`, `npm link`, home-dir symlinks) → "never run `<cmd>` from a worktree" | `none` |
@@ -61,7 +61,7 @@ Kino task — read it with the Kino MCP `get_task`.
 Chosen per unit by the orchestrator, written into the brief as a branch plus a sha. Usual default
 here: `main`.
 
-Never assume which commit the app cut a worker's worktree from (observed: the default branch, or the
+Never assume which commit the host cut a worker's worktree from (observed: the default branch, or the
 main checkout's branch, depending on the setup). The worker re-points itself to the brief's sha
 first.
 

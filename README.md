@@ -28,8 +28,9 @@ Say it to the session you want as the orchestrator:
 - `crew status`: one row per worker, with any question waiting on you.
 
 The orchestrator answers with a card listing the title, workflow, integration, scope, cleanup, landing and a
-parallel-safety check. Reply `go` to accept it, or override a line. Each worker appears as a chip;
-click it to start the session.
+parallel-safety check. Reply `go` to accept it, or override a line. In the desktop app each worker
+appears as a chip; click it to start the session. In the terminal the worker starts at once as a
+background session (`claude agents` lists it, `claude attach <id>` opens it).
 
 The default workflow is the ✓ row of `docs/CREW.md` › Workflows, else the built-in `standard`.
 
@@ -44,17 +45,18 @@ Landing follows `docs/CREW.md` › Integration's mode:
 
 ## Requirements
 
-- **The Claude desktop app (Code tab).** Sessions spawn, message and archive each other through the
-  app's session tools (`spawn_task`, `send_message`, `get_session`, `archive_session`), which the
-  Claude Code CLI does not provide.
-- **bash, git, and a BSD or GNU `stat`**, so macOS or Linux, for the watchdog and overlap scripts.
+- **A host: the Claude desktop app (Code tab), or the Claude Code CLI 2.1.300 or later.** The app
+  spawns and messages sessions through its session tools; the CLI through background sessions
+  (`claude --bg`, `claude agents --json`) and `SendMessage`. `skills/crew/references/host.md` maps
+  each to the other. The orchestrator's host is the workers' host.
+- **bash, git, jq, and a BSD or GNU `stat`**, so macOS or Linux, for the watchdog and overlap scripts.
 
 ## Layout
 
 ```text
 skills/crew/                the skill: this directory is what gets installed
   SKILL.md                  the contract: messages, input invariant, authority, orchestrator + worker flows
-  references/               brief template, ledger format, docs/CREW.md interview, the built-in workflow and integration
+  references/               brief template, ledger format, docs/CREW.md interview, host verbs, the built-in workflow and integration
   scripts/
     watchdog.sh             background poller that wakes the orchestrator when a looping worker stalls
     overlap.sh              parallel-safety check: does a candidate surface collide with in-flight workers?

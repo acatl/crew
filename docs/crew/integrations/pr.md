@@ -104,7 +104,7 @@ checkpoints. On top of them:
 
 - **Consent already given:**
   - a crew brief's grant covers a push to the worker's own branch, opening its own PR, and
-    binding that PR in the app with its review monitor on (§ Who runs the rounds);
+    binding that PR in the app with its review monitor on, on the desktop host (§ Who runs the rounds);
   - the merge rule in § Stopping › Merging covers a merge that meets it;
   - `npm ci` from the committed lockfile installs declared dependencies;
   - writes to the PR the work belongs to (replies, comments, the labels this file names) are
@@ -131,13 +131,18 @@ are context the next round needs.
   `set_monitor` with `auto_fix: true` and the PR's URL. The monitor is what wakes the owner for
   each round (§ 0); without it, a worker that reported `DONE` sleeps through the reviews.
   - Any of these calls can raise an approval prompt, which blocks the call, so nothing can be sent
-    from inside it. Unless `get_session("self")` reports `permissionMode` `auto` or
+    from inside it. Unless *self* (crew's `references/host.md`) reports permission mode `auto` or
     `bypassPermissions`, send `NEED-INPUT` marked `answer: in this session only` BEFORE the calls.
   - Before clearing your own context, turn the monitor off (`auto_fix: false`): a cleared worker
     woken by anything but the resume carrying its brief hedges or invents. Turn it back on when
     the resume arrives and the PR is still open.
   - Once `gh pr view` reads `MERGED` after `gh pr merge` (a merge queue only queues it), turn it
     off, and say so in the merge `DONE`.
+- **On the terminal host there is no app, so no binding and no monitor.** Wherever this file binds
+  the PR or turns the monitor on, skip it; the round's settle timer (§ 0) and a background
+  `gh pr checks <N> --watch` are what wake you. Wherever it turns the monitor off, stop your own
+  background commands instead. A review that lands after a clean round wakes nobody: the
+  coordinator's own merge-rule check reads the PR before any merge `ANSWER`, which catches it.
 - **After each round's push** the worker reports `DONE`, with `checkpoint` in its first line, to
   the coordinator: round number, commit sha, push time, what was fixed and what was declined, CI
   state, silent reviewers. That is a checkpoint, not an exit: when the next reviews land, the same
