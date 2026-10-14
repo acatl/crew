@@ -473,6 +473,14 @@ fresh; printf 'scratch\n' > "$S/skills/crew/notes.txt"
 red "29 a stray file at the skill root" check-structure "notes.txt"
 fresh; run check-structure
 if grep -qF "PR 3 removes this exemption" "$ROOT/out"; then ok "30 the exemption is printed on every run"; else bad "30 exemption" "$(cat "$ROOT/out")"; fi
+# The body's line count is exempt too, until PR 3: a body well past 500 lines passes, printed as known.
+fresh; for i in $(seq 1 40); do printf '\nPadding paragraph %s.\n' "$i"; done >> "$S/$SK"
+run check-structure; rc=$?
+if [ "$rc" = 0 ] && grep -qE "^known: SKILL\.md body is [0-9,]+ lines .*PR 3 removes this exemption" "$ROOT/out"
+then ok "30b a body over the line count passes, printed as known"; else bad "30b line exemption" "rc=$rc $(cat "$ROOT/out")"; fi
+edit scripts/check-structure.sh 's#(tokens|lines) #tokens #'   # same fixture, the exemption gone
+chmod +x "$S/scripts/check-structure.sh"                        # edit's mv drops the mode
+red "30c and fails without its exemption" check-structure "SKILL.md: warning: SKILL.md body is"
 
 # --- check-structure: the workflow files' shape ----------------------------------------------------------
 fresh; edit "$WS" '/^- \*\*Ends:\*\* committed, `verify` green\.$/d'

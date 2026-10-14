@@ -234,9 +234,10 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   the operator raises a budget (`scripts/check-budget.sh --update --allow-raise`) or accepts a lower
   content metric (a hand edit of the baseline). A worker fixes the new text instead. `--update` alone
   only ratchets: budgets down, metrics up.
-- **One exemption, until PR 3:** `scripts/check-structure.sh` lets through skill-validator's warning
-  that SKILL.md's body is over the recommended token count, and prints it on every run. Splitting
-  SKILL.md into `references/` removes it.
+- **Two exemptions, until PR 3:** `scripts/check-structure.sh` lets through skill-validator's
+  warnings that SKILL.md's body is over the recommended token count and over its recommended 500
+  lines (operator, 2026-10-14), and prints them on every run. Splitting SKILL.md into `references/`
+  removes both; until then `baselines/budget.tsv` keeps SKILL.md from growing.
 - **SKILL.md Gotchas carry their evidence level**: "Seen live" with where and when, *inferred*, or
   *reported, not reproduced*. New entries follow that pattern.
 - **`watchdog.sh` must stay portable across BSD and GNU `stat`,** probed at startup.
