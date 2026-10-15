@@ -309,7 +309,7 @@ edit "$SK" 's#Keep it across resumes, clears included\.#Reset it at resumes, cle
 red "15fk4 and the same fixture fails once that sentence reverses" check-invariants "the roster start survives a resume"
 fresh; edit "$SK" 's#\*\*Spawn every unit now\*\*, each by step 5 (end your turn after the last):#**Spawn every unit now**:#'
 red "15fi7 step 8 spawns the queue without step 5's row write" check-invariants "the section headed '^#+ 8[.] Sequences"
-fresh; edit "$SK" 's#integration`, mode, scope,#integration`, scope,#'
+fresh; edit "$SK" 's#integration`, mode, permission,#integration`, permission,#'
 red "15fi8 step 5's row write drops the mode" check-invariants "the section headed '^#+ 5[.] Spawn"
 fresh; edit "$LG" 's#^`Do not touch`, any decision#any decision#'
 red "15fi9 the spine drops Do not touch" check-invariants "the section headed '^#+ Shape"
@@ -563,7 +563,7 @@ fresh; edit "$HO" 's#^| \*pr-state\* |#| *ghost* | a | b |\
 | *pr-state* |#'
 red "44 a verb no file cites" check-invariants "the verb *ghost* is cited nowhere else"
 fresh; edit "$SK" 's#^\*roster\* before anything else#`get_session` before anything else#'
-red "45 an app tool named outside host.md" check-invariants "$SK:128: names a host's tool outside references/host.md (get_session)"
+red "45 an app tool named outside host.md" check-invariants "$SK:129: names a host's tool outside references/host.md (get_session)"
 fresh; edit "$BT" 's#^(\*spawn\*)\. A field#(spawn_task). A field#'
 red "46 the brief names one outside its fallback section, which alone may" check-invariants "$BT:4: names a host's tool"
 fresh; edit "$BT" '/^- host: `{HOST}`$/d'
@@ -584,7 +584,7 @@ fresh; edit "$BT" 's#^| `{ORCH_ADDRESS}` | \*self\*#| `{ORCH_ADDRESS}` | the car
 red "49f the {ORCH_ADDRESS} row stops sourcing it from self" check-invariants "no placeholder row sourcing {ORCH_ADDRESS}"
 fresh; edit "$BT" 's#`SendMessage` to `{ORCH_ADDRESS}`, else#`SendMessage` to#'
 red "49g the fallback sends by title alone again" check-invariants "doesn't send to {ORCH_ADDRESS}"
-fresh; edit "$BT" 's#\. On the terminal, `clear` is `never` |# |#'
+fresh; edit "$BT" 's#\. On the terminal, `clear` is `never`, whatever the card says |# |#'
 red "49h the {PARAMETERS} row stops resolving clear on the terminal" check-invariants "doesn't resolve \`clear\` to \`never\` on the terminal"
 fresh; edit "$SK" "s#your brief's \`clear\` is \`never\`#your brief's \`clear\` says#"
 red "49i the Worker section stops saying a terminal worker never clears" check-invariants "a terminal worker's clear is never"

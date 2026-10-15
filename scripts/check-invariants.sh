@@ -788,7 +788,7 @@ if ! grep -qE '^\| `\{WORKER_LEDGER\}` \| `~/\.claude/crew/<slug>/briefs/<row>-w
   fail "$BRIEF: no placeholder row sourcing {WORKER_LEDGER} from the crew dir"; wl_ok=0
 fi
 if [ "$wl_ok" = 1 ]; then held=$((held + 1)); fi
-section_rule --any "a worker's ledger is the one its brief names" 'ledger' "Housekeeping" -- '0|^#+ Worker[[:space:]]*$'
+section_rule --any "a worker's ledger is the one its brief names" 'ledger' "Housekeeping names" -- '0|^#+ Worker[[:space:]]*$'
 
 # --- a terminal worker never clears --------------------------------------------------------------------------
 # A terminal worker can't clear itself, and restarting it at every checkpoint closed the operator's attached
