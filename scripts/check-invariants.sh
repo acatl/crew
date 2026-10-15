@@ -366,11 +366,12 @@ section_rule --any "START takes its Spec from briefs/<row>-spec.md" 'Spec from `
 section_rule --any "the START template sources {SPEC} from briefs/<row>-spec.md" '`{SPEC}`' 'briefs/<row>-spec' \
   'never from memory' -- '0|^#+ START[[:space:]]*$'
 # The sentences above stop short of ".md"; the file name itself, extension included, is pinned here:
-# every copy reads briefs/<row>-spec.md, the whole name up to a delimiter (a save and a read that
-# disagree lose the spec: ".md.bak" or ".md~" is not ".md"; a sentence's closing period is not part of
-# the name), and each of the three files still names it.
+# every copy reads briefs/<row>-spec.md, the whole name up to a backtick or whitespace, where every real
+# copy ends (a save and a read that disagree lose the spec: ".md.bak", ".md~" or ".md,v" is not ".md";
+# a sentence's closing period is not part of the name; any other wrapper reads as part of it and fails
+# closed), and each of the three files still names it.
 # shellcheck disable=SC2016  # the backticks are literal Markdown delimiters
-expect "the queued unit's spec file" 'briefs/<row>-spec([^`[:space:]|),;:]*[^`[:space:]|),;:.])?' \
+expect "the queued unit's spec file" 'briefs/<row>-spec([^`[:space:]]*[^`[:space:].])?' \
   'briefs/<row>-spec.md' \
   "SKILL.md step 5's save"
 spec_ok=1

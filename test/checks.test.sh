@@ -290,6 +290,10 @@ fresh; edit "$SK" 's#Save a queued brief.s `{SPEC}` to `briefs/<row>-spec\.md`#S
 red "15fj11 a compound suffix on the save is a drift too" check-invariants "the queued unit's spec file reads 'briefs/<row>-spec.md.bak'"
 fresh; edit "$SK" 's#Save a queued brief.s `{SPEC}` to `briefs/<row>-spec\.md`#Save a queued brief'"'"'s `{SPEC}` to `briefs/<row>-spec.md~`#'
 red "15fj12 so is any non-dot suffix" check-invariants "the queued unit's spec file reads 'briefs/<row>-spec.md~'"
+for sfx in ',v' ':old' ';bak' '|x' ')x' '-old' '/x'; do   # any suffix up to a backtick or space
+  fresh; edit "$SK" "s#Save a queued brief.s \`{SPEC}\` to \`briefs/<row>-spec\\.md\`#Save a queued brief's \`{SPEC}\` to \`briefs/<row>-spec.md$sfx\`#"
+  red "15fj12b suffix '$sfx' is a drift" check-invariants "the queued unit's spec file reads 'briefs/<row>-spec.md$sfx'"
+done
 fresh; edit "$LG" 's#^  briefs/<row>-spec\.md a queued#  briefs/<row>-spec.md. A queued#'
 green "15fj13 a sentence's closing period isn't part of the name" check-invariants
 edit "$LG" 's#^  briefs/<row>-spec\.md\. A queued#  briefs/<row>-spec.md.old A queued#'   # same fixture
