@@ -54,7 +54,7 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
   with CodeRabbit, the review pool and the round procedure). No `file:` → no integration: a workflow
   with its own PR stages (hg's `light`) follows `merge rule:` as before.
 - **Sessions talk only through the host's messaging** (desktop: `send_message` by sessionId;
-  terminal: `SendMessage` by title), using seven message kinds: worker → orchestrator
+  terminal: `SendMessage` by socket address, title as fallback), using seven message kinds: worker → orchestrator
   `ONLINE`/`NEED-INPUT`/`BLOCKED`/`DONE`, orchestrator → worker `RELAY`/`START`/`ANSWER`.
   Tool-permission prompts and gated consent are never relayed, and never answered by an `ANSWER`.
 - **A host is where crew runs: the desktop app's Code tab or the terminal CLI** (`claude --bg`,
@@ -246,8 +246,10 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   host.md and the brief's fallback section, which names both hosts' send mechanisms because a
   worker without the skill can't read host.md.
 - **The brief carries its host.** Its Orchestrator section has `- host: {HOST}`, sourced from *self*,
-  and a brief with no host line (every brief from before hosts) is desktop. *Checked*: the line, the
-  placeholder row, and the Worker section's default sentence.
+  and a brief with no host line (every brief from before hosts) is desktop. On the terminal it also
+  carries `- address: {ORCH_ADDRESS}`, the orchestrator's socket, since two live sessions can share a
+  title; desktop keeps addressing by sessionId. *Checked*: both lines and their placeholder rows, the
+  fallback section's send to the address, and the Worker section's default sentence.
 - **A terminal report carries no ids or paths; desktop ONLINE keeps the worker's sessionId.** Auto
   mode's classifier refused an identity-heavy `ONLINE` as data exfiltration (2026-10-14), so a
   terminal orchestrator reads ids and paths itself (*identify*); a desktop orchestrator learns the

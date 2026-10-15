@@ -756,6 +756,20 @@ fi
 if ! grep -qE '^\| `\{HOST\}` \| \*self\*' "$BRIEF"; then
   fail "$BRIEF: no placeholder row sourcing {HOST} from *self*"; ho_ok=0
 fi
+# A title can be shared by two live sessions (two orchestrators, seen live 2026-10-15); a socket can't. On
+# the terminal the brief carries the orchestrator's socket address, and the fallback section sends to it.
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+if ! section '^## Orchestrator[[:space:]]*$' 1 "$BRIEF" | grep -qF -- '- address: `{ORCH_ADDRESS}`'; then
+  fail "$BRIEF: the brief's Orchestrator section has no '- address: \`{ORCH_ADDRESS}\`' line"; ho_ok=0
+fi
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+if ! grep -qE '^\| `\{ORCH_ADDRESS\}` \| \*self\*' "$BRIEF"; then
+  fail "$BRIEF: no placeholder row sourcing {ORCH_ADDRESS} from *self*"; ho_ok=0
+fi
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+if ! section '^#+ If the `crew` skill is unavailable' 1 "$BRIEF" | grep -qF -- '`SendMessage` to `{ORCH_ADDRESS}`'; then
+  fail "$BRIEF: the fallback section doesn't send to {ORCH_ADDRESS} on the terminal"; ho_ok=0
+fi
 if [ "$ho_ok" = 1 ]; then held=$((held + 1)); fi
 # shellcheck disable=SC2016  # the backticks are literal Markdown
 section_rule --any "a brief with no host line is desktop" 'host:' 'none is `desktop`' -- '0|^#+ Worker[[:space:]]*$'

@@ -13,6 +13,7 @@ Two variants differ only in the Job section:
 | `{TICKET}` | the trigger |
 | `{STATE}` | `ready`, `queued`, or `resume` when re-sent after a clear |
 | `{ORCH_ID}`, `{ORCH_TITLE}` | *self* |
+| `{ORCH_ADDRESS}` | *self* on the terminal, else `none` |
 | `{HOST}` | *self*: `desktop` or `terminal` |
 | `{TITLE}` | card › Title |
 | `{BASE}` | THIS unit's base (SKILL.md step 3.4), as a branch (e.g. `graph-port`, not `origin/main`) |
@@ -49,7 +50,8 @@ is here, in the ticket, or in the files your Job names.
 
 ## Orchestrator
 - sessionId: `{ORCH_ID}`
-- title: `{ORCH_TITLE}` (terminal: the address; desktop: by id only)
+- title: `{ORCH_TITLE}` (fallback only)
+- address: `{ORCH_ADDRESS}`
 - host: `{HOST}`
 
 ## Job
@@ -86,7 +88,7 @@ is here, in the ticket, or in the files your Job names.
 
 ## If the `crew` skill is unavailable
 Report on host `{HOST}`: desktop, `mcp__ccd_session_mgmt__send_message` to `{ORCH_ID}`; terminal,
-`SendMessage` to `{ORCH_TITLE}`, with no ids or paths in a body. First line:
+`SendMessage` to `{ORCH_ADDRESS}`, else `{ORCH_TITLE}`, with no ids or paths in a body. First line:
 `[crew] <KIND> · {TICKET} · <summary>`. Send `ONLINE` with `state: {STATE}` (`ready` or `queued`), unless marked `state=resume`:
 follow `## Resume`. If queued, end your turn until `START`. Send `NEED-INPUT`
 before ending any turn that waits on the operator, and ask
@@ -105,8 +107,8 @@ Send `BLOCKED` when stuck. At each stage your workflow or integration reports, s
 
 ```markdown
 ## Job
-Deferred. You are **queued**. Send `ONLINE` with `state: queued` and end your turn. Don't set up, read
-the repo's docs, or look at the code yet. Your job arrives in a `[crew] START`, which
+Deferred. You are **queued**. Send `ONLINE` with `state: queued` and end your turn. Don't set up or read
+the repo yet. Your job arrives in a `[crew] START`, which
 replaces this section. Run the crew skill's *START steps* when it arrives.
 ```
 
@@ -120,8 +122,8 @@ row. Desktop only: the terminal spawns a ready brief instead.
 | Placeholder | Source |
 |---|---|
 | `{SHA}` | `git rev-parse HEAD` on `<base>` in the main checkout, after the last landing |
-| `{LANDED}` | one line per unit landed since queuing: id, sha, what it changed that this unit touches |
-| `{HANDOFFS}` | anything an earlier unit left for this one (a leftover, a decision), else `none` |
+| `{LANDED}` | one line per unit landed since queuing: id, sha, what it changed here |
+| `{HANDOFFS}` | anything an earlier unit left for this one, else `none` |
 | `{CARRIED}` | one "Carried from <unit>" line per finding an earlier unit carried, else `none` |
 | `{SPEC}` | never from memory: `briefs/<row>-spec.md`; missing → drop `## Spec` for a tracker ticket, else ask the operator |
 | Job and Spec fields | same as the brief's but `{SPEC}`, computed now, the card's lines from the ledger row |

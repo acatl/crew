@@ -207,8 +207,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 
 ### 5. Spawn
 
-1. *self* → your `sessionId`, title and host. On the terminal your title must be unique among live
-   sessions; if it isn't, ask the operator to `/rename` this session, and stop.
+1. *self* → your `sessionId`, title, host and, on the terminal, your address.
 2. Fill [references/brief-template.md](references/brief-template.md), the ready variant. Every `{…}`
    gets a value or `none`; no placeholder survives.
 3. **Write the ledger row** (status `chip`, `session: pending <worktree name>`, stage, surface,
@@ -274,7 +273,7 @@ yet to start on your message, run a background `sleep 60` (*Monitors*); at its e
 operator, busy → subscribe, idle → treat it as an idle notice. Resolve its title fresh with
 *identify*; never reuse one. Then *subscribe*, `[ref]` from `ListAgents`. "Not reachable" → resolve
 again; still so (seen after a clear) → retry when anything next wakes you (a report, a `sleep`, the
-watchdog). Use the title, never the id.
+watchdog). Use the title, never the id; on the terminal, its address.
 
 **Wakes.** Keep one background `sleep` (*Monitors*) per worker whose last report or turn ends in a
 `waiting: <what>[, until <time>]` line, since the watchdog can't see an idle one: to the `until` plus
@@ -426,7 +425,7 @@ the *START steps* (a START in it is your job), and continue at step 3 where `## 
 
 1. **ONLINE.** *self* → your sessionId. Send `ONLINE` by *message* with `state: ready` if your brief
    has a Job section, or `state: queued` if it says the job is deferred: on the desktop host to the
-   orchestrator's sessionId, with your own; on the terminal host to its title, with no ids or paths.
+   orchestrator's sessionId, with your own; on the terminal host to its address, with no ids or paths.
    If the send isn't `delivered` or `queued`: find exactly one session whose title matches the brief's
    orchestrator title (`ListAgents`), ignoring a leading `🌳 `, and send to that. Zero or several
    matches, or still failing → tell the operator in this session that you can't reach the

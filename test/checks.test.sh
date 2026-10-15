@@ -578,7 +578,13 @@ fresh; edit "$BT" 's#^| `{WORKER_LEDGER}` | `~/\.claude/crew/#| `{WORKER_LEDGER}
 red "49c the {WORKER_LEDGER} row stops sourcing it from the crew dir" check-invariants "no placeholder row sourcing {WORKER_LEDGER}"
 fresh; edit "$SK" "s#brief's Housekeeping names#brief's Boundaries names#"
 red "49d the Worker section stops reading its ledger from the brief" check-invariants "a worker's ledger is the one its brief names"
-fresh; edit "$SK" 's#to its title, with no ids or paths#to its title, with your ids#'
+fresh; edit "$BT" '/^- address: `{ORCH_ADDRESS}`$/d'
+red "49e the brief loses the orchestrator's address" check-invariants "no '- address: \`{ORCH_ADDRESS}\`' line"
+fresh; edit "$BT" 's#^| `{ORCH_ADDRESS}` | \*self\*#| `{ORCH_ADDRESS}` | the card#'
+red "49f the {ORCH_ADDRESS} row stops sourcing it from self" check-invariants "no placeholder row sourcing {ORCH_ADDRESS}"
+fresh; edit "$BT" 's#`SendMessage` to `{ORCH_ADDRESS}`, else#`SendMessage` to#'
+red "49g the fallback sends by title alone again" check-invariants "doesn't send to {ORCH_ADDRESS}"
+fresh; edit "$SK" 's#to its address, with no ids or paths#to its address, with your ids#'
 red "50 a terminal ONLINE may carry ids again" check-invariants "a terminal report carries no ids or paths"
 fresh; edit "$BT" 's#with no ids or paths in a body#with ids in a body#'
 red "50b and so may the fallback's" check-invariants "a terminal report carries no ids or paths"
