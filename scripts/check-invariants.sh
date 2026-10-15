@@ -382,6 +382,14 @@ for f in "$SKILL/SKILL.md" "$SKILL/references/ledger.md" "$SKILL/references/brie
 done
 if [ "$spec_ok" = 1 ]; then held=$((held + 1)); fi
 
+# --- a resume keeps the roster start -----------------------------------------------------------------------
+# Trigger 2 floors its sub-agent baseline at the roster start. A start reset at a resume after a clear would
+# drop the same worker's pre-clear sub-agents since its push: three before plus three after read as three
+# (acatl/crew#14). Step 6's resume sentence says the start is kept, and the Watchdog roster bullet to keep it
+# across resumes.
+section_rule --any "a resume keeps the roster start" 'resume' 'roster start kept' -- '0|^#+ 6[.] Handle messages'
+section_rule --any "the roster start survives a resume" 'Keep it across resumes' -- '0|^#+ Watchdog'
+
 # --- the workflow reaches a worker through its brief ------------------------------------------------------
 # Workers never read CREW.md: the orchestrator resolves the workflow (CREW.md › Workflows) into the
 # brief's {WORKFLOW_PATH} and {PARAMETERS}, and the worker reads the file the brief names. So no Worker

@@ -256,7 +256,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   throttle, an operator call), and any message still pending. A resume never carries consent for a
   gated action or a plan approval, not even as an operator call: the worker's own ledger holds those,
   and a worker whose ledger lacks one re-asks in its own session. Once it's sent: drop `resume not
-  sent` from `owed`, status `running` unless `owed` still holds a question, roster start epoch reset.
+  sent` from `owed`, status `running` unless `owed` still holds a question, roster start kept.
 - **Idle notice** → ignore it for a worker that's queued, landed or archived, or verified with nothing
   sent to it since (exits fire notices too). One busy now (`ListAgents`), yet to start on your last message, or for a turn that
   ended before you sent it (*tail* times) is stale (*Gotchas*): see *Subscribing*. Check its
@@ -389,11 +389,11 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   turns.
 - **Its roster is `~/.claude/crew/<slug>/roster.tsv`** — `<ticket>` TAB `<worktree-path>` TAB
   `<start epoch>`, one line per `running` worker, and yours to maintain. Set the start to `date +%s`
-  as the worker goes `running`; neither trigger counts from earlier. Write the ledger row and the
-  roster line in the same step: a missing line is a worker nobody is watching, and nothing will tell
-  you. Rewrite it write-to-temp-then-`mv`, never in place. It is re-read every pass, so an edit lands
-  with no restart. The worktree path must be **byte-identical to the one *identify* reports** — the
-  transcript directory is derived from it by substitution, so a trailing slash or a `/private/var` vs
+  as the worker goes `running`; neither trigger counts from earlier. Keep it across resumes. Write the
+  ledger row and the roster line in the same step: a missing line is a worker nobody is watching, and
+  nothing will tell you. Rewrite it write-to-temp-then-`mv`, never in place. It is re-read every pass, so
+  an edit needs no restart. The worktree path must be **byte-identical to the one *identify* reports** —
+  the transcript directory is derived from it by substitution, so a trailing slash or a `/private/var` vs
   `/var` spelling silently yields an unwatched worker. One `--base`, used only as the baseline before a
   worker's first push, covers the whole roster; on a mixed-base roster, pass the most common one.
 - **Stop it by the pid** in `~/.claude/crew/<slug>/watchdog.pid` once the last worker stops, and clear
@@ -517,7 +517,7 @@ anything besides the four kinds.
   practice: a worker declined a relayed request to clear its own context, and a classifier-blocked edit
   had to be approved by the operator inside the worker session.
 - **Your shell acts only on your own state.** A persisting `cd` into a worker's worktree moves your
-  cwd, and bare `git` follows it: use `git -C <path>` or `(cd <path> && …)`. Seen live: crew INT1
+  cwd; bare `git` follows: use `git -C <path>` or `(cd <path> && …)`. Seen live: crew INT1
   (acatl/crew#7, 2026-10-03); twice more downstream (per-turn check); once on the terminal
   (2026-10-14, a `cd` before `claude --bg`). Never kill by process name
   (`pkill -f`, `pgrep … | xargs kill`, `ps | grep`), only by your `watchdog.pid`: seen live 2026-10-02,

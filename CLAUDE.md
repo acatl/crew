@@ -90,7 +90,8 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
     it sights the whole roster, so a prompt relaunch keeps every clock.
   - The sub-agent trigger counts from the last push (else the merge-base's time), floored at the
     roster start too: a reused worktree's transcript dir keeps earlier sessions' sub-agents, and a
-    reused branch name inherits an earlier worker's push.
+    reused branch name inherits an earlier worker's push. A resume after a clear keeps the start, or
+    the same worker's pre-clear sub-agents would drop out. *Checked*: SKILL.md step 6 and *Watchdog*.
   - With `--permission-wait` (the terminal host) it also reports a worker on a tool-permission
     prompt, read from `claude agents --json` (a `background` session whose `cwd` is the worktree,
     `status` `waiting`), deduped in `waiting.tsv`.
