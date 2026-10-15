@@ -465,7 +465,8 @@ the *START steps* (a START in it is your job), and continue at step 3 where `## 
 9. **Clear your context** only where your workflow says so, by yourself, as your last action: the
    orchestrator can't clear a chip-started worker. You wake with only its resume. On the terminal you
    can't, and your brief's `clear` is `never`. Keep working in this session: Claude Code compacts your
-   context in place when it fills.
+   context in place when it fills. Read your brief (its Housekeeping path) and your ledger again
+   after a compaction, before your next step: the summary paraphrases them.
 
 **START steps (queued workers only).** `<base>` is the brief's base branch; `<sha>` is from START's
 first line.
