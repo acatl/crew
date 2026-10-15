@@ -286,6 +286,8 @@ fresh; edit "$SK" 's#Save a queued brief.s `{SPEC}` to `briefs/<row>-spec\.md`#S
 red "15fj9 step 5 saves to .txt while step 8 reads .md" check-invariants "the queued unit's spec file reads 'briefs/<row>-spec.txt'"
 fresh; edit "$LG" 's#^  briefs/<row>-spec\.md #  briefs/<row>-spec    #'
 red "15fj10 one ledger copy loses its extension" check-invariants "the queued unit's spec file reads 'briefs/<row>-spec'"
+fresh; edit "$SK" 's#Save a queued brief.s `{SPEC}` to `briefs/<row>-spec\.md`#Save a queued brief'"'"'s `{SPEC}` to `briefs/<row>-spec.md.bak`#'
+red "15fj11 a compound suffix on the save is a drift too" check-invariants "the queued unit's spec file reads 'briefs/<row>-spec.md.bak'"
 fresh; edit "$SK" 's#\*\*Spawn every unit now\*\*, each by step 5 (end your turn after the last):#**Spawn every unit now**:#'
 red "15fi7 step 8 spawns the queue without step 5's row write" check-invariants "the section headed '^#+ 8[.] Sequences"
 fresh; edit "$SK" 's#integration`, mode, scope,#integration`, scope,#'

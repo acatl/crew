@@ -366,9 +366,9 @@ section_rule --any "START takes its Spec from briefs/<row>-spec.md" 'Spec from `
 section_rule --any "the START template sources {SPEC} from briefs/<row>-spec.md" '`{SPEC}`' 'briefs/<row>-spec' \
   'never from memory' -- '0|^#+ START[[:space:]]*$'
 # The sentences above stop short of ".md"; the file name itself, extension included, is pinned here:
-# every copy reads briefs/<row>-spec.md (a save and a read that disagree lose the spec), and each of the
-# three files still names it.
-expect "the queued unit's spec file" 'briefs/<row>-spec([.][A-Za-z0-9]+)?' 'briefs/<row>-spec.md' \
+# every copy reads briefs/<row>-spec.md, whole suffix and all (a save and a read that disagree lose the
+# spec: ".md.bak" is not ".md"), and each of the three files still names it.
+expect "the queued unit's spec file" 'briefs/<row>-spec([.][A-Za-z0-9]+)*' 'briefs/<row>-spec.md' \
   "SKILL.md step 5's save"
 spec_ok=1
 for f in "$SKILL/SKILL.md" "$SKILL/references/ledger.md" "$SKILL/references/brief-template.md"; do
