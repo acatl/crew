@@ -44,7 +44,8 @@ app or the terminal CLI: a verb in *italics* (*spawn*, *message*) is done the ho
 ### Messages
 
 Worker → orchestrator, always by *message* to the orchestrator the brief names. First line is
-self-contained: `[crew] <KIND> · <TICKET> · <one-line summary>`.
+self-contained: `[crew] <KIND> · <TICKET> · <one-line summary>`. Use a session's title and *link* when
+either role names it to the operator, never a socket, an address or a bare sessionId.
 
 | Kind | Sent when | Body carries | Then the worker |
 |---|---|---|---|
