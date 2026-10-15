@@ -84,7 +84,7 @@ report.
 
 ## Rules
 
-- **Terminal host:** no app monitor; "monitor off" stops your background commands. The settle
+- **Terminal host:** no app monitor and no clears (`clear: never`); "monitor off" after merging stops your background commands. The settle
   timer and `gh pr checks <N> --watch` wake you.
 - **Record each push's time in your ledger:** after a clear, `settle` runs from it, never the commit's.
 - **Consent.** The brief grants a push to your own branch, your own PR, its binding, and writes to

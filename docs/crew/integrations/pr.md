@@ -140,8 +140,8 @@ are context the next round needs.
     off, and say so in the merge `DONE`.
 - **On the terminal host there is no app, so no binding and no monitor.** Wherever this file binds
   the PR or turns the monitor on, skip it; the round's settle timer (§ 0) and a background
-  `gh pr checks <N> --watch` are what wake you. Wherever it turns the monitor off, stop your own
-  background commands instead. A review that lands after a clean round wakes nobody: the
+  `gh pr checks <N> --watch` are what wake you. A terminal worker never clears (`clear: never`), so skip
+  "monitor off" before a clear; at the merge, stop your own background commands instead. A review that lands after a clean round wakes nobody: the
   coordinator's own merge-rule check reads the PR before any merge `ANSWER`, which catches it.
 - **After each round's push** the worker reports `DONE`, with `checkpoint` in its first line, to
   the coordinator: round number, commit sha, push time, what was fixed and what was declined, CI

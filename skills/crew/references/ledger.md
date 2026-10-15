@@ -76,7 +76,7 @@ updated: <iso> · orchestrator: <sessionId>
 ```
 
 **Spine** (the only fields any rule reads): row id, unit, status, `session`, `brief`, `stage`, `owed`,
-and the card's lines (`workflow` and its overrides, `integration`, mode, compact, scope, cleanup, landing,
+and the card's lines (`workflow` and its overrides, `integration`, mode, permission, compact, scope, cleanup, landing,
 `Do not touch`, any decision only in memory, not the spec): a queued unit's START reads them, and
 takes its Spec from `briefs/<row>-spec.md`, never from memory. Row ids are stable and never reused;
 the unit may change, so rows join on `session`, never on a unit or title.

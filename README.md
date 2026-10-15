@@ -60,8 +60,8 @@ running.
   install, shared config, a push it isn't granted), and any question it marks `answer: in this
   session only`, such as `standard`'s plan approval or a merge go you kept for yourself. The
   orchestrator never answers or relays these; it sends you to the worker.
-- **A restart brings a new id.** The orchestrator may restart a crashed or wedged worker; that closes
-  your attached view, and the orchestrator gives you the new id.
+- **A restart brings a new id.** Only on your word, the orchestrator restarts a crashed or wedged
+  worker; that closes your attached view, and the orchestrator gives you the new id.
 - **Never reopen a stopped worker,** neither with the `claude --resume …` line its exit screen prints
   nor with `claude attach <old id>`. Either revives it behind the orchestrator's back, possibly in
   the same worktree and on the same branch as its successor.

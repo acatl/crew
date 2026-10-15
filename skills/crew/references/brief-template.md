@@ -22,7 +22,7 @@ Two variants differ only in the Job section:
 | `{SCOPE}` | card › Scope |
 | `{WORKFLOW}` | card › Workflow |
 | `{WORKFLOW_PATH}` | its file, absolute: its `CREW.md` › Workflows row, or the built-in `<skill-dir>/references/workflow-<name>.md` |
-| `{PARAMETERS}` | the workflow's Parameters, each resolved (`name: value`, one line), with the card's overrides. `no-commit` is never overridden: it must equal the watchdog's `--no-commit`. On the terminal, `clear` is `never` |
+| `{PARAMETERS}` | the workflow's Parameters, each resolved (`name: value`, one line), with the card's overrides. `no-commit` is never overridden: it must equal the watchdog's `--no-commit`. On the terminal, `clear` is `never`, whatever the card says |
 | `{INTEGRATION_PATH}` | its file, absolute: `CREW.md` › Integration's `file:` under `mode: pr`, `built-in` being `<skill-dir>/references/integration-pr.md`. No `file:`, another mode, or the card's `integration: none` → the whole line reads `- Integration: none` |
 | `{INTEGRATION_PARAMETERS}` | the integration's Parameters, resolved as `{PARAMETERS}` are |
 | `{LANDING}` | card › Landing: `delegated` when it shows `delegated (merge rule)`, else `operator` |

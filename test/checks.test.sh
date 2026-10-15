@@ -300,13 +300,13 @@ edit "$LG" 's#^  briefs/<row>-spec\.md\. A queued#  briefs/<row>-spec.md.old A q
 red "15fj14 and the same fixture fails once that copy drifts" check-invariants "the queued unit's spec file reads 'briefs/<row>-spec.md.old'"
 # a resume keeps the roster start: step 6 and the Watchdog roster bullet say so
 fresh; edit "$SK" 's#holds a question, roster start kept\.#holds a question, roster start epoch reset.#'
-red "15fk step 6 resets the roster start at a resume again" check-invariants "the section headed '^#+ 6[.] Handle messages"
+red "15fk step 6 resets the roster start at a resume again" check-invariants "a resume keeps the roster start"
 fresh; edit "$SK" 's#neither trigger counts from earlier\. Keep it across resumes\.#neither trigger counts from earlier.#'
-red "15fk2 the Watchdog roster bullet drops the kept start" check-invariants "the section headed '^#+ Watchdog"
-fresh; edit "$SK" 's#neither trigger counts from earlier\. Keep it#Neither trigger counts from earlier. Keep it#'
-green "15fk3 a rewording beside the pinned sentence stays green" check-invariants
-edit "$SK" 's#holds a question, roster start kept\.#holds a question.#'   # same fixture
-red "15fk4 and the same fixture fails once step 6 drops it" check-invariants "the section headed '^#+ 6[.] Handle messages"
+red "15fk2 the Watchdog roster bullet drops the kept start" check-invariants "the roster start survives a resume"
+fresh; edit "$SK" 's#Keep it across resumes\.#Keep it across resumes, clears included.#'
+green "15fk3 the pinned sentence grown by a clause stays green" check-invariants
+edit "$SK" 's#Keep it across resumes, clears included\.#Reset it at resumes, clears included.#'   # same fixture
+red "15fk4 and the same fixture fails once that sentence reverses" check-invariants "the roster start survives a resume"
 fresh; edit "$SK" 's#\*\*Spawn every unit now\*\*, each by step 5 (end your turn after the last):#**Spawn every unit now**:#'
 red "15fi7 step 8 spawns the queue without step 5's row write" check-invariants "the section headed '^#+ 8[.] Sequences"
 fresh; edit "$SK" 's#integration`, mode, scope,#integration`, scope,#'

@@ -21,7 +21,7 @@ stop. The brief's `- host:` line tells the worker; a brief with no host line is 
 | *roster* | `mcp__ccd_session_mgmt__list_sessions`, then *identify* on each, keeping your `parentSessionId` | the ledger's rows (each holds its worktree name) joined to `claude agents --json --all` by `cwd`; there is no parent field |
 | *permission-wait* | not observable: the app's attention badge on the worker is the only signal | `claude agents --json` shows the worker `status` `waiting`; the watchdog reports it with `--permission-wait` |
 | *stop* | `mcp__ccd_session_mgmt__archive_session`: worktree to the app's reuse pool, branch kept, reversible (`unarchive_session`) | `claude stop <id>`: conversation and worktree kept. **Never `claude rm`:** it deletes the worktree and its branch |
-| *restart* | the worker clears its own context as its last action; you send its resume | recovery only, since a worker can't clear itself and runs `clear: never`: for a crashed or wedged worker, once its agents row reads `idle` or it is gone, `claude stop <id>`, then `(cd <worktree> && claude --bg -n "<title>" --permission-mode <mode> --autocompact <compact> "$(cat <resume file>)")`, and record the new session and its address in the row. Give the operator its *link* at once: the stop closed any attached view |
+| *restart* | the worker clears its own context as its last action; you send its resume | recovery only, since a worker can't clear itself and runs `clear: never`: for a crashed or wedged worker, on the operator's word, `claude stop <id>` (busy or not), then `(cd <worktree> && claude --bg -n "<title>" --permission-mode <mode> --autocompact <compact> "$(cat <resume file>)")`, and record the new session and its address in the row. Give the operator its *link* at once: the stop closed any attached view |
 | *pr-state* | `gh pr view <N> --json state` | the same |
 | *link* | `[<title>](#<worker-sessionId>)`, a link the operator clicks | said in full, since a background session has no tab: "it runs in the background; to watch or answer it, open another terminal and run `claude attach <id>`"; `claude logs <id>` shows its recent output without attaching |
 
@@ -69,7 +69,8 @@ a worker never runs with permissions its card didn't show. Write the mode on the
   Check the pid is gone, then run `git worktree unlock` to prune a kept worktree; don't force it.
 - **Two sessions can share a name; a socket can't.** Seen live: a desktop session and its resume
   (2026-10-14), two orchestrators, and a probe's send and subscribe by socket, which worked
-  (2026-10-15). A quit and `--resume` change the pid: the title must stay the fallback.
+  (2026-10-15). The `uds:` form is undocumented; a quit and `--resume` change the pid, and a reused pid can reach
+  another session, so the title must stay the fallback.
 - **A stopped worker lingers after a *restart*.** Seen live (2026-10-15, E2E-1, #14): its stale
   idle notice arrived (don't act on it), a Remote Control copy kept its title, and its exit screen
   offered `claude --resume`. Never resume or `claude attach` it: either reopens it beside its successor, in

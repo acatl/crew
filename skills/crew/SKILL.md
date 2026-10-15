@@ -191,7 +191,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 > | Safety | ✓ clear — 2 workers in flight, no shared paths; main checkout on `main` |
 > | Permission | `auto` · compact at `400k` (terminal host only) |
 >
-> **→ You:** `go`, or override a line or a workflow parameter but `no-commit` (`integration: none`, `plan: skip`, `cleanup: keep`).
+> **→ You:** `go`, or override a line or a workflow parameter but `no-commit` or a terminal `clear` (`integration: none`, `plan: skip`, `cleanup: keep`).
 
 - **Title** default: `CREW.md` › Defaults, else `{TICKET} — {ticket title}`. It becomes the chip label
   and the session title, so lead with the ticket id — the sidebar sorts, and the roster finds it.
@@ -205,7 +205,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 - **Safety**: the step 3 result. On ⚠ overlap, recommend one of: wait for the overlapping worker,
   narrow this scope to avoid the shared paths, or proceed with those paths listed under `Do not touch`.
 - **Permission** (terminal only): the worker's mode, yours as host.md maps it, and the size it compacts
-  at in place, since it can't clear itself (`400k` unless overridden, 100k–1M); `go` starts it at once.
+  at in place, since it can't clear itself (`400k` unless overridden, 100k–1M, kept under the worker model's window); `go` starts it at once.
 
 ### 5. Spawn
 
@@ -213,7 +213,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 2. Fill [references/brief-template.md](references/brief-template.md), the ready variant. Every `{…}`
    gets a value or `none`; no placeholder survives.
 3. **Write the ledger row** (status `chip`, `session: pending <worktree name>`, stage, surface,
-   and the card's lines: `workflow` and its overrides, `integration`, mode, compact, scope, cleanup, landing,
+   and the card's lines: `workflow` and its overrides, `integration`, mode, permission, compact, scope, cleanup, landing,
    `Do not touch`, any decision only in your memory, not the spec) and save the brief exactly as it
    will be sent to `briefs/<row>.md`, before you spawn: a worker with no row is one nobody tracks.
    Save a queued brief's `{SPEC}` to `briefs/<row>-spec.md`.
@@ -250,7 +250,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   `owed: resume not sent`. Send the resume **immediately**, even when the next step is only waiting: a
   worker woken by anything else, without its brief, hedges or invents (seen repeatedly). First confirm
   the clear (*tail*: idle, no messages; a resume sent earlier queues behind it). On the terminal a
-  worker never clears (`clear: never`); one that crashed or wedged gets its resume by *restart*. The resume is
+  worker never clears (`clear: never`). The resume is
   the saved brief with its marker line set to `state=resume` and any queued Job block swapped for its
   START (`briefs/<row>-start.md`) whole, then a `## Resume` section: where to pick up, the approved
   plan's path, the worker's ledger path, facts learned since the brief (an environment quirk, a
@@ -266,7 +266,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   - a report in its last turn → not yet here: in flight (the notice can beat it); wait, then judge it
     as here. Here: its kind's handling covers the notice. Check it didn't idle after a `checkpoint`
     with no clear: tell the operator.
-  - else → it stopped without reporting: tell the operator what it's sitting on.
+  - else → it stopped without reporting: tell the operator what it's sitting on. Use *restart* on a crashed or wedged terminal worker only on their word (status `cleared`, `owed: resume not sent`).
 
 **Subscribing.** Subscribe at a ready `ONLINE`, after each message you send a worker, at each report
 (idle by then → treat it as an idle notice), and at a stale notice, only while `ListAgents` shows it
