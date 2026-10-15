@@ -345,7 +345,8 @@ while true; do
     if [ -z "$push_ts" ] && mb=$(git -C "$wt" merge-base HEAD "$base" 2>/dev/null); then
       push_ts=$(git -C "$wt" log -1 --format=%ct "$mb" 2>/dev/null || true) baseline="the merge-base"
     fi
-    # Floored at the roster start, whatever the source: the app reuses worktrees, whose transcript dir
+    # Floored at the roster start, whatever the source (counted from that second on, since stat and date
+    # tick in whole seconds and a sub-agent spawned as the worker started is its own): the app reuses worktrees, whose transcript dir
     # still holds earlier sessions' sub-agents, and a reused branch name inherits an earlier worker's
     # push (the remote-tracking reflog is shared). None of those before this worker went running is its own.
     case "${push_ts:-}" in
@@ -361,7 +362,8 @@ while true; do
     esac
 
     subs=$(find "$proj" -path '*/subagents/*.jsonl' -type f -exec "${stat_b[@]}" {} + 2>/dev/null \
-           | awk -v p="$push_ts" '{b=($1>0?$1:$2)} b>p{n++} END{print n+0}')
+           | awk -v p="$push_ts" -v from="$([ "$baseline" = "it started" ] && echo 1 || echo 0)" \
+               '{b=($1>0?$1:$2)} (from ? b>=p : b>p){n++} END{print n+0}')
     # Re-alert only on growth: new commits alone must not re-fire.
     last=$(last_alert "$ticket" "$push_ts")
     # Before push times came from the reflog, an alert keyed the push by its commit's time; that

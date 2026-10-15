@@ -274,6 +274,8 @@ fresh; edit "$BT" 's#^| `{SPEC}` | never from memory:#| `{SPEC}` | from memory, 
 red "15fj4 the START template sources {SPEC} from memory" check-invariants "the section headed '^#+ START"
 fresh; edit "$SK" 's#^landed state waits for START#landed-state details wait for START#'
 green "15fj5 a rewording outside the pinned sentences stays green" check-invariants
+edit "$SK" 's#card lines, its Spec from `briefs/<row>-spec.md`, after#card lines, after#'   # same fixture
+red "15fj5b and the same fixture fails once step 8 drops the saved spec" check-invariants "the section headed '^#+ 8[.] Sequences"
 fresh; edit "$SK" 's#briefs/<row>-spec\.md#briefs/<row>-spec.txt#g'
 red "15fj6 SKILL.md's spec file changes extension" check-invariants "$SK: no longer names briefs/<row>-spec.md"
 fresh; edit "$LG" 's#briefs/<row>-spec\.md#briefs/<row>-spec.txt#g'

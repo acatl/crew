@@ -648,7 +648,18 @@ then ok "66 an earlier worker's commit-time key doesn't raise a started worker's
 roster1; printf '#1 subs %s 6\n' "$(git -C "$WT" log -1 --format=%ct origin/main)" > "$CREW/reported.txt"
 if silent                                        # control for 66: unstarted, that key still stands
 then ok "67 same key with no start still suppresses its own push's count"; else bad "67 legacy key control" "fired: $(cat "$ROOT/out")"; fi
-git -C "$WT" remote remove origin; subagents 0; seed_commit 7200; roster1
+git -C "$WT" remote remove origin
+# Timestamps are whole seconds: a sub-agent born in the roster start's own second is the worker's, and
+# counts. The start is the earliest birth among them, so at least one shares its second.
+reset; silence_t1; sleep 1; subagents 4
+born=$(for f in "$PROJ"/sess/subagents/*.jsonl; do
+         { stat -f '%B %m' "$f" 2>/dev/null || stat -c '%W %Y' "$f"; } | awk '{print ($1>0?$1:$2)}'
+       done | sort -n | head -1)
+started "$born"
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: 4 sub-agents since it started (first alert" "$ROOT/out"
+then ok "68 a sub-agent born in the start's own second counts"; else bad "68 start-second sub-agent" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+subagents 0; seed_commit 7200; roster1
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" = 0 ]
