@@ -800,6 +800,12 @@ if grep -E '^\| `\{PARAMETERS\}` \|' "$BRIEF" | grep -qF 'On the terminal, `clea
 else fail "$BRIEF: the {PARAMETERS} row doesn't resolve \`clear\` to \`never\` on the terminal"; fi
 # shellcheck disable=SC2016  # the backticks are literal Markdown
 section_rule --any "a terminal worker's clear is never" 'terminal' '`clear` is `never`' -- '0|^#+ Worker[[:space:]]*$'
+# It compacts at the card's size instead, so terminal *spawn* passes --autocompact; and a compaction summary
+# is never the source of consent, which only the worker's ledger holds.
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+if grep -E '^\| \*spawn\* \|' "$HOST" | grep -qF -- '--autocompact <compact>'; then held=$((held + 1))
+else fail "$HOST: terminal *spawn* doesn't pass --autocompact <compact>"; fi
+section_rule --any "consent after a compaction comes from the ledger" 'ledger' 'consent' 'never the summary' -- '0|^#+ Worker[[:space:]]*$'
 
 # --- a terminal report carries no ids or paths -------------------------------------------------------------
 # Auto mode's classifier refused an ONLINE carrying a session id, a worktree path and the peer list as data

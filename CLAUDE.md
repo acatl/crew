@@ -261,6 +261,13 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   `~/.claude/crew/<slug>/briefs/<row>-worker-ledger.md` (`{WORKER_LEDGER}`), on both hosts; a brief
   without it keeps `<git dir>/crew-ledger.md`. *Checked*: the Housekeeping line, its placeholder row,
   and the Worker section reading the ledger from Housekeeping.
+- **A terminal worker never clears; it compacts at the card's size.** It can't clear itself (no tool;
+  a sent `/clear` or `/compact` is plain text, 2026-10-15), and restarting at checkpoints closed the
+  operator's view each time. So the brief resolves `clear: never`, terminal *spawn* passes
+  `--autocompact <compact>` (the card's Permission line, default `400k`), and after a compaction the
+  worker re-reads its brief and ledger and takes consent only from the ledger, never the summary.
+  *Checked*: the brief's `{PARAMETERS}` row, the Worker section's `clear: never` and consent sentences,
+  and host.md's *spawn* row.
 - **The watchdog's state files are listed and cleaned up.** Each file in `watchdog.sh`'s header
   state list but `roster.tsv` (`reported.txt`, `active.tsv`, `waiting.tsv`) is named in
   `ledger.md`'s crew-dir listing and deleted by SKILL.md step 7. *Checked*, file by file.

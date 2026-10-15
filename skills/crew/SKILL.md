@@ -189,7 +189,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 > | Cleanup | Archive when merged |
 > | Landing | Operator decides |
 > | Safety | ✓ clear — 2 workers in flight, no shared paths; main checkout on `main` |
-> | Permission | `auto` (terminal host only) |
+> | Permission | `auto` · compact at `400k` (terminal host only) |
 >
 > **→ You:** `go`, or override a line or a workflow parameter but `no-commit` (`integration: none`, `plan: skip`, `cleanup: keep`).
 
@@ -204,7 +204,8 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   `landing: delegated` would run (`git merge --ff-only`, then Post-land); only the operator writes it.
 - **Safety**: the step 3 result. On ⚠ overlap, recommend one of: wait for the overlapping worker,
   narrow this scope to avoid the shared paths, or proceed with those paths listed under `Do not touch`.
-- **Permission** (terminal only): the worker's mode, yours as host.md maps it; `go` starts it at once.
+- **Permission** (terminal only): the worker's mode, yours as host.md maps it, and the size it compacts
+  at in place, since it can't clear itself (`400k` unless overridden, 100k–1M); `go` starts it at once.
 
 ### 5. Spawn
 
@@ -212,7 +213,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 2. Fill [references/brief-template.md](references/brief-template.md), the ready variant. Every `{…}`
    gets a value or `none`; no placeholder survives.
 3. **Write the ledger row** (status `chip`, `session: pending <worktree name>`, stage, surface,
-   and the card's lines: `workflow` and its overrides, `integration`, mode, scope, cleanup, landing,
+   and the card's lines: `workflow` and its overrides, `integration`, mode, compact, scope, cleanup, landing,
    `Do not touch`, any decision only in your memory, not the spec) and save the brief exactly as it
    will be sent to `briefs/<row>.md`, before you spawn: a worker with no row is one nobody tracks.
    Save a queued brief's `{SPEC}` to `briefs/<row>-spec.md`.
@@ -465,8 +466,9 @@ the *START steps* (a START in it is your job), and continue at step 3 where `## 
 9. **Clear your context** only where your workflow says so, by yourself, as your last action: the
    orchestrator can't clear a chip-started worker. You wake with only its resume. On the terminal you
    can't, and your brief's `clear` is `never`. Keep working in this session: Claude Code compacts your
-   context in place when it fills. Read your brief (its Housekeeping path) and your ledger again
-   after a compaction, before your next step: the summary paraphrases them.
+   context in place at the card's size. Read your brief (its Housekeeping path) and your ledger again
+   after a compaction, before your next step: the summary paraphrases them. Use only your ledger for consent to
+   a gated action or a plan approval, never the summary; ask again for one it lacks.
 
 **START steps (queued workers only).** `<base>` is the brief's base branch; `<sha>` is from START's
 first line.

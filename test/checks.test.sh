@@ -588,6 +588,10 @@ fresh; edit "$BT" 's#\. On the terminal, `clear` is `never` |# |#'
 red "49h the {PARAMETERS} row stops resolving clear on the terminal" check-invariants "doesn't resolve \`clear\` to \`never\` on the terminal"
 fresh; edit "$SK" "s#your brief's \`clear\` is \`never\`#your brief's \`clear\` says#"
 red "49i the Worker section stops saying a terminal worker never clears" check-invariants "a terminal worker's clear is never"
+fresh; edit "$HO" 's#--permission-mode <mode> --autocompact <compact> "$(cat <brief file>)"#--permission-mode <mode> "$(cat <brief file>)"#'
+red "49j terminal spawn stops passing --autocompact" check-invariants "doesn't pass --autocompact <compact>"
+fresh; edit "$SK" 's#never the summary; ask again#and the summary; ask again#'
+red "49k consent may come from a compaction summary again" check-invariants "consent after a compaction comes from the ledger"
 fresh; edit "$SK" 's#to its address, with no ids or paths#to its address, with your ids#'
 red "50 a terminal ONLINE may carry ids again" check-invariants "a terminal report carries no ids or paths"
 fresh; edit "$BT" 's#with no ids or paths in a body#with ids in a body#'
