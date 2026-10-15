@@ -23,7 +23,7 @@ stop. The brief's `- host:` line tells the worker; a brief with no host line is 
 | *stop* | `mcp__ccd_session_mgmt__archive_session`: worktree to the app's reuse pool, branch kept, reversible (`unarchive_session`) | `claude stop <id>`: conversation and worktree kept. **Never `claude rm`:** it deletes the worktree and its branch |
 | *restart* | the worker clears its own context as its last action; you send its resume | recovery only, since a worker can't clear itself and runs `clear: never`: for a crashed or wedged worker, once its agents row reads `idle` or it is gone, `claude stop <id>`, then `(cd <worktree> && claude --bg -n "<title>" --permission-mode <mode> --autocompact <compact> "$(cat <resume file>)")`, and record the new session and its address in the row. Give the operator its *link* at once: the stop closed any attached view |
 | *pr-state* | `gh pr view <N> --json state` | the same |
-| *link* | `[<title>](#<worker-sessionId>)`, a link the operator clicks | said in full, since a background session has no tab: "it runs in the background; to watch or answer it, open another terminal and run `claude attach <id>`" |
+| *link* | `[<title>](#<worker-sessionId>)`, a link the operator clicks | said in full, since a background session has no tab: "it runs in the background; to watch or answer it, open another terminal and run `claude attach <id>`"; `claude logs <id>` shows its recent output without attaching |
 
 **A worker's permission mode** (terminal *spawn* and *restart*) is yours, with `plan` → `default` and
 `bypassPermissions` → `auto`. Never pass `bypassPermissions` or `--dangerously-skip-permissions`:
@@ -72,7 +72,8 @@ a worker never runs with permissions its card didn't show. Write the mode on the
   (2026-10-15). A quit and `--resume` change the pid: the title must stay the fallback.
 - **A stopped worker lingers after a *restart*.** Seen live (2026-10-15, E2E-1, #14): its stale
   idle notice arrived (don't act on it), a Remote Control copy kept its title, and its exit screen
-  offered `claude --resume`. Never resume it: it would share a branch with its successor.
+  offered `claude --resume`. Never resume or `claude attach` it: either reopens it beside its successor, in
+  the same worktree.
 - **No review monitor.** The PR integrations' settle timer and a background
   `gh pr checks <N> --watch` wake the worker. A review landing on the same head after a clean round
   wakes no one; your merge-rule check before any merge `ANSWER` catches it.
