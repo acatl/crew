@@ -433,7 +433,7 @@ the *START steps* (a START in it is your job), and continue at step 3 where `## 
 
    **Queued → end your turn now.** Don't set up, read the repo's docs, or look at the code: all of it
    will be stale by the time you start. When `START` arrives, run the *START steps* below.
-2. **Set up.** One git command per Bash call: a line with several is refused in a terminal worktree.
+2. **Set up.** Run one git command per Bash call: a terminal worktree refuses several.
    First the base, guarded: run `git status --porcelain` and `git branch --show-current` (your
    branch). If the status is empty and your branch carries no work of yours, run
    `git switch -C <your branch> <brief's base sha>`; if it carries work, `BLOCKED`. Confirm
@@ -464,7 +464,9 @@ the *START steps* (a START in it is your job), and continue at step 3 where `## 
 9. **Clear your context** only where your workflow says so, by yourself, as your last action: the
    orchestrator can't clear a chip-started worker. You wake with only its resume. On the terminal you
    can't: stop your background commands, send the stage's `DONE` saying you will clear, and end your
-   turn; the orchestrator does a *restart*.
+   turn; the orchestrator does a *restart*. Make this your last line, for anyone attached: "Restarting to
+   clear context: run `claude agents` and attach to the busy session with this title. Never run the
+   resume line Claude Code prints next."
 
 **START steps (queued workers only).** `<base>` is the brief's base branch; `<sha>` is from START's
 first line.
