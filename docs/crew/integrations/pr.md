@@ -158,13 +158,11 @@ are context the next round needs.
   Stopping › Merging): the coordinator's `ANSWER` to that "merge?" under the merge rule (a card's
   `landing: operator`, the brief's Landing `operator`, withholds it), or the operator's yes in this
   session, never a relayed go.
-- **CodeRabbit reviews the opening push only** (operator, 2026-10-02, from 2026-10-03). Just
+- **CodeRabbit reviews the opening push only** (operator, 2026-10-02). Just
   BEFORE the first push after the opening one (round 1's fixes, or a sync push), the worker applies
   the `dont-review` label (`gh pr edit <N> --repo acatl/crew --add-label dont-review`;
   `.coderabbit.yaml` excludes that label from auto-review). No `@coderabbitai review` after that
-  without the operator. The label saves the account-wide pool for the next PR. **Until 2026-10-03
-  CodeRabbit's PR reviews are paused** (operator, 2026-09-30): a PR opens with `dont-review` already
-  on, and the merge bar has no CodeRabbit line.
+  without the operator. The label saves the account-wide pool for the next PR.
 - **The pool check: before any push CodeRabbit will review, read the pool.** CodeRabbit's PR
   reviews come from one account-wide hourly pool (about 5 an hour) shared by `acatl/hg`,
   `acatl/crew` and `acatl/kino`. For each of those repos, read the newest `coderabbitai` review:
@@ -338,24 +336,28 @@ Agent tool) that gets only the scope, so the reviewer stays apart from the doer.
 `isolation: "worktree"`, over a commit RANGE). A reviewer sharing your worktree can lose your
 uncommitted fixes.
 
-**The sub-agent's brief is the scope and the level, nothing else:**
+**The range as shas, the reviewer's cut point, its never running a command in your worktree, and
+removing its worktree and branch afterwards, never forced, are your workflow's review rules**
+(`standard` › review; a workflow without them follows `standard`'s). On top of them, the sub-agent's brief is the scope and the level, nothing
+else:
 
-- the commit range, and "first `git checkout --detach <the range's tip>`";
+- the range, `<base sha>..<head sha>`, and `standard`'s cut-point line;
 - "run `npm ci` before any check";
-- "run `/code-review high` on exactly that range; to test whether a pin pins, restore the
-  pre-fix file (`git checkout <range base> -- <file>`) and run the test";
-- "your final message lists every finding as text";
-- "as your very last step, remove your own worktree (`git worktree remove --force <its path>`)".
+- "run `/code-review high <base sha>..<head sha>`; to test whether a pin pins, restore the pre-fix
+  file in your own worktree (`git checkout <base sha> -- <file>`, or `rm` one the range added), run
+  the test, then put it back (`git checkout <head sha> -- <file>`, or `git rm -f` one the range
+  deleted)";
+- "your final message lists every finding as text".
 
 Never your reasoning, your conclusions or your triage: a reviewer handed your conclusion returns
 it confirmed. **You judge and fix what it returns**, and every valid finding is fixed, whatever
-its severity. Once its findings are in, remove only a worktree it left behind
-(`git worktree remove <its path>`); one you can't remove goes in the next `DONE` by path.
+its severity.
 
 Two passes, then no third:
 
-1. **Pass 1: the round's fix diff.** Range: `<the pushed PR head's sha>..HEAD`. **Never merge or
-   rebase `<base>` mid-round**; if the base must move, do it before the round's first fix.
+1. **Pass 1: the round's fix diff.** Range: `<the pushed PR head's sha>..<your HEAD's sha>`.
+   **Never merge or rebase `<base>` mid-round**; if the base must move, do it before the round's
+   first fix.
 2. **Pass 2: pass 1's fixes only.** If pass 1 fixed nothing, skip it. Fix what it raises,
    re-run § 5, and push with **no third review**: the PR's bots are the next look.
 
@@ -446,13 +448,12 @@ itself, by running, never from the worker's report:
 
 1. **Sensors green on the PR's head sha, against `<base>`.** The PR's `baseRefName` is `<base>`,
    every CI check concluded `SUCCESS`, and `./scripts/verify.sh` passes on that sha after
-   `git fetch origin <base>`.
+   `git fetch origin <base>`, run in a subshell (`(cd <worktree> && …)`), never a bare `cd`.
 2. **Enough review rounds.** At least **two** completed rounds (the opening review and the review
    of the round-1 push), with at least one non-empty review on the PR. CodeRabbit reviewed the
-   opening push (a non-empty review), unless the PR opened during the pause (§ Who runs the rounds)
-   or targets a base other than `main` (CodeRabbit skips those: `.coderabbit.yaml` sets no
-   `base_branches`, so such a PR is one piece of a stack whose PR into `main` gets the review). No
-   valid finding is still open.
+   opening push (a non-empty review), unless the PR targets a base other than `main` (CodeRabbit
+   skips those: `.coderabbit.yaml` sets no `base_branches`, so such a PR is one piece of a stack
+   whose PR into `main` gets the review). No valid finding is still open.
 3. **Every thread dispositioned** (fixed, declined on the merits, deferred with the operator's
    yes, or merge-and-carry), each with its reply, and resolved.
 

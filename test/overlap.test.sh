@@ -89,6 +89,26 @@ hits "10 a trailing / is optional" "w1${T}src/committed.txt${T}src" --base main 
 clear "11 a name prefix is not a directory (sr vs src/)" --base main --paths sr,src/committed "$R"
 hits "12 same fixture, the full name matches" "w1${T}src/committed.txt${T}src" --base main --paths sr,src "$R"
 
+# Each candidate is put in git's form first. Before that, "." and "./src" matched nothing: a false clear.
+hits "12b . is the whole repo" "w1${T}src/committed.txt${T}." --base main --paths . "$R"
+hits "12c ./ is the whole repo" "w1${T}src/committed.txt${T}." --base main --paths ./ "$R"
+hits "12d a leading ./ is dropped" "w1${T}src/committed.txt${T}src/committed.txt" --base main --paths ./src/committed.txt "$R"
+hits "12e ././ is dropped too" "w1${T}src/committed.txt${T}src/committed.txt" --base main --paths ././src/committed.txt "$R"
+hits "12f a doubled trailing / is dropped" "w1${T}src/committed.txt${T}src" --base main --paths src// "$R"
+hits "12g a doubled or ./ inner separator is one" "w1${T}src/committed.txt${T}src/committed.txt" --base main --paths .//src/./committed.txt "$R"
+hits "12h a trailing /. is dropped" "w1${T}src/committed.txt${T}src" --base main --paths ./src/. "$R"
+clear "12i a normalized path that isn't touched -> 0" --base main --paths ./src/other.txt,./api/ "$R"
+hits "12j same fixture, the touched one in the list -> 1" "w1${T}src/committed.txt${T}src" --base main --paths ./src/other.txt,./api/,./src/ "$R"
+clear "12k an empty entry (a stray comma) is skipped, not the whole repo" --base main --paths ,api, "$R"
+hits "12l same fixture, . in the list -> 1" "w1${T}src/committed.txt${T}." --base main --paths ,api,. "$R"
+hits "12q whitespace around an entry is dropped" "w1${T}src/committed.txt${T}src" --base main --paths "api, src " "$R"
+clear "12r a spaced list that isn't touched -> 0" --base main --paths " api ,	lib2 " "$R"
+hits "12s same fixture, the touched one added -> 1" "w1${T}src/committed.txt${T}src" --base main --paths " api ,	lib2 , ./src" "$R"
+usage "12m an absolute path -> 2, not a silent clear" "not a repo-relative path: /src" --base main --paths /src "$R"
+usage "12n a path holding .. -> 2" "can't match a touched file: src/../src" --base main --paths src/../src "$R"
+usage "12o .. alone -> 2" "can't match a touched file: \.\." --base main --paths .. "$R"
+usage "12p only empty entries -> 2" "usage:" --base main --paths , "$R"
+
 printf 'ignored/\n' > "$R/.git/info/exclude"; put "$R/ignored/x.txt"
 clear "13 an ignored file is not touched" --base main --paths ignored "$R"
 : > "$R/.git/info/exclude"                                        # positive control for 13

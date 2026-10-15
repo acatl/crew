@@ -80,6 +80,9 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
     `active.tsv`. A stretch starts when the watchdog first sees the worker active after an idle
     pass, or after a gap in sightings longer than `--interval` + 15 min. Before exiting on a finding
     it sights the whole roster, so a prompt relaunch keeps every clock.
+  - The sub-agent trigger counts from the last push (else the merge-base's time), floored at the
+    roster start too: a reused worktree's transcript dir keeps earlier sessions' sub-agents, and a
+    reused branch name inherits an earlier worker's push.
 - **`scripts/overlap.sh` is the parallel-safety check** (orchestrator step 3). It lists files
   in-flight workers have touched that fall under a candidate surface.
 - **Outside the skill:** `test/` holds the suites, so they don't ship with the skill. `scripts/` holds
@@ -186,6 +189,14 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   from the "row's card lines", re-running step 3; SKILL.md's *Messages* START row and the brief template's
   START section take it from the "ledger row". Lost, an `integration: none` unit would fall back to
   `CREW.md`'s default and open a PR. *Checked*, by section heading.
+- **A queued unit's spec lives in `briefs/<row>-spec.md`.** A queued brief drops its Spec and the
+  row's card lines leave it out, so a spec from "the spec below" lived only in the orchestrator's
+  conversation, gone after a compaction before START. SKILL.md step 5 says, in one sentence holding
+  "queued brief" and `briefs/<row>-spec`, that the spec is saved there; step 8 and `ledger.md`'s spine
+  each take START's "Spec from `briefs/<row>-spec`"; the brief template's START section sources
+  `{SPEC}` from `briefs/<row>-spec`, "never from memory". START recomputes only landed-state details.
+  *Checked*, by section heading; and the full name: every copy reads `briefs/<row>-spec.md`,
+  extension included (a save and a read that disagree lose the spec), and all three files name it.
 - **A PR opens against the brief's base.** `gh pr create` (alias `gh pr new`) without `--base`
   targets the repo's default branch, not the base the brief chose, so the brief's `{BASE}` is a bare
   branch (never `origin/…`). *Checked*: every `gh pr create` or `gh pr new` a workflow or
@@ -224,9 +235,11 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   the operator raises a budget (`scripts/check-budget.sh --update --allow-raise`) or accepts a lower
   content metric (a hand edit of the baseline). A worker fixes the new text instead. `--update` alone
   only ratchets: budgets down, metrics up.
-- **One exemption, until PR 3:** `scripts/check-structure.sh` lets through skill-validator's warning
-  that SKILL.md's body is over the recommended token count, and prints it on every run. Splitting
-  SKILL.md into `references/` removes it.
+- **Two exemptions, until PR 3:** `scripts/check-structure.sh` lets through skill-validator's
+  warnings that SKILL.md's body is over the recommended token count and over its recommended 500
+  lines (operator, 2026-10-14) up to the script's `max_lines` (506; raising it is the operator's,
+  like a budget), and prints them on every run. Splitting SKILL.md into `references/` removes both;
+  until then `baselines/budget.tsv` keeps its words from growing and `max_lines` its lines.
 - **SKILL.md Gotchas carry their evidence level**: "Seen live" with where and when, *inferred*, or
   *reported, not reproduced*. New entries follow that pattern.
 - **`watchdog.sh` must stay portable across BSD and GNU `stat`,** probed at startup.
@@ -236,6 +249,7 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   `checks.test.sh` is paired with a case on the same fixture that must fire, because a blind watchdog
   or check is silent too.
 - **After editing `watchdog.sh`, restart any running watchdog**, because bash reads a running script
-  from disk. Stop it by its pid (`kill "$(cat ~/.claude/crew/<slug>/watchdog.pid)"`), never
-  `pkill -f watchdog.sh`, which kills every project's watchdog.
+  from disk. Stop it by its pid (`kill "$(cat ~/.claude/crew/<slug>/watchdog.pid)"`), never by a
+  process-name match (`pkill -f`, `pgrep … | xargs kill`, `ps | grep`), which finds every project's
+  watchdog.
 - **Never `--no-verify`.** The hooks run what CI runs.

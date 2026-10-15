@@ -43,9 +43,14 @@ Implement the approved plan, committing as you go.
 
 ### review
 
-Self-review, then run `/code-review high` in a sub-agent that gets only the commit range, its own
-worktree, and "list findings as text", never your reasoning. Fix and commit. Run it once more over
-those fixes alone. Any other reviewer's fixes get the same look: fixes are code no one has reviewed.
+Self-review, then run `/code-review high <base>..<head>` in a sub-agent: the range as shas, `<head>`
+your committed HEAD. It gets only that range, its own worktree (`isolation: "worktree"`), and "list
+findings as text", never your reasoning. Its brief: first, if `git rev-parse HEAD` isn't `<head>`,
+`git checkout --detach <head>` in its own worktree; never run a command in the worker's worktree.
+Fix and commit. Run it once more over those fixes alone. Any other reviewer's fixes get the same
+look: fixes are code no one has reviewed. After each run, remove its worktree (`git worktree remove
+<path>`), then its branch (`git branch -d <branch>`). A refused removal (a dirty tree, a commit of its
+own, a classifier) is never forced (`--force`, `-D`): list what's left in your next `DONE`.
 
 - **Ends:** every valid finding fixed or declined on the merits, `verify` green, committed.
 - **Report:** none, `handoff` follows.

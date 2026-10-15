@@ -34,6 +34,7 @@ It fails loudly: a partial path would scatter ledgers.
 ~/.claude/crew/<slug>/
   ledger.md            live state only, bounded by work in flight
   briefs/<row>.md      each brief (and `<row>-start.md`, its START) exactly as sent, for a resume
+  briefs/<row>-spec.md a queued unit's spec, saved when it is queued: its START's Spec
   archive-YYYY-MM.md   evicted rows, append-only, never read in normal operation
   roster.tsv           the watchdog's input: <ticket> TAB <worktree-path> TAB <start epoch>, one per running worker
   reported.txt, active.tsv  what the watchdog reported, and each worker's clock; both outlive its one-shot runs
@@ -77,9 +78,9 @@ updated: <iso> · orchestrator: <sessionId>
 
 **Spine** (the only fields any rule reads): row id, unit, status, `session`, `brief`, `stage`, `owed`,
 and the card's lines (`workflow` and its overrides, `integration`, mode, scope, cleanup, landing,
-`Do not touch`, any decision only in memory, not the spec): a queued unit's START reads them. Row ids
-are stable and never reused; the unit may change, so rows join on `session`, never on
-a unit or title.
+`Do not touch`, any decision only in memory, not the spec): a queued unit's START reads them, and
+takes its Spec from `briefs/<row>-spec.md`, never from memory. Row ids are stable and never reused;
+the unit may change, so rows join on `session`, never on a unit or title.
 
 **Status** is one of: `chip` (spawned, not yet clicked — `session` holds the `task_id` instead),
 `queued`, `running`, `waiting-on-operator`, `blocked`, `cleared`, `done`, `verified`, `landed`.

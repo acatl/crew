@@ -263,6 +263,41 @@ fresh; edit "$SK" 's#landed state and the unit.s ledger row\. It replaces#curren
 red "15fi5 the contract's START row computes the card afresh" check-invariants "the section headed '^#+ Messages"
 fresh; edit "$SK" 's#^   START) with the new base sha#   ) with the new base sha#'
 green "15fi6 a link cleanup in step 8's START line stays green" check-invariants
+# a queued unit's spec lives in briefs/<row>-spec.md: step 5 saves it, step 8, the spine and START read it
+fresh; edit "$SK" 's#Save a queued brief.s `{SPEC}` to `briefs/<row>-spec.md`\.#A queued brief drops its spec.#'
+red "15fj step 5 no longer saves a queued unit's spec" check-invariants "the section headed '^#+ 5[.] Spawn"
+fresh; edit "$SK" 's#card lines, its Spec from `briefs/<row>-spec.md`, after#card lines, after#'
+red "15fj2 START written without the saved spec" check-invariants "the section headed '^#+ 8[.] Sequences"
+fresh; edit "$LG" 's#takes its Spec from `briefs/<row>-spec.md`, never from memory#writes its Spec from memory#'
+red "15fj3 the spine takes START's Spec from memory" check-invariants "the section headed '^#+ Shape"
+fresh; edit "$BT" 's#^| `{SPEC}` | never from memory:#| `{SPEC}` | from memory, unless#'
+red "15fj4 the START template sources {SPEC} from memory" check-invariants "the section headed '^#+ START"
+fresh; edit "$SK" 's#^landed state waits for START#landed-state details wait for START#'
+green "15fj5 a rewording outside the pinned sentences stays green" check-invariants
+edit "$SK" 's#card lines, its Spec from `briefs/<row>-spec.md`, after#card lines, after#'   # same fixture
+red "15fj5b and the same fixture fails once step 8 drops the saved spec" check-invariants "the section headed '^#+ 8[.] Sequences"
+fresh; edit "$SK" 's#briefs/<row>-spec\.md#briefs/<row>-spec.txt#g'
+red "15fj6 SKILL.md's spec file changes extension" check-invariants "$SK: no longer names briefs/<row>-spec.md"
+fresh; edit "$LG" 's#briefs/<row>-spec\.md#briefs/<row>-spec.txt#g'
+red "15fj7 ledger.md's spec file changes extension" check-invariants "$LG: no longer names briefs/<row>-spec.md"
+fresh; edit "$BT" 's#briefs/<row>-spec\.md#briefs/<row>-spec.txt#g'
+red "15fj8 the START template's spec file changes extension" check-invariants "$BT: no longer names briefs/<row>-spec.md"
+fresh; edit "$SK" 's#Save a queued brief.s `{SPEC}` to `briefs/<row>-spec\.md`#Save a queued brief'"'"'s `{SPEC}` to `briefs/<row>-spec.txt`#'
+red "15fj9 step 5 saves to .txt while step 8 reads .md" check-invariants "the queued unit's spec file reads 'briefs/<row>-spec.txt'"
+fresh; edit "$LG" 's#^  briefs/<row>-spec\.md #  briefs/<row>-spec    #'
+red "15fj10 one ledger copy loses its extension" check-invariants "the queued unit's spec file reads 'briefs/<row>-spec'"
+fresh; edit "$SK" 's#Save a queued brief.s `{SPEC}` to `briefs/<row>-spec\.md`#Save a queued brief'"'"'s `{SPEC}` to `briefs/<row>-spec.md.bak`#'
+red "15fj11 a compound suffix on the save is a drift too" check-invariants "the queued unit's spec file reads 'briefs/<row>-spec.md.bak'"
+fresh; edit "$SK" 's#Save a queued brief.s `{SPEC}` to `briefs/<row>-spec\.md`#Save a queued brief'"'"'s `{SPEC}` to `briefs/<row>-spec.md~`#'
+red "15fj12 so is any non-dot suffix" check-invariants "the queued unit's spec file reads 'briefs/<row>-spec.md~'"
+for sfx in ',v' ':old' ';bak' '|x' ')x' '-old' '/x'; do   # any suffix up to a backtick or space
+  fresh; edit "$SK" "s#Save a queued brief.s \`{SPEC}\` to \`briefs/<row>-spec\\.md\`#Save a queued brief's \`{SPEC}\` to \`briefs/<row>-spec.md$sfx\`#"
+  red "15fj12b suffix '$sfx' is a drift" check-invariants "the queued unit's spec file reads 'briefs/<row>-spec.md$sfx'"
+done
+fresh; edit "$LG" 's#^  briefs/<row>-spec\.md a queued#  briefs/<row>-spec.md. A queued#'
+green "15fj13 a sentence's closing period isn't part of the name" check-invariants
+edit "$LG" 's#^  briefs/<row>-spec\.md\. A queued#  briefs/<row>-spec.md.old A queued#'   # same fixture
+red "15fj14 and the same fixture fails once that copy drifts" check-invariants "the queued unit's spec file reads 'briefs/<row>-spec.md.old'"
 fresh; edit "$SK" 's#\*\*Spawn every unit now\*\*, each by step 5 (end your turn after the last):#**Spawn every unit now**:#'
 red "15fi7 step 8 spawns the queue without step 5's row write" check-invariants "the section headed '^#+ 8[.] Sequences"
 fresh; edit "$SK" 's#integration`, mode, scope,#integration`, scope,#'
@@ -462,6 +497,15 @@ fresh; printf 'scratch\n' > "$S/skills/crew/notes.txt"
 red "29 a stray file at the skill root" check-structure "notes.txt"
 fresh; run check-structure
 if grep -qF "PR 3 removes this exemption" "$ROOT/out"; then ok "30 the exemption is printed on every run"; else bad "30 exemption" "$(cat "$ROOT/out")"; fi
+# The body's line count is exempt too, until PR 3, up to max_lines: today's body passes, printed as known.
+fresh; run check-structure; rc=$?
+if [ "$rc" = 0 ] && grep -qE "^known: SKILL\.md body is [0-9,]+ lines .*PR 3 removes this exemption" "$ROOT/out"
+then ok "30b a body over 500 lines, within max_lines, passes, printed as known"; else bad "30b line exemption" "rc=$rc $(cat "$ROOT/out")"; fi
+edit scripts/check-structure.sh 's#^max_lines=[0-9]*#max_lines=0#'   # same fixture, no room left
+chmod +x "$S/scripts/check-structure.sh"                              # edit's mv drops the mode
+red "30c and fails without its exemption" check-structure "SKILL.md: warning: SKILL.md body is"
+fresh; for i in $(seq 1 40); do printf '\nPadding paragraph %s.\n' "$i"; done >> "$S/$SK"
+red "30d a body grown past max_lines fails: the word budget can't see a rewrap" check-structure "lines (spec recommends"
 
 # --- check-structure: the workflow files' shape ----------------------------------------------------------
 fresh; edit "$WS" '/^- \*\*Ends:\*\* committed, `verify` green\.$/d'

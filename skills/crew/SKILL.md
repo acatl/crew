@@ -89,8 +89,8 @@ A queued worker waiting for `START` waits on the orchestrator, not the operator:
   A plain `go` never delegates. Without delegation, the operator lands.
 - **The worker** follows its workflow as if the operator directed it, mode included — `yolo` means
   yolo — up to its stop stage (its integration's, if any), and commits. Nothing past it. It never
-  creates a worktree, never installs or links anything that outlives its worktree, never archives
-  itself, never messages another worker.
+  creates a worktree but a reviewing sub-agent's own (removed with its branch), never installs
+  or links anything that outlives its worktree, never archives itself, never messages another worker.
 - **The orchestrator** verifies by running, never by trusting a report. It executes only the landing and
   cleanup agreed on the card. It never merges other work to unblock a worker.
 - **A workflow** can't change this contract: the messages, the input invariant, this authority.
@@ -210,7 +210,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 4. **Write the ledger row** (status `chip`, the `task_id` in place of a session id, stage, surface,
    and the card's lines: `workflow` and its overrides, `integration`, mode, scope, cleanup, landing,
    `Do not touch`, any decision only in your memory, not the spec) and save the brief exactly as sent to
-   `briefs/<row>.md`.
+   `briefs/<row>.md`. Save a queued brief's `{SPEC}` to `briefs/<row>-spec.md`.
 5. Tell the operator the chip is up and needs a click. End your turn.
 
 ### 6. Handle messages
@@ -236,7 +236,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 - **DONE `checkpoint <stage>`** → write `stage`, do what that stage's Orchestrator line says. No
   landing, no cleanup. From an older brief, `DONE · checkpoint: <boundary>` or a plain `DONE` saying
   it will clear is a checkpoint; any other plain `DONE` is a stop.
-- **DONE `stop <stage>`** → verify by running the brief's `verify` in the worker's cwd (none:
+- **DONE `stop <stage>`** → verify: run the brief's `verify` as `(cd <worktreePath> && <verify>)` (none:
   `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else ask). Write the verdict and sha to the
   row, against the worker's claim. On pass: land if delegated, clean up, start any next unit (steps 7, 8).
 - **A worker reports it cleared (or is clearing) its own context** → status `cleared`,
@@ -312,14 +312,14 @@ the app may show its own approval card. Cleanup never deletes a branch or runs `
 > | 2 | DR1 | `DR1 — restructure the driver` | `standard` | none | whole | operator decides | archive when merged |
 > | 3 | SK3 | `SK3 — versioned install layer` | `standard` | none | whole | operator decides | archive when merged |
 >
-> `CREW.md` allows `delegated`: `git merge --ff-only`, then `cd hg && npm run build`
+> `CREW.md` allows `delegated`: `git merge --ff-only`, then `(cd hg && npm run build)`
 > Safety: ✓ clear against 0 workers outside the sequence · main checkout on `graph-port` ✓
 >
 > **→ You:** `go`, or override (`2 title: …`, `landing: delegated`, `1 landing: operator`).
 
 Follow step 4 for each Landing. **Spawn every unit now**, each by step 5 (end your turn after the last):
-unit 1 with a ready brief, the rest with the **queued variant** (no Job section). Don't write later
-units' specs yet: earlier units will move the base under them.
+unit 1 with a ready brief, the rest with the **queued variant** (no Job section; spec on disk). Their
+landed state waits for START: earlier units will move the base under them.
 
 **When unit N's DONE verifies:**
 
@@ -332,10 +332,11 @@ units' specs yet: earlier units will move the base under them.
 2. **Clean up** unit N per its card.
 3. **Start** unit N+1: send `START` ([references/brief-template.md](references/brief-template.md) ›
    START) with the new base sha and its Job section, written now from the landed state and its row's
-   card lines, after re-running step 3 outside the sequence (a new overlap goes to the operator).
-   Include what earlier units changed and handed on, and each finding unit N carried as a "Carried from
-   N" line (also a checklist line on N+1's ticket). Save it as `briefs/<row>-start.md`. Then set it
-   `running`, add its roster line, and subscribe to its idle notice.
+   card lines, its Spec from `briefs/<row>-spec.md`, after re-running step 3 outside the sequence (a
+   new overlap goes to the operator). Include what earlier units changed and handed on, and each
+   finding unit N carried as a "Carried from N" line (also a checklist line on N+1's ticket). Save it
+   as `briefs/<row>-start.md`. Then set it `running`, add its roster line, and subscribe to its idle
+   notice.
 
 **Hold the base still.** While a sequence is in flight, nothing commits to `<base>` except landings.
 That includes you; tell the operator the same. One stray commit and the next ff-only landing is refused.
@@ -379,7 +380,7 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   turns.
 - **Its roster is `~/.claude/crew/<slug>/roster.tsv`** — `<ticket>` TAB `<worktree-path>` TAB
   `<start epoch>`, one line per `running` worker, and yours to maintain. Set the start to `date +%s`
-  as the worker goes `running`; its no-commit clock never starts earlier. Write the ledger row and the
+  as the worker goes `running`; neither trigger counts from earlier. Write the ledger row and the
   roster line in the same step: a missing line is a worker nobody is watching, and nothing will tell
   you. Rewrite it write-to-temp-then-`mv`, never in place. It is re-read every pass, so an edit lands
   with no restart. The worktree path must be **byte-identical to the one the app reports** — the
@@ -387,11 +388,11 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   `/var` spelling silently yields an unwatched worker. One `--base`, used only as the baseline before a
   worker's first push, covers the whole roster; on a mixed-base roster, pass the most common one.
 - **Stop it by the pid** in `~/.claude/crew/<slug>/watchdog.pid` once the last worker stops, and clear
-  its `Monitors` line. **Never `pkill -f watchdog.sh`**: a name-based kill takes out every project's watchdog.
-- **Also check on every orchestrator turn**, cheaply: `list_events` tail (limit ~40) and
-  `git log -1 --format=%cr` plus `git status --porcelain | wc -l` in each running worker's
-  `worktreePath`. Count review→fix iterations since its last report. The watchdog covers the stretches
-  between your turns; this covers the turn you are in.
+  its `Monitors` line. **Never kill by process name** (*Gotchas*).
+- **Also check on every orchestrator turn**, cheaply: `list_events` tail (limit ~40) and, per running
+  worker, `git -C <worktreePath> log -1 --format=%cr` plus
+  `git -C <worktreePath> status --porcelain | wc -l`. Count review→fix iterations since its last
+  report. The watchdog covers the stretches between your turns; this covers the turn you are in.
 - **Surface to the operator** — don't wait for the worker to ask — when any loop-budget trigger in
   the worker's workflow shows, whether the watchdog or your own turn found it. Between your turns the
   watchdog covers a commit gap past the brief's no-commit threshold, and review iterations only
@@ -425,9 +426,9 @@ A brief marked `state=resume` is a resume: you cleared earlier. Send no `ONLINE`
 2. **Set up.** First the base, guarded: if `git status --porcelain` is empty and your branch carries no
    work of yours, run `git switch -C "$(git branch --show-current)" <brief's base sha>`; if it carries
    work, `BLOCKED`. Confirm `git rev-parse HEAD` is that sha. Then apply the brief's branch rule
-   (`git branch -m <name>`) and worktree setup; never create another worktree. Move a ledger already at
-   `$(git rev-parse --git-dir)/crew-ledger.md` onto `mktemp <that dir>/crew-ledger.XXXXXX`: the app
-   reuses worktree dirs, so it's an earlier worker's. Never read it.
+   (`git branch -m <name>`) and worktree setup; never create another worktree but a reviewer's. Move a
+   ledger already at `$(git rev-parse --git-dir)/crew-ledger.md` onto `mktemp <that dir>/crew-ledger.XXXXXX`:
+   the app reuses worktree dirs, so it's an earlier worker's. Never read it.
 3. **Work your workflow.** Read the files your brief names, in full, and follow them with your parameters;
    a resume names where to pick up. No workflow named in your
    brief → your brief's Job/Spec, Boundaries and Checkpoints are the workflow; follow them as written.
@@ -519,5 +520,10 @@ anything besides the four kinds.
   list` still showed it, at a detached HEAD, with the branch intact. `get_storage_usage` counts it as
   "kept ready for new sessions", the app's reuse pool, not as a leak. Pooled worktrees are not workers:
   build the roster from `parentSessionId`, never from `git worktree list`.
+- **Your shell acts only on your own state.** A persisting `cd` into a worker's worktree moves your
+  cwd, and bare `git` follows it: use `git -C <path>` or `(cd <path> && …)`. Seen live: crew INT1
+  (acatl/crew#7, 2026-10-03); twice more downstream (per-turn check). Never kill by process name
+  (`pkill -f`, `pgrep … | xargs kill`, `ps | grep`), only by your `watchdog.pid`: seen live 2026-10-02,
+  hg's `pgrep -f 'bash .*watchdog.sh' | head -1` killed crew's.
 - **Uncommitted config doesn't reach workers.** A worktree is cut from committed state, so an
   uncommitted `docs/CREW.md` or `.env` isn't there. The brief carries all; `.env` files go in setup.

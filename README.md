@@ -101,7 +101,8 @@ install.
   runs it too. [CONTRIBUTING.md](CONTRIBUTING.md) › Local checks lists the tools it needs.
 - **After editing `watchdog.sh`, restart any running watchdog.** It is a long-lived process and bash reads
   its script from disk while running. Stop it by pid
-  (`kill "$(cat ~/.claude/crew/<slug>/watchdog.pid)"`), never with `pkill` by name.
+  (`kill "$(cat ~/.claude/crew/<slug>/watchdog.pid)"`), never by a process-name match (`pkill`,
+  `pgrep`, `ps | grep`): every project's watchdog is a `watchdog.sh`.
 
 ## Contributing & license
 

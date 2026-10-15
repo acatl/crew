@@ -350,6 +350,38 @@ section_rule --any "the contract's START row is written from the unit's ledger r
 section_rule --any "START's Job fields take the card's lines from the ledger row" 'Job and Spec fields' 'ledger row' -- \
   '0|^#+ START[[:space:]]*$'
 
+# --- a queued unit's spec lives in briefs/<row>-spec.md ------------------------------------------------------
+# A queued brief drops its Spec, and the row's card lines leave the spec out, so a spec that lived only in the
+# orchestrator's conversation (a ticket source of "the spec below") was gone after a compaction before START
+# (Codex on acatl/crew#7). Step 5 saves it when the unit is queued; step 8, ledger.md's spine and the START
+# template's placeholder table take START's Spec from that file. The strings stop short of ".md": a
+# sentence ends at a period.
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+section_rule --any "a queued brief's spec is saved to briefs/<row>-spec.md" 'queued brief' 'briefs/<row>-spec' -- \
+  '0|^#+ 5[.] Spawn'
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+section_rule --any "START takes its Spec from briefs/<row>-spec.md" 'Spec from `briefs/<row>-spec' -- \
+  '0|^#+ 8[.] Sequences' '0|^#+ Shape[[:space:]]*$'
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+section_rule --any "the START template sources {SPEC} from briefs/<row>-spec.md" '`{SPEC}`' 'briefs/<row>-spec' \
+  'never from memory' -- '0|^#+ START[[:space:]]*$'
+# The sentences above stop short of ".md"; the file name itself, extension included, is pinned here:
+# every copy reads briefs/<row>-spec.md, the whole name up to a backtick or whitespace, where every real
+# copy ends (a save and a read that disagree lose the spec: ".md.bak", ".md~" or ".md,v" is not ".md";
+# a sentence's closing period is not part of the name; any other wrapper reads as part of it and fails
+# closed), and each of the three files still names it.
+# shellcheck disable=SC2016  # the backticks are literal Markdown delimiters
+expect "the queued unit's spec file" 'briefs/<row>-spec([^`[:space:]]*[^`[:space:].])?' \
+  'briefs/<row>-spec.md' \
+  "SKILL.md step 5's save"
+spec_ok=1
+for f in "$SKILL/SKILL.md" "$SKILL/references/ledger.md" "$SKILL/references/brief-template.md"; do
+  if ! grep -qF 'briefs/<row>-spec.md' "$f"; then
+    fail "$f: no longer names briefs/<row>-spec.md, the file a queued unit's spec is saved to and read from"; spec_ok=0
+  fi
+done
+if [ "$spec_ok" = 1 ]; then held=$((held + 1)); fi
+
 # --- the workflow reaches a worker through its brief ------------------------------------------------------
 # Workers never read CREW.md: the orchestrator resolves the workflow (CREW.md › Workflows) into the
 # brief's {WORKFLOW_PATH} and {PARAMETERS}, and the worker reads the file the brief names. So no Worker
