@@ -30,7 +30,7 @@ Say it to the session you want as the orchestrator:
 The orchestrator answers with a card listing the title, workflow, integration, scope, cleanup, landing and a
 parallel-safety check. Reply `go` to accept it, or override a line. In the desktop app each worker
 appears as a chip; click it to start the session. In the terminal the worker starts at once as a
-background session (`claude agents` lists it, `claude attach <id>` opens it).
+background session, with no tab of its own: see [Watching a terminal worker](#watching-a-terminal-worker).
 
 The default workflow is the ✓ row of `docs/CREW.md` › Workflows, else the built-in `standard`.
 
@@ -42,6 +42,28 @@ Landing follows `docs/CREW.md` › Integration's mode:
 - **`pr`**: the worker opens a PR and merges it on the orchestrator's go, under the integration's
   written merge rule, unless the card says `landing: operator`. A card's `integration: none` gives a
   unit that pushes nothing; you land it.
+
+### Watching a terminal worker
+
+A background worker has no tab. To watch it or type into it, open another terminal and run
+`claude attach <id>`; the orchestrator gives you the id when it spawns the worker and whenever it
+sends you to it. Leaving the view (← to the agent view, or Ctrl+Z to your shell) leaves the worker
+running.
+
+- **Look without attaching:** `claude logs <id>` prints a running worker's recent output, and
+  `claude agents` opens the agent view of every session (`claude agents --json` prints each with a
+  `status`: `busy`, `idle` or `waiting`). `waiting` means a prompt only you can answer, in the
+  worker.
+- **Answer in the worker itself:** plan approvals, tool-permission prompts, and anything the
+  worker's brief gates (an install, shared config, a push it isn't granted). The orchestrator never
+  relays these; it sends you to the worker.
+- **A restart brings a new id.** The orchestrator may restart a crashed or wedged worker; that closes
+  your attached view, and the orchestrator gives you the new id.
+- **Never reopen a stopped worker,** neither with the `claude --resume …` line its exit screen prints
+  nor with `claude attach <old id>`. Either revives it, untracked, possibly beside its successor on
+  the same branch.
+
+[`skills/crew/references/host.md`](skills/crew/references/host.md) holds the mechanics.
 
 ## Requirements
 
