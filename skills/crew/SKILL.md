@@ -522,7 +522,7 @@ anything besides the four kinds.
   build the roster from `parentSessionId`, never from `git worktree list`.
 - **Your shell acts only on your own state.** A persisting `cd` into a worker's worktree moves your
   cwd, and bare `git` follows it: use `git -C <path>` or `(cd <path> && …)`. Seen live: crew INT1
-  (acatl/crew#7, 2026-10-03); twice in allspark's per-turn check. Never kill by process name
+  (acatl/crew#7, 2026-10-03); twice more downstream (per-turn check). Never kill by process name
   (`pkill -f`, `pgrep … | xargs kill`, `ps | grep`), only by your `watchdog.pid`: seen live 2026-10-02,
   hg's `pgrep -f 'bash .*watchdog.sh' | head -1` killed crew's.
 - **Uncommitted config doesn't reach workers.** A worktree is cut from committed state, so an
