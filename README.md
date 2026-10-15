@@ -51,17 +51,19 @@ sends you to it. Leaving the view (← to the agent view, or Ctrl+Z to your shel
 running.
 
 - **Look without attaching:** `claude logs <id>` prints a running worker's recent output, and
-  `claude agents` opens the agent view of every session (`claude agents --json` prints each with a
-  `status`: `busy`, `idle` or `waiting`). `waiting` means a prompt only you can answer, in the
-  worker.
-- **Answer in the worker itself:** plan approvals, tool-permission prompts, and anything the
-  worker's brief gates (an install, shared config, a push it isn't granted). The orchestrator never
-  relays these; it sends you to the worker.
+  `claude agents` opens the agent view of every active session (`claude agents --json` prints each
+  with a `status`: `busy`, `idle` or `waiting`). `waiting` means it sits on a prompt only you can
+  answer, in the worker, such as a tool permission. A worker that asked you a question and ended
+  its turn shows `idle`.
+- **Answer in the worker itself:** plan approvals, tool-permission prompts, anything the worker's
+  brief gates (an install, shared config, a push it isn't granted), and any question it marks
+  `answer: in this session only`, such as a merge go you kept for yourself. The orchestrator never
+  answers or relays these; it sends you to the worker.
 - **A restart brings a new id.** The orchestrator may restart a crashed or wedged worker; that closes
   your attached view, and the orchestrator gives you the new id.
 - **Never reopen a stopped worker,** neither with the `claude --resume …` line its exit screen prints
-  nor with `claude attach <old id>`. Either revives it, untracked, possibly beside its successor on
-  the same branch.
+  nor with `claude attach <old id>`. Either revives it with nothing tracking it, and after a restart
+  beside its successor on the same branch.
 
 [`skills/crew/references/host.md`](skills/crew/references/host.md) holds the mechanics.
 
