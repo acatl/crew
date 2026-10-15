@@ -653,12 +653,19 @@ git -C "$WT" remote remove origin
 # counts. The start is the earliest birth among them, so at least one shares its second.
 reset; silence_t1; sleep 1; subagents 4
 born=$(for f in "$PROJ"/sess/subagents/*.jsonl; do
-         { stat -f '%B %m' "$f" 2>/dev/null || stat -c '%W %Y' "$f"; } | awk '{print ($1>0?$1:$2)}'
+         { stat -c '%W %Y' "$f" 2>/dev/null || stat -f '%B %m' "$f"; } | awk '{print ($1>0?$1:$2)}'
        done | sort -n | head -1)
 started "$born"
 run; rc=$?
 if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: 4 sub-agents since it started (first alert" "$ROOT/out"
 then ok "68 a sub-agent born in the start's own second counts"; else bad "68 start-second sub-agent" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+# A merge-base committed in that same second floors too: a start equal to the baseline still counts its second.
+reset; echo x >> "$WT/f"; git -C "$WT" add f
+GIT_COMMITTER_DATE="@$born +0000" GIT_AUTHOR_DATE="@$born +0000" git -C "$WT" commit -qm same-second
+started "$born"
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: 4 sub-agents since it started (first alert" "$ROOT/out"
+then ok "69 a start equal to the merge-base's second floors it, and counts that second"; else bad "69 start equals baseline" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 subagents 0; seed_commit 7200; roster1
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"

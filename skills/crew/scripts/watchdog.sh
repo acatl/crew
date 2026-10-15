@@ -331,7 +331,7 @@ while true; do
 
     # trigger 2: sub-agents piling up since the last push (a review loop, roughly)
     br=$(git -C "$wt" branch --show-current 2>/dev/null)
-    push_ts="" commit_ct="" baseline="last push"
+    push_ts="" commit_ct="" baseline="last push" from_start=0
     if [ -n "$br" ]; then   # the newest push (see the header); the pattern takes an epoch, not @{0}
       push_ts=$(git -C "$wt" reflog -1 --grep-reflog='^update by push' --format=%gd --date=unix \
                   "refs/remotes/origin/$br" 2>/dev/null | sed -n 's/.*@{\([1-9][0-9]\{8,\}\)}$/\1/p')
@@ -345,13 +345,13 @@ while true; do
     if [ -z "$push_ts" ] && mb=$(git -C "$wt" merge-base HEAD "$base" 2>/dev/null); then
       push_ts=$(git -C "$wt" log -1 --format=%ct "$mb" 2>/dev/null || true) baseline="the merge-base"
     fi
-    # Floored at the roster start, whatever the source (counted from that second on, since stat and date
-    # tick in whole seconds and a sub-agent spawned as the worker started is its own): the app reuses worktrees, whose transcript dir
+    # Floored at the roster start, whatever the source: the app reuses worktrees, whose transcript dir
     # still holds earlier sessions' sub-agents, and a reused branch name inherits an earlier worker's
-    # push (the remote-tracking reflog is shared). None of those before this worker went running is its own.
+    # push (the remote-tracking reflog is shared). None of those before this worker went running is
+    # its own. A start in the baseline's own second floors it too: see from_start below.
     case "${push_ts:-}" in
       ''|*[!0-9]*) ;;
-      *) if (( start > push_ts )); then push_ts=$start baseline="it started"; fi ;;
+      *) if (( start > 0 && start >= push_ts )); then push_ts=$start baseline="it started" from_start=1; fi ;;
     esac
     case "${push_ts:-}" in
       ''|*[!0-9]*)
@@ -361,15 +361,16 @@ while true; do
         continue ;;
     esac
 
+    # From the start, its own second counts: stat and date tick in whole seconds, and a sub-agent spawned
+    # as the worker started is the worker's. From a push, the push's second stays out (its self-review).
     subs=$(find "$proj" -path '*/subagents/*.jsonl' -type f -exec "${stat_b[@]}" {} + 2>/dev/null \
-           | awk -v p="$push_ts" -v from="$([ "$baseline" = "it started" ] && echo 1 || echo 0)" \
-               '{b=($1>0?$1:$2)} (from ? b>=p : b>p){n++} END{print n+0}')
+           | awk -v p="$push_ts" -v from="$from_start" '{b=($1>0?$1:$2)} (from ? b>=p : b>p){n++} END{print n+0}')
     # Re-alert only on growth: new commits alone must not re-fire.
     last=$(last_alert "$ticket" "$push_ts")
     # Before push times came from the reflog, an alert keyed the push by its commit's time; that
     # key still stands for the same push.
     # Not for a floored baseline: an earlier worker's commit-time key would raise this one's floor.
-    if [ "$last" = 0 ] && [ "$baseline" = "last push" ] && [ -n "$commit_ct" ] && [ "$commit_ct" != "$push_ts" ]; then
+    if [ "$last" = 0 ] && [ "$from_start" = 0 ] && [ -n "$commit_ct" ] && [ "$commit_ct" != "$push_ts" ]; then
       last=$(last_alert "$ticket" "$commit_ct")
     fi
     floor=$(( last > 0 ? last + step : step ))
