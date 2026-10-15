@@ -666,6 +666,27 @@ started "$born"
 run; rc=$?
 if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: 4 sub-agents since it started (first alert" "$ROOT/out"
 then ok "69 a start equal to the merge-base's second floors it, and counts that second"; else bad "69 start equals baseline" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+# From a push, the push's own second stays out: a sub-agent born then is its self-review. The pushed
+# commit is dated to the sub-agents' first second and pushed with no reflog, so the commit time is the
+# baseline, and every sub-agent born in that second is excluded.
+git init -q --bare "$ROOT/bare5.git"; git -C "$WT" remote add origin "$ROOT/bare5.git"
+reset; subagents 4
+born=$(for f in "$PROJ"/sess/subagents/*.jsonl; do
+         { stat -c '%W %Y' "$f" 2>/dev/null || stat -f '%B %m' "$f"; } | awk '{print ($1>0?$1:$2)}'
+       done | sort -n | head -1)
+echo x >> "$WT/f"; git -C "$WT" add f
+GIT_COMMITTER_DATE="@$born +0000" GIT_AUTHOR_DATE="@$born +0000" git -C "$WT" commit -qm push-second
+git -C "$WT" -c core.logAllRefUpdates=false push -q origin main; roster1
+if silent
+then ok "70 sub-agents born in the push's own second stay out"; else bad "70 push-second exclusion" "fired: $(cat "$ROOT/out")"; fi
+started "$born"
+if silent                                        # a start equal to a push doesn't floor it
+then ok "71 a start in the push's own second keeps the push's count"; else bad "71 start equals push" "fired: $(cat "$ROOT/out")"; fi
+roster1; sleep 1; subagents 4                    # positive control for 70 and 71: born after that second
+run; rc=$?
+if [ "$rc" = 0 ] && grep -q "WATCHDOG #1: 4 sub-agents since last push (first alert" "$ROOT/out"
+then ok "72 same fixture, sub-agents born after the push's second count"; else bad "72 push-second control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+git -C "$WT" remote remove origin
 subagents 0; seed_commit 7200; roster1
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"

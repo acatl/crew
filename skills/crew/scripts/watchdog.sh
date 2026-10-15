@@ -331,7 +331,7 @@ while true; do
 
     # trigger 2: sub-agents piling up since the last push (a review loop, roughly)
     br=$(git -C "$wt" branch --show-current 2>/dev/null)
-    push_ts="" commit_ct="" baseline="last push" from_start=0
+    push_ts="" commit_ct="" baseline="last push" from_start=0 from_mb=0
     if [ -n "$br" ]; then   # the newest push (see the header); the pattern takes an epoch, not @{0}
       push_ts=$(git -C "$wt" reflog -1 --grep-reflog='^update by push' --format=%gd --date=unix \
                   "refs/remotes/origin/$br" 2>/dev/null | sed -n 's/.*@{\([1-9][0-9]\{8,\}\)}$/\1/p')
@@ -343,15 +343,18 @@ while true; do
       fi
     fi
     if [ -z "$push_ts" ] && mb=$(git -C "$wt" merge-base HEAD "$base" 2>/dev/null); then
-      push_ts=$(git -C "$wt" log -1 --format=%ct "$mb" 2>/dev/null || true) baseline="the merge-base"
+      push_ts=$(git -C "$wt" log -1 --format=%ct "$mb" 2>/dev/null || true) baseline="the merge-base" from_mb=1
     fi
     # Floored at the roster start, whatever the source: the app reuses worktrees, whose transcript dir
     # still holds earlier sessions' sub-agents, and a reused branch name inherits an earlier worker's
     # push (the remote-tracking reflog is shared). None of those before this worker went running is
-    # its own. A start in the baseline's own second floors it too: see from_start below.
+    # its own. A start in the merge-base's own second floors it too (see from_start below); one in a
+    # push's second doesn't, since that second's sub-agent is the push's self-review.
     case "${push_ts:-}" in
       ''|*[!0-9]*) ;;
-      *) if (( start > 0 && start >= push_ts )); then push_ts=$start baseline="it started" from_start=1; fi ;;
+      *) if (( start > push_ts || (from_mb && start > 0 && start == push_ts) )); then
+           push_ts=$start baseline="it started" from_start=1
+         fi ;;
     esac
     case "${push_ts:-}" in
       ''|*[!0-9]*)
