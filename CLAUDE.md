@@ -62,7 +62,8 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
   (*spawn*, *identify*, *message*, *tail*, *stop*, *restart*, …) to each host's mechanism, and holds
   each host's gotchas. The rest of the skill names verbs, never a host's tools; the brief carries
   the host (`- host:`), and a brief without one is desktop. A terminal worker can't clear itself,
-  so the orchestrator stops it and starts a fresh session on its worktree with the resume.
+  so it runs `clear: never` and compacts in place; *restart* (stop it, start a fresh session on its
+  worktree with the resume) only recovers a crashed or wedged worker.
 - **`references/` holds what the orchestrator fills or persists:**
   - `brief-template.md`: the worker's first message, in a ready and a queued variant, plus `START`.
     It names the workflow and integration files and their resolved parameters.

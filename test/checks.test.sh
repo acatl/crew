@@ -584,6 +584,10 @@ fresh; edit "$BT" 's#^| `{ORCH_ADDRESS}` | \*self\*#| `{ORCH_ADDRESS}` | the car
 red "49f the {ORCH_ADDRESS} row stops sourcing it from self" check-invariants "no placeholder row sourcing {ORCH_ADDRESS}"
 fresh; edit "$BT" 's#`SendMessage` to `{ORCH_ADDRESS}`, else#`SendMessage` to#'
 red "49g the fallback sends by title alone again" check-invariants "doesn't send to {ORCH_ADDRESS}"
+fresh; edit "$BT" 's#\. On the terminal, `clear` is `never` |# |#'
+red "49h the {PARAMETERS} row stops resolving clear on the terminal" check-invariants "doesn't resolve \`clear\` to \`never\` on the terminal"
+fresh; edit "$SK" "s#your brief's \`clear\` is \`never\`#your brief's \`clear\` says#"
+red "49i the Worker section stops saying a terminal worker never clears" check-invariants "a terminal worker's clear is never"
 fresh; edit "$SK" 's#to its address, with no ids or paths#to its address, with your ids#'
 red "50 a terminal ONLINE may carry ids again" check-invariants "a terminal report carries no ids or paths"
 fresh; edit "$BT" 's#with no ids or paths in a body#with ids in a body#'

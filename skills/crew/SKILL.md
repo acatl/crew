@@ -249,7 +249,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   `owed: resume not sent`. Send the resume **immediately**, even when the next step is only waiting: a
   worker woken by anything else, without its brief, hedges or invents (seen repeatedly). First confirm
   the clear (*tail*: idle, no messages; a resume sent earlier queues behind it). On the terminal a
-  worker can't clear itself: it ends its turn instead, and the resume goes out by *restart*. The resume is
+  worker never clears (`clear: never`); one that crashed or wedged gets its resume by *restart*. The resume is
   the saved brief with its marker line set to `state=resume` and any queued Job block swapped for its
   START (`briefs/<row>-start.md`) whole, then a `## Resume` section: where to pick up, the approved
   plan's path, the worker's ledger path, facts learned since the brief (an environment quirk, a
@@ -464,10 +464,8 @@ the *START steps* (a START in it is your job), and continue at step 3 where `## 
    cleans up.
 9. **Clear your context** only where your workflow says so, by yourself, as your last action: the
    orchestrator can't clear a chip-started worker. You wake with only its resume. On the terminal you
-   can't: stop your background commands, send the stage's `DONE` saying you will clear, and end your
-   turn; the orchestrator does a *restart*. Make this your last line, for anyone attached: "Restarting to
-   clear context: run `claude agents` and attach to the busy session with this title. Never run the
-   resume line Claude Code prints next."
+   can't, and your brief's `clear` is `never`. Keep working in this session: Claude Code compacts your
+   context in place when it fills.
 
 **START steps (queued workers only).** `<base>` is the brief's base branch; `<sha>` is from START's
 first line.

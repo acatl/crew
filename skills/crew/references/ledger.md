@@ -142,5 +142,5 @@ message, a monitor, a notification. Seen repeatedly.
   Restated in a resume, it is consent laundered across sessions (an auto-mode classifier blocked one,
   2026-10-02).
 
-The orchestrator **never** clears a worker: the worker clears itself (desktop), or the orchestrator
-does a *restart* (terminal).
+The orchestrator **never** clears a worker: the worker clears itself (desktop). A terminal worker never
+clears (`clear: never`) and compacts in place; a *restart* only recovers a crashed or wedged one.

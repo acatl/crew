@@ -790,6 +790,17 @@ fi
 if [ "$wl_ok" = 1 ]; then held=$((held + 1)); fi
 section_rule --any "a worker's ledger is the one its brief names" 'ledger' "Housekeeping" -- '0|^#+ Worker[[:space:]]*$'
 
+# --- a terminal worker never clears --------------------------------------------------------------------------
+# A terminal worker can't clear itself, and restarting it at every checkpoint closed the operator's attached
+# view each time (seen live, 2026-10-15). So on the terminal `clear` resolves to `never` and the worker
+# compacts in place; a restart only recovers a crashed or wedged worker. The brief's {PARAMETERS} row and the
+# Worker section each say so.
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+if grep -E '^\| `\{PARAMETERS\}` \|' "$BRIEF" | grep -qF 'On the terminal, `clear` is `never`'; then held=$((held + 1))
+else fail "$BRIEF: the {PARAMETERS} row doesn't resolve \`clear\` to \`never\` on the terminal"; fi
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+section_rule --any "a terminal worker's clear is never" 'terminal' '`clear` is `never`' -- '0|^#+ Worker[[:space:]]*$'
+
 # --- a terminal report carries no ids or paths -------------------------------------------------------------
 # Auto mode's classifier refused an ONLINE carrying a session id, a worktree path and the peer list as data
 # exfiltration (seen live, 2026-10-14), so on the terminal the orchestrator reads those itself. Desktop

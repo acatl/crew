@@ -17,7 +17,7 @@ Your brief holds the resolved values; never read `CREW.md`.
 | `plan` | `required`: plan first · `skip`: start at `build` | `required` |
 | `iterations` | review→fix iterations | `2` |
 | `no-commit` | minutes without a commit; must equal the watchdog's | `CREW.md` › Ledger's; absent, 60 minutes |
-| `clear` | `checkpoints`: clear where a stage says so · `never` | `checkpoints` |
+| `clear` | `checkpoints`: clear where a stage says so · `never` | `checkpoints`; `never` on the terminal |
 | `verify` | what proves the work green | `CREW.md` › Verify, else `docs/HARNESS.md` › Sensors, else asked |
 
 ## Stages
@@ -93,4 +93,4 @@ nothing, and the integration's stop is yours. Otherwise report and stop.
   waiting on the operator, with an uncommitted tree, while sub-agents run, or one step from the
   stop. Before clearing, your ledger holds the operator's answers verbatim, each approved Hard Gate and its scope, the last commit, and an
   **EXACT NEXT STEP** line. Send the stage's `DONE` saying you will clear, then clear as your last
-  action (terminal: end your turn instead).
+  action.
