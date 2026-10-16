@@ -209,7 +209,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 
 ### 5. Spawn
 
-1. *self* → your `sessionId`, title, host and, on the terminal, your address.
+1. *self* → your `sessionId`, title, host and, on the terminal, your address and mode. A mode that bypasses prompts would hold every worker's messages (host.md): ask the operator to switch to `auto` or `default`, and stop.
 2. Fill [references/brief-template.md](references/brief-template.md), the ready variant. Every `{…}`
    gets a value or `none`; no placeholder survives.
 3. **Write the ledger row** (status `chip`, `session: pending <worktree name>`, stage, surface,
