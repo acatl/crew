@@ -87,16 +87,21 @@ report.
 ## Rules
 
 - **Terminal host:** no app monitor and no clears (`clear: never`); "monitor off" stops your background commands, the review watch
-  before you merge. The settle timer and `gh pr checks <N> --watch` wake you. Arm a review watch
+  before you merge, after one last `c`: above the count, run the round instead. The settle timer and `gh pr checks <N> --watch` wake you. Arm a review watch
   after a clean round, or a late review wakes no one, and end the turn `waiting: reviews, until
   <now + 2 h>`; record `c`'s count in your ledger as each round reads its reviews, so one landing
   during the CI wait still counts. Run the next round on a new review, and re-arm on none from the
   count it printed:
   ```bash
-  me=$(gh api user --jq .login) || exit 2      # your own posts never count
-  c() { gh pr view <N> --json reviews,comments --jq "[.reviews[], .comments[] | select(.author.login != \"$me\")] | length"; }
+  set -o pipefail; me=$(gh api user --jq .login) || exit 2      # your own posts never count
+  c() {  # others' reviews, PR comments, and inline review comments with their thread replies
+    local a b
+    a=$(gh pr view <N> --json reviews,comments --jq "[.reviews[], .comments[] | select(.author.login != \"$me\")] | length") &&
+    b=$(gh api --paginate "repos/{owner}/{repo}/pulls/<N>/comments" --jq "[.[] | select(.user.login != \"$me\")] | length" | awk '{s += $1} END {print s + 0}') &&
+    echo $((a + b))
+  }
   n=<c's count recorded when the round read its reviews>
-  for i in $(seq 60); do sleep 120; m=$(c) && [ "$m" -gt "$n" ] && break; done; echo "reviews: ${m:-unknown} (was $n)"
+  for i in $(seq 60); do m=$(c) && [ "$m" -gt "$n" ] && break; sleep 120; done; echo "reviews: ${m:-unknown} (was $n)"
   ```
 - **Record each push's time in your ledger:** after a clear, `settle` runs from it, never the commit's.
 - **Consent.** The brief grants a push to your own branch, your own PR, its binding, and writes to
