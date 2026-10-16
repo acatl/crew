@@ -141,13 +141,17 @@ are context the next round needs.
 - **On the terminal host there is no app, so no binding and no monitor.** Wherever this file binds
   the PR or turns the monitor on, skip it; the round's settle timer (§ 0) and a background
   `gh pr checks <N> --watch` are what wake you. A terminal worker never clears (`clear: never`), so skip
-  "monitor off" before a clear; at the merge, stop your own background commands instead. A review
-  that lands after a clean round would wake nobody, so a clean round arms a review watch in the
-  background and ends the turn `waiting: reviews, until <now + 2 h>`. A new review starts the next
-  round at § 0; none → arm it again.
+  "monitor off" before a clear; before you merge, stop the review watch, and at `MERGED` your other
+  background commands. A review that lands after a clean round would wake nobody, so a clean round
+  arms a review watch in the background and ends the turn `waiting: reviews, until <now + 2 h>`.
+  Each round records `c`'s count in your ledger as it reads its reviews, so a review landing during
+  the CI wait still counts. A new review starts the next round at § 0; none → arm it again, from
+  the count it printed.
   ```bash
-  c() { gh pr view <N> --json reviews,comments --jq '.reviews + .comments | length'; }
-  n=$(c); for i in $(seq 60); do sleep 120; [ "$(c)" -gt "$n" ] && break; done
+  me=$(gh api user --jq .login) || exit 2      # your own posts never count
+  c() { gh pr view <N> --json reviews,comments --jq "[.reviews[], .comments[] | select(.author.login != \"$me\")] | length"; }
+  n=<c's count recorded when the round read its reviews>
+  for i in $(seq 60); do sleep 120; m=$(c) && [ "$m" -gt "$n" ] && break; done; echo "reviews: ${m:-unknown} (was $n)"
   ```
 - **After each round's push** the worker reports `DONE`, with `checkpoint` in its first line, to
   the coordinator: round number, commit sha, push time, what was fixed and what was declined, CI

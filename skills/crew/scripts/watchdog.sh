@@ -244,9 +244,10 @@ last_alert() {
   printf '%s\n' "$n"
 }
 # waiting_since <ticket> <worktree> <what>: when trigger 3 first saw that worker on that kind of
-# prompt, or nothing
+# prompt, or nothing. A row with no <what> was written before kinds were kept: a permission prompt.
 waiting_since() {
-  K="$1" W="$2" F="$3" awk -F'\t' "$THIS_ROW"' && $4"" == ENVIRON["F"]"" {print $3}' "$waiting" 2>/dev/null
+  K="$1" W="$2" F="$3" awk -F'\t' "$THIS_ROW"' && ($4 == "" ? "permission prompt" : $4"") == ENVIRON["F"]"" {print $3}' \
+    "$waiting" 2>/dev/null
 }
 # waiters: <cwd> TAB <what> for each background session on a prompt, one per line, <what> its
 # waitingFor ("unnamed" when the CLI names none). Fails when claude or jq is missing or the listing

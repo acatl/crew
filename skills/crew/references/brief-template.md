@@ -117,7 +117,7 @@ replaces this section. Run the crew skill's *START steps* when it arrives.
 ## START
 
 Sent to a queued worker when its turn comes, written then from the landed state and the unit's ledger
-row. Desktop only: the terminal spawns a ready brief instead.
+row. Desktop only: the terminal spawns a ready brief instead, with this Job section and *Since you were queued* in it.
 
 | Placeholder | Source |
 |---|---|

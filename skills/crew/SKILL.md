@@ -345,7 +345,7 @@ only unit 1 now (an idle background session isn't known to last hours), but writ
    new overlap goes to the operator). Include what earlier units changed and handed on, and each
    finding unit N carried as a "Carried from N" line (also a checklist line on N+1's ticket). Save it
    as `briefs/<row>-start.md`. Then set it `running`, add its roster line, and subscribe to its idle
-   notice. On the terminal send no `START`: spawn it by step 5, a ready brief carrying that Job section.
+   notice. On the terminal send no `START`: spawn it by step 5 on its existing row, a ready brief carrying START's Job and *Since you were queued* sections.
 
 **Hold the base still.** While a sequence is in flight, nothing commits to `<base>` except landings.
 That includes you; tell the operator the same. One stray commit and the next ff-only landing is refused.
