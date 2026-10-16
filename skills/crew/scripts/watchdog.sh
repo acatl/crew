@@ -2,7 +2,7 @@
 # crew watchdog: a looping worker never goes idle, so nothing ever wakes the orchestrator.
 #
 # Usage: watchdog.sh --base <ref> [--interval <secs>] [--no-commit <secs>]
-#                    [--subagent-step <n>] <crew-dir>
+#                    [--subagent-step <n>] [--permission-wait] <crew-dir>
 #
 # The orchestrator launches this as a background process. It polls every running worker WITHOUT
 # waking the orchestrator, and stays silent until a loop-budget trigger shows. On the first trigger
@@ -24,6 +24,11 @@
 #                 It outlives the process too, so a relaunch keeps a worker's clock. Keyed by ticket
 #                 AND worktree, and pruned to a non-empty roster every pass, so a worker spawned again
 #                 for the same ticket starts its own clock rather than inheriting the last one's.
+#   waiting.tsv   trigger 3 (--permission-wait only): <ticket> <TAB> <worktree> <TAB> <since> <TAB>
+#                 <what>, one line per rostered worker last seen on a prompt, <what> its waitingFor.
+#                 It outlives the process, so a relaunch doesn't report the same wait again; a worker
+#                 that leaves the prompt drops out, and one on another kind of prompt is a new wait,
+#                 so either reports afresh.
 #   watchdog.pid  lock:   one watchdog per project. NEVER kill by a process-name match (`pkill -f`,
 #                 `pgrep … | xargs kill`, `ps | grep`): every project's watchdog is a watchdog.sh,
 #                 and only the pid in this crew dir's watchdog.pid is yours.
@@ -56,6 +61,14 @@
 #      earlier sessions' sub-agents, and a reused branch name inherits an earlier worker's push.
 #      A worker with no resolvable push baseline is SKIPPED for this trigger and warned about,
 #      never counted from zero — that would be the absolute count again.
+#   3. with --permission-wait (terminal host): the worker sits on a prompt in its own window, which
+#      no transcript write or idle notice shows: a tool permission, or any other wait the CLI names
+#      in waitingFor ("input needed" is a question asked mid-turn, before any NEED-INPUT could go).
+#      Each is the operator's to answer there, so each reports, naming what it waits for. Read from
+#      `claude agents --json`: a background session whose cwd is the worker's worktree, byte for
+#      byte, with status "waiting". Only background sessions count, so the operator's own
+#      interactive session in a worktree never does. Needs claude and jq on the PATH; without them
+#      it warns once and skips only this trigger.
 #
 # It says so on stderr, once, whenever it goes blind on a worker: a roster row whose worktree is
 # missing or is not a git repo, a worker with no transcript directory, a worker with no push
@@ -81,12 +94,13 @@
 set -u
 
 usage() {
-  echo "usage: watchdog.sh --base <ref> [--interval <secs>] [--no-commit <secs>] [--subagent-step <n>] <crew-dir>" >&2
+  echo "usage: watchdog.sh --base <ref> [--interval <secs>] [--no-commit <secs>] [--subagent-step <n>] [--permission-wait] <crew-dir>" >&2
   exit 2
 }
 
 # Defaults are hg's measured values (2026-09), the only ones proven in production.
 base="" interval=1200 nocommit=3600 step=3
+permwait=0   # trigger 3, off unless --permission-wait
 ACTIVE=900   # the "this worker is alive right now" window; a property of workers, not project policy
 
 while [ $# -gt 0 ]; do
@@ -95,6 +109,7 @@ while [ $# -gt 0 ]; do
     --interval)      [ $# -ge 2 ] || usage; interval="$2"; shift 2 ;;
     --no-commit)     [ $# -ge 2 ] || usage; nocommit="$2"; shift 2 ;;
     --subagent-step) [ $# -ge 2 ] || usage; step="$2";     shift 2 ;;
+    --permission-wait) permwait=1; shift ;;
     --) shift; break ;;
     -*) echo "unknown flag: $1" >&2; usage ;;
     *) break ;;
@@ -128,10 +143,12 @@ crewdir=$(cd "${1%/}" 2>/dev/null && pwd) || { echo "no such crew dir: $1" >&2; 
 roster="$crewdir/roster.tsv"
 reported="$crewdir/reported.txt"
 active="$crewdir/active.tsv"
+waiting="$crewdir/waiting.tsv"
 pidfile="$crewdir/watchdog.pid"
 [ -f "$roster" ] || { echo "no roster: $roster (the orchestrator writes it before launching)" >&2; exit 2; }
 touch "$reported" 2>/dev/null || { echo "cannot write $reported" >&2; exit 2; }
 touch "$active" 2>/dev/null || { echo "cannot write $active" >&2; exit 2; }
+if [ "$permwait" = 1 ]; then touch "$waiting" 2>/dev/null || { echo "cannot write $waiting" >&2; exit 2; }; fi
 
 # --- stat(1) flavour, probed once -------------------------------------------------------------
 if probe=$(stat -f %m "$crewdir" 2>/dev/null) && [ -n "$probe" ] && [ -z "${probe//[0-9]/}" ]; then
@@ -226,6 +243,23 @@ last_alert() {
   case "$n" in ''|*[!0-9]*) n=0 ;; esac
   printf '%s\n' "$n"
 }
+# waiting_since <ticket> <worktree> <what>: when trigger 3 first saw that worker on that kind of
+# prompt, or nothing. A row with no <what> was written before kinds were kept: a permission prompt.
+waiting_since() {
+  K="$1" W="$2" F="$3" awk -F'\t' "$THIS_ROW"' && ($4 == "" ? "permission prompt" : $4"") == ENVIRON["F"]"" {print $3}' \
+    "$waiting" 2>/dev/null
+}
+# waiters: <cwd> TAB <what> for each background session on a prompt, one per line, <what> its
+# waitingFor ("unnamed" when the CLI names none). Fails when claude or jq is missing or the listing
+# doesn't parse, so trigger 3 skips the pass rather than reading "nobody is waiting".
+waiters() {
+  local list
+  command -v claude >/dev/null 2>&1 && command -v jq >/dev/null 2>&1 || return 1
+  list=$(claude agents --json 2>/dev/null) || return 1
+  jq -r 'if type == "array" then .[] | select(.kind == "background" and .status == "waiting")
+         | "\(.cwd)\t\(.waitingFor // "unnamed" | gsub("[\t\n]"; " "))"
+         else error("not a session list") end' <<< "$list" 2>/dev/null
+}
 prune_active() {  # prune_active <roster snapshot>: drop the rows of workers no longer on it
   local kept
   [ -s "$active" ] || return 0
@@ -251,6 +285,11 @@ while true; do
   # prune go at the next non-empty pass.
   if [ "$readable" = 1 ] && [ -n "$snapshot" ]; then prune_active "$snapshot"; fi
   alert=""
+  waiting_ok=0 waiting_now="" waiting_next=""
+  if [ "$permwait" = 1 ]; then
+    if waiting_now=$(waiters); then waiting_ok=1
+    else warn_once "agents" "can't read 'claude agents --json' (claude and jq on the PATH?) — trigger 3 is off"; fi
+  fi
 
   # Snapshot per pass rather than holding the fd open across the git calls: a non-atomic rewrite
   # can then tear at most one pass, and a trailing line with no newline is still read.
@@ -265,6 +304,22 @@ while true; do
     if [ -z "${wt:-}" ] || [ ! -d "$wt" ]; then
       warn_once "$ticket:wt" "no worktree at '${wt:-}' for $ticket — it is unwatched"
       continue
+    fi
+
+    # trigger 3: on a prompt. Checked before the transcript and git checks, which a blocked worker
+    # passes anyway, and recorded only when reported, so a wait found while another finding is out
+    # reports on the next run.
+    what=""
+    if [ "$waiting_ok" = 1 ]; then
+      what=$(W="$wt" awk -F'\t' '$1"" == ENVIRON["W"]"" {print $2; exit}' <<< "$waiting_now")
+    fi
+    if [ -n "$what" ]; then
+      wsince=$(waiting_since "$ticket" "$wt" "$what")
+      if [ -z "$wsince" ] && [ -z "$alert" ]; then
+        wsince=$(now)
+        alert="WATCHDOG $ticket: waiting on a prompt ($what) — the operator answers it in the worker's session"
+      fi
+      if [ -n "$wsince" ]; then waiting_next+="$ticket"$'\t'"$wt"$'\t'"$wsince"$'\t'"$what"$'\n'; fi
     fi
 
     proj="$HOME/.claude/projects/$(printf '%s' "$wt" | sed 's#[/.]#-#g')"
@@ -383,6 +438,14 @@ while true; do
       alert="WATCHDOG $ticket: $subs sub-agents since $baseline ($seen, threshold +$step) at head $rev — check for a review loop"
     fi
   done <<< "$snapshot"
+
+  # Rewritten whole each pass, so a worker off its prompt drops out; only after a roster read whole,
+  # as prune_active, so a vanished or empty roster doesn't forget a wait already reported.
+  if [ "$waiting_ok" = 1 ] && [ "$readable" = 1 ] && [ -n "$snapshot" ]; then
+    if ! { printf '%s' "$waiting_next" > "$waiting.tmp" && mv "$waiting.tmp" "$waiting"; }; then
+      warn_once "waiting" "cannot write $waiting — trigger 3 may report the same wait again"
+    fi
+  fi
 
   if [ -n "$alert" ]; then
     echo "$alert"

@@ -28,8 +28,9 @@ Say it to the session you want as the orchestrator:
 - `crew status`: one row per worker, with any question waiting on you.
 
 The orchestrator answers with a card listing the title, workflow, integration, scope, cleanup, landing and a
-parallel-safety check. Reply `go` to accept it, or override a line. Each worker appears as a chip;
-click it to start the session.
+parallel-safety check. Reply `go` to accept it, or override a line. In the desktop app each worker
+appears as a chip; click it to start the session. In the terminal the worker starts at once as a
+background session, with no tab of its own: see [Watching a terminal worker](#watching-a-terminal-worker).
 
 The default workflow is the ✓ row of `docs/CREW.md` › Workflows, else the built-in `standard`.
 
@@ -42,19 +43,45 @@ Landing follows `docs/CREW.md` › Integration's mode:
   written merge rule, unless the card says `landing: operator`. A card's `integration: none` gives a
   unit that pushes nothing; you land it.
 
+### Watching a terminal worker
+
+A background worker has no tab. To watch it or type into it, open another terminal and run
+`claude attach <id>`; the orchestrator gives you the id when it spawns the worker and whenever it
+sends you to it. Leaving the view (← to the agent view, or Ctrl+Z to your shell) leaves the worker
+running.
+
+- **Look without attaching:** `claude logs <id>` prints a running worker's recent output, and
+  `claude agents` opens the agent view of every active session (`claude agents --json` prints each
+  with a `status`: `busy`, `idle` or `waiting`). `waiting` means it sits on a prompt only you can
+  answer, in the worker, such as a tool permission. A worker that asked you a question and ended
+  its turn shows `idle`, so rely on the orchestrator's nudge, or `crew status`, to tell you which
+  worker needs you.
+- **Answer in the worker itself:** tool-permission prompts, anything the worker's brief gates (an
+  install, shared config, a push it isn't granted), and any question it marks `answer: in this
+  session only`, such as `standard`'s plan approval or a merge go you kept for yourself. The
+  orchestrator never answers or relays these; it sends you to the worker.
+- **A restart brings a new id.** Only on your word, the orchestrator restarts a crashed or wedged
+  worker; that closes your attached view, and the orchestrator gives you the new id.
+- **Never reopen a stopped worker,** neither with the `claude --resume …` line its exit screen prints
+  nor with `claude attach <old id>`. Either revives it behind the orchestrator's back, possibly in
+  the same worktree and on the same branch as its successor.
+
+[`skills/crew/references/host.md`](skills/crew/references/host.md) holds the mechanics.
+
 ## Requirements
 
-- **The Claude desktop app (Code tab).** Sessions spawn, message and archive each other through the
-  app's session tools (`spawn_task`, `send_message`, `get_session`, `archive_session`), which the
-  Claude Code CLI does not provide.
-- **bash, git, and a BSD or GNU `stat`**, so macOS or Linux, for the watchdog and overlap scripts.
+- **A host: the Claude desktop app (Code tab), or the Claude Code CLI 2.1.300 or later.** The app
+  spawns and messages sessions through its session tools; the CLI through background sessions
+  (`claude --bg`, `claude agents --json`) and `SendMessage`. `skills/crew/references/host.md` maps
+  each to the other. The orchestrator's host is the workers' host.
+- **bash, git, jq, and a BSD or GNU `stat`**, so macOS or Linux, for the watchdog and overlap scripts.
 
 ## Layout
 
 ```text
 skills/crew/                the skill: this directory is what gets installed
   SKILL.md                  the contract: messages, input invariant, authority, orchestrator + worker flows
-  references/               brief template, ledger format, docs/CREW.md interview, the built-in workflow and integration
+  references/               brief template, ledger format, docs/CREW.md interview, host verbs, the built-in workflow and integration
   scripts/
     watchdog.sh             background poller that wakes the orchestrator when a looping worker stalls
     overlap.sh              parallel-safety check: does a candidate surface collide with in-flight workers?
