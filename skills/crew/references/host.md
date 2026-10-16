@@ -25,8 +25,9 @@ stop. The brief's `- host:` line tells the worker; a brief with no host line is 
 | *pr-state* | `gh pr view <N> --json state` | the same |
 | *link* | `[<title>](#<worker-sessionId>)`, a link the operator clicks | said in full, since a background session has no tab: "it runs in the background; to watch or answer it, open another terminal and run `claude attach <id>`"; `claude logs <id>` shows its recent output without attaching |
 
-**A worker's permission mode** (terminal *spawn* and *restart*) is yours, `plan` included (a plan-mode
-worker edits nothing until a plan is approved in its window), with `bypassPermissions` → `auto`. Never pass `bypassPermissions` or `--dangerously-skip-permissions`:
+**A worker's permission mode** (terminal *spawn* and *restart*) is yours, with `plan` → `default` and
+`bypassPermissions` → `auto`: a worker in `plan` couldn't run its set-up or a workflow with no plan
+stage, its plan stage enters plan mode itself, and `default` asks the operator for every call. Never pass `bypassPermissions` or `--dangerously-skip-permissions`:
 a worker never runs with permissions its card didn't show. Write the mode on the card's
 `Permission` line; the operator can name another, never a bypass.
 

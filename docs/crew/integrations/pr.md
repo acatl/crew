@@ -84,7 +84,8 @@ you, within `rounds`, a late review on an unchanged head included.
 
 ### merge
 
-Merge only on a go to your "merge?" (§ Stopping › Merging). Run
+Merge only on a go to your "merge?" (§ Stopping › Merging). On the terminal, check the review watch
+first (§ Who runs the rounds). Run
 `gh pr merge <N> --squash --match-head-commit <sha>` with the PR's Conventional title and poll in the
 background until `gh pr view <N> --json state,mergeCommit` reads `MERGED`: a merge queue or
 auto-merge only queues it. `CLOSED`, or `OPEN` with neither `isInMergeQueue` nor `autoMergeRequest`
@@ -141,18 +142,19 @@ are context the next round needs.
 - **On the terminal host there is no app, so no binding and no monitor.** Wherever this file binds
   the PR or turns the monitor on, skip it; the round's settle timer (§ 0) and a background
   `gh pr checks <N> --watch` are what wake you. A terminal worker never clears (`clear: never`), so skip
-  "monitor off" before a clear; before you merge, stop the review watch after one last `c` (above the
-  count, run the round instead), and at `MERGED` your other background commands. A review that lands after a clean round would wake nobody, so a clean round
+  "monitor off" before a clear; before you merge, run the snippet's first lines and `c` once in the foreground: above your ledger's
+  count, run the round instead, which spends the merge go, and ask "merge?" again after it; else
+  stop the review watch, and at `MERGED` your other background commands. A review that lands after a clean round would wake nobody, so a clean round
   arms a review watch in the background and ends the turn `waiting: reviews, until <now + 2 h>`.
   Each round records `c`'s count in your ledger as it reads its reviews, so a review landing during
   the CI wait still counts. A new review starts the next round at § 0; none → arm it again, from
-  the count it printed.
+  the count it printed (the ledger's, if it printed `unknown`).
   ```bash
   set -o pipefail; me=$(gh api user --jq .login) || exit 2      # your own posts never count
   c() {  # others' reviews, PR comments, and inline review comments with their thread replies
     local a b
     a=$(gh pr view <N> --json reviews,comments --jq "[.reviews[], .comments[] | select(.author.login != \"$me\")] | length") &&
-    b=$(gh api --paginate "repos/{owner}/{repo}/pulls/<N>/comments" --jq "[.[] | select(.user.login != \"$me\")] | length" | awk '{s += $1} END {print s + 0}') &&
+    b=$(gh api --paginate "repos/{owner}/{repo}/pulls/<N>/comments?per_page=100" --jq "[.[] | select(.user.login != \"$me\")] | length" | awk '{s += $1} END {print s + 0}') &&
     echo $((a + b))
   }
   n=<c's count recorded when the round read its reviews>

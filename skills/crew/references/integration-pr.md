@@ -71,7 +71,7 @@ Send `NEED-INPUT` before a round `rounds` doesn't allow, with each round's fixes
 ### merge
 
 Merge only on a go to your "merge?": the orchestrator's `ANSWER` under `landing`, or the operator's
-yes in this session, never a relayed go. Run `gh pr merge <N> --squash --match-head-commit
+yes in this session, never a relayed go. Check the review watch first on the terminal (Rules). Run `gh pr merge <N> --squash --match-head-commit
 <sha>` and poll in the background until `gh pr view <N> --json state,mergeCommit` reads `MERGED`:
 a merge queue or auto-merge only queues it. `CLOSED`, or `OPEN` with neither `isInMergeQueue` nor
 `autoMergeRequest` (`gh api graphql`) → `BLOCKED`. Meanwhile push nothing; if the
@@ -86,18 +86,20 @@ report.
 
 ## Rules
 
-- **Terminal host:** no app monitor and no clears (`clear: never`); "monitor off" stops your background commands, the review watch
-  before you merge, after one last `c`: above the count, run the round instead. The settle timer and `gh pr checks <N> --watch` wake you. Arm a review watch
+- **Terminal host:** no app monitor and no clears (`clear: never`); "monitor off" stops your background commands. The settle timer
+  and `gh pr checks <N> --watch` wake you. before you merge, run the snippet's first lines and `c` once in the foreground: above your ledger's
+  count, run the round instead, which spends the merge go, and ask "merge?" again after it; else
+  stop the review watch. Arm a review watch
   after a clean round, or a late review wakes no one, and end the turn `waiting: reviews, until
   <now + 2 h>`; record `c`'s count in your ledger as each round reads its reviews, so one landing
   during the CI wait still counts. Run the next round on a new review, and re-arm on none from the
-  count it printed:
+  count it printed (the ledger's, if it printed `unknown`):
   ```bash
   set -o pipefail; me=$(gh api user --jq .login) || exit 2      # your own posts never count
   c() {  # others' reviews, PR comments, and inline review comments with their thread replies
     local a b
     a=$(gh pr view <N> --json reviews,comments --jq "[.reviews[], .comments[] | select(.author.login != \"$me\")] | length") &&
-    b=$(gh api --paginate "repos/{owner}/{repo}/pulls/<N>/comments" --jq "[.[] | select(.user.login != \"$me\")] | length" | awk '{s += $1} END {print s + 0}') &&
+    b=$(gh api --paginate "repos/{owner}/{repo}/pulls/<N>/comments?per_page=100" --jq "[.[] | select(.user.login != \"$me\")] | length" | awk '{s += $1} END {print s + 0}') &&
     echo $((a + b))
   }
   n=<c's count recorded when the round read its reviews>
