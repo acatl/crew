@@ -328,7 +328,7 @@ Cleanup never deletes a branch or runs `git worktree remove` (nor `claude rm`, w
 Follow step 4 for each Landing. **Spawn every unit now**, each by step 5 (end your turn after the last):
 unit 1 with a ready brief, the rest with the **queued variant** (no Job section; spec on disk). Their
 landed state waits for START: earlier units will move the base under them. On the terminal, spawn
-only unit 1 now (an idle background session isn't known to last hours), but write every unit's row and spec.
+only unit 1 now (an idle background session isn't known to last hours), but write every unit's row (status `queued`, `session: none`) and spec.
 
 **When unit N's DONE verifies:**
 

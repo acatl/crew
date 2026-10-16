@@ -5,8 +5,8 @@ Workers run on the orchestrator's **host**; mixed hosts are not supported. The s
 invariant, authority) is the same on both.
 
 **Which host.** The `mcp__ccd_session__spawn_task` tool is present → `desktop`. Else
-`claude agents --json` runs → `terminal`. Neither → tell the operator crew has no host here, and
-stop. The brief's `- host:` line tells the worker; a brief with no host line is `desktop`.
+`claude agents --json` runs and `SendMessage` and `ListAgents` are among your tools (a deny rule can
+remove them) → `terminal`. Neither → tell the operator crew has no host here, and stop. The brief's `- host:` line tells the worker; a brief with no host line is `desktop`.
 
 ## Verbs
 
@@ -82,7 +82,7 @@ its card didn't show. Write the mode on the card's
   one wait for a manual approval, and an interactive one drops them after `dialogExpiry` (5
   minutes). An orchestrator never enters either mode while a worker lives. A worker's own plan
   stage can hit it where bypass is available to the worker (*inferred*: whether a background session
-  counts as interactive is undocumented): its plan `NEED-INPUT` then waits in your window's approval dialog (approve it within `dialogExpiry`), and the
+  counts as interactive is undocumented): its plan `NEED-INPUT` then waits in your window's message-approval dialog (accept it within `dialogExpiry`; that only delivers it, and the plan is still approved in the worker's session), and the
   watchdog's `--permission-wait` reports the plan prompt either way. `crossSessionInbound`
   set to `hold` or `refuse` (`/config` › Messages from your other sessions) breaks crew in any mode:
   tell the operator, and spawn nothing.

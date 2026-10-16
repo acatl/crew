@@ -83,7 +83,8 @@ the unit may change, so rows join on `session`, never on a unit or title.
 
 **Status** is one of: `chip` (no `ONLINE` yet — `session` holds `pending <worktree name>`, then
 the id *spawn* returns),
-`queued`, `running`, `waiting-on-operator`, `blocked`, `cleared`, `done`, `verified`, `landed`.
+`queued` (spawned and waiting for `START`; on the terminal, `session: none`, not spawned yet: step 8
+spawns it), `running`, `waiting-on-operator`, `blocked`, `cleared`, `done`, `verified`, `landed`.
 
 **Everything else is an open field.** `counters`, `standing`, `surface`, `verified` are conventions,
 not schema. Invent a field when a situation needs one. Anything that must block eviction goes in
@@ -123,7 +124,8 @@ conversation, read `ledger.md` and reconcile it against *roster*.
 
 - A row says running, the session is stopped → report the drift, don't silently patch it.
 - A worker session of yours (*roster*) has no row → check the archive before calling it an orphan;
-  an evicted row is not a lost worker. A `pending` row → find its worktree.
+  an evicted row is not a lost worker. A `pending` row → find its worktree. A `queued` row with
+  `session: none` has no session to find: it waits for its turn, not drift.
 - Anything else reads targeted: grep the unit, don't re-read the file.
 
 `Live` comes first, so a partial read gets what matters.
