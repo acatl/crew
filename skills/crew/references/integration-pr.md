@@ -26,15 +26,15 @@ Your brief holds the resolved values; never read `CREW.md`.
 
 Run `git fetch origin <base>` and get `verify` green on a clean tree. Push your own
 branch and run `gh pr create --base <base>`: a Conventional Commits title; a body of what changed,
-why, the risk. Call the app's `get_status`; if it doesn't report this PR, call `bind_pr` with its
-URL. Then call `set_monitor` with `auto_fix: true`. Each can block on an approval prompt:
-send `NEED-INPUT` marked `answer: in this session only` before them, unless
+why, the risk. Call the app's `get_status` on the desktop host; if it doesn't report this PR, call
+`bind_pr` with its URL. Then call `set_monitor` with `auto_fix: true`. Each can block on an approval
+prompt: send `NEED-INPUT` marked `answer: in this session only` before them, unless
 *self* reports permission mode `auto` or `bypassPermissions`.
 
-- **Ends:** PR open, bound, monitor on.
+- **Ends:** PR open; on the desktop host also bound, monitor on.
 - **Report:** `checkpoint open`: PR URL, sha, push time.
-- **Orchestrator:** records the PR, and its monitor in the ledger's Monitors.
-- **Clears:** yes, monitor off first and back on at the resume.
+- **Orchestrator:** records the PR, and any monitor in the ledger's Monitors.
+- **Clears:** desktop only, monitor off first and back on at the resume.
 
 ### round
 
@@ -60,8 +60,8 @@ Send `NEED-INPUT` before a round `rounds` doesn't allow, with each round's fixes
 
 - **Ends:** the push is up and its findings dispositioned, or the clean round reported.
 - **Report:** `checkpoint round`: round, sha, push time, fixed, declined, CI, silent reviewers.
-- **Orchestrator:** verifies the sha; on a clean round, checks the merge rule by running.
-  Met, with no `landing: operator` on the card and its "merge?" marked `answer: here or relay`, it
+- **Orchestrator:** verifies the sha; on a clean round, checks *The merge rule* against the PR now
+  (`gh pr view <N>`, `gh pr checks <N>`, `verify` after `git fetch origin <base>`). Met, with no `landing: operator` on the card and its "merge?" marked `answer: here or relay`, it
   tells the worker to merge by `ANSWER`; else it nudges the operator, with the failing condition if
   missed, and relays no merge.
 - **Clears:** after a push, yes, monitor off first; never after a clean round.
@@ -85,7 +85,13 @@ report.
 ## Rules
 
 - **Terminal host:** no app monitor and no clears (`clear: never`); "monitor off" after merging stops your background commands. The settle
-  timer and `gh pr checks <N> --watch` wake you.
+  timer and `gh pr checks <N> --watch` wake you. Arm a review watch after a clean round, or a late
+  review wakes no one, and end the turn `waiting: reviews, until <now + 2 h>`; run the next round
+  on a new review, and re-arm it on none:
+  ```bash
+  c() { gh pr view <N> --json reviews,comments --jq '.reviews + .comments | length'; }
+  n=$(c); for i in $(seq 60); do sleep 120; [ "$(c)" -gt "$n" ] && break; done   # run_in_background
+  ```
 - **Record each push's time in your ledger:** after a clear, `settle` runs from it, never the commit's.
 - **Consent.** The brief grants a push to your own branch, your own PR, its binding, and writes to
   it (replies, resolves). Anything else, a merge outside the merge rule or under `landing: operator`

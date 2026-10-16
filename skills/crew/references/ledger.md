@@ -38,7 +38,7 @@ It fails loudly: a partial path would scatter ledgers.
   archive-YYYY-MM.md   evicted rows, append-only, never read in normal operation
   roster.tsv           the watchdog's input: <ticket> TAB <worktree-path> TAB <start epoch>, one per running worker
   reported.txt, active.tsv  what the watchdog reported, and each worker's clock; both outlive its one-shot runs
-  waiting.tsv          the permission waits the watchdog reported (--permission-wait)
+  waiting.tsv          the prompt waits the watchdog reported (--permission-wait)
   watchdog.pid         the running watchdog's pid; how you stop it
   watchdog.log         its stderr: which worker is unwatched, or that the roster vanished
 ```

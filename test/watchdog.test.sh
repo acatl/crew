@@ -702,12 +702,18 @@ chmod +x "$ROOT/bin/claude"
 FAKEPATH="$ROOT/bin:$PATH"
 NOCLAUDE=""
 while IFS= read -r d; do [ -n "$d" ] && [ ! -x "$d/claude" ] && NOCLAUDE="$NOCLAUDE${NOCLAUDE:+:}$d"; done <<< "$(tr ':' '\n' <<< "$PATH")"
-agents()  { printf '[{"kind":"%s","status":"%s","cwd":"%s"}]\n' "$1" "$2" "${3:-$WT}" > "$AGENTS_JSON"; }
+# agents <kind> <status> [<cwd>] [<waitingFor>]: one session; a waiting one names its prompt
+# ("permission prompt" unless given, "-" for none, as an older or future CLI might list it)
+agents()  {
+  local w="${4:-permission prompt}" f=""
+  if [ "$2" = waiting ] && [ "$w" != - ]; then f=',"waitingFor":"'"$w"'"'; fi
+  printf '[{"kind":"%s","status":"%s","cwd":"%s"%s}]\n' "$1" "$2" "${3:-$WT}" "$f" > "$AGENTS_JSON"
+}
 
 roster1; reset; rm -f "$CREW/waiting.tsv"; silence_t1; subagents 0
 agents background waiting
 PATH="$FAKEPATH" run --permission-wait; rc=$?
-if [ "$rc" = 0 ] && grep -q 'WATCHDOG #1: waiting on a tool-permission prompt' "$ROOT/out" \
+if [ "$rc" = 0 ] && grep -q 'WATCHDOG #1: waiting on a prompt (permission prompt)' "$ROOT/out" \
    && [ "$(cut -f1 "$CREW/waiting.tsv")" = '#1' ]
 then ok "73 a background worker on a permission prompt fires, and is recorded"; else bad "73 permission wait" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 if PATH="$FAKEPATH" silent --permission-wait
@@ -717,28 +723,37 @@ if PATH="$FAKEPATH" silent --permission-wait && [ ! -s "$CREW/waiting.tsv" ]
 then ok "75 off the prompt: silent, and its record drops"; else bad "75 wait cleared" "out: $(cat "$ROOT/out") state: $(cat "$CREW/waiting.tsv")"; fi
 agents background waiting
 PATH="$FAKEPATH" run --permission-wait; rc=$?     # positive control for 74 and 75
-if [ "$rc" = 0 ] && grep -q 'WATCHDOG #1: waiting on a tool-permission prompt' "$ROOT/out"
+if [ "$rc" = 0 ] && grep -q 'WATCHDOG #1: waiting on a prompt (permission prompt)' "$ROOT/out"
 then ok "76 a new wait after leaving the prompt fires again"; else bad "76 wait re-arm" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+agents background waiting "$WT" "input needed"   # still waiting, on another kind of prompt
+PATH="$FAKEPATH" run --permission-wait; rc=$?
+if [ "$rc" = 0 ] && grep -q 'WATCHDOG #1: waiting on a prompt (input needed)' "$ROOT/out" \
+   && [ "$(cut -f4 "$CREW/waiting.tsv")" = 'input needed' ]
+then ok "77 a question asked mid-turn is a new wait, named"; else bad "77 wait kind" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+rm -f "$CREW/waiting.tsv"; agents background waiting "$WT" -
+PATH="$FAKEPATH" run --permission-wait; rc=$?
+if [ "$rc" = 0 ] && grep -q 'WATCHDOG #1: waiting on a prompt (unnamed)' "$ROOT/out"
+then ok "78 a wait the CLI doesn't name still fires"; else bad "78 unnamed wait" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 
 rm -f "$CREW/waiting.tsv"; agents interactive waiting
 if PATH="$FAKEPATH" silent --permission-wait
-then ok "77 an interactive session on a prompt in the worktree is not the worker"; else bad "77 interactive" "fired: $(cat "$ROOT/out")"; fi
+then ok "79 an interactive session on a prompt in the worktree is not the worker"; else bad "79 interactive" "fired: $(cat "$ROOT/out")"; fi
 agents background waiting "$WT/"
 if PATH="$FAKEPATH" silent --permission-wait
-then ok "78 a cwd that differs by a trailing slash is another session"; else bad "78 cwd byte match" "fired: $(cat "$ROOT/out")"; fi
+then ok "80 a cwd that differs by a trailing slash is another session"; else bad "80 cwd byte match" "fired: $(cat "$ROOT/out")"; fi
 agents background waiting
 if PATH="$FAKEPATH" silent
-then ok "79 without --permission-wait, trigger 3 is off"; else bad "79 flag off" "fired: $(cat "$ROOT/out")"; fi
-PATH="$FAKEPATH" run --permission-wait; rc=$?     # positive control for 77-79, same fixture
-if [ "$rc" = 0 ] && grep -q 'WATCHDOG #1: waiting on a tool-permission prompt' "$ROOT/out"
-then ok "80 the same fixture with the flag fires"; else bad "80 control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+then ok "81 without --permission-wait, trigger 3 is off"; else bad "81 flag off" "fired: $(cat "$ROOT/out")"; fi
+PATH="$FAKEPATH" run --permission-wait; rc=$?     # positive control for 79-81, same fixture
+if [ "$rc" = 0 ] && grep -q 'WATCHDOG #1: waiting on a prompt (permission prompt)' "$ROOT/out"
+then ok "82 the same fixture with the flag fires"; else bad "82 control" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 
 # No claude on the PATH: trigger 3 says once that it is off, and the other triggers still watch.
 rm -f "$CREW/waiting.tsv"; seed_commit 7200; reset
 PATH="$NOCLAUDE" run --permission-wait; rc=$?
 if [ "$rc" = 0 ] && grep -q 'WATCHDOG #1: active but no commit' "$ROOT/out" \
    && [ "$(grep -c 'trigger 3 is off' "$ROOT/err" | tr -d ' ')" = 1 ]
-then ok "81 no claude: trigger 3 warns once and trigger 1 still fires"; else bad "81 no claude" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
+then ok "83 no claude: trigger 3 warns once and trigger 1 still fires"; else bad "83 no claude" "rc=$rc $(cat "$ROOT/out" "$ROOT/err")"; fi
 rm -f "$CREW/waiting.tsv"; seed_commit 7200; roster1
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"

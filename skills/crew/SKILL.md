@@ -345,7 +345,7 @@ only unit 1 now (an idle background session isn't known to last hours), but writ
    new overlap goes to the operator). Include what earlier units changed and handed on, and each
    finding unit N carried as a "Carried from N" line (also a checklist line on N+1's ticket). Save it
    as `briefs/<row>-start.md`. Then set it `running`, add its roster line, and subscribe to its idle
-   notice. On the terminal, spawn it by step 5 instead, with that as a ready brief.
+   notice. On the terminal send no `START`: spawn it by step 5, a ready brief carrying that Job section.
 
 **Hold the base still.** While a sequence is in flight, nothing commits to `<base>` except landings.
 That includes you; tell the operator the same. One stray commit and the next ff-only landing is refused.
@@ -371,7 +371,7 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
     [--interval <s>] [--no-commit <s>] [--subagent-step <n>] [--permission-wait] \
     ~/.claude/crew/<slug>/ 2>> ~/.claude/crew/<slug>/watchdog.log
   ```
-  On the terminal add `--permission-wait`: it reports a worker sitting on a tool-permission prompt.
+  On the terminal add `--permission-wait`: it reports a worker on a prompt in its window (a tool permission, a question).
   Nudge the operator to answer it in the worker (*link*), unless `owed` already holds that question.
   Thresholds come from `CREW.md` › Ledger; its defaults are the values hg proved (1200 / 3600 / 3).
   **Confirm it is still alive before you record it** in the ledger's `Monitors` with its pid. A launch

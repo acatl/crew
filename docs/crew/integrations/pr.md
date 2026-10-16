@@ -35,13 +35,13 @@ Run the CodeRabbit CLI once over the branch and fix what it finds, then `/code-r
 sub-agent over those fixes, and fix with no further local review (§ 6 › The CodeRabbit CLI pass).
 Then `git fetch origin <base>`, `verify` green on a clean tree, the pool check (§ Who runs the rounds),
 push your own branch, and open the PR (`gh pr create --base <base>`) with a Conventional Commits
-title and a body carrying what, why and risk. Bind it and turn on its review monitor (§ Who runs
-the rounds).
+title and a body carrying what, why and risk. On the desktop host, bind it and turn on its review
+monitor (§ Who runs the rounds); the terminal host has neither.
 
-- **Ends:** PR open, bound, monitor on.
+- **Ends:** PR open; on the desktop host also bound, monitor on.
 - **Report:** `checkpoint open`: PR URL, sha, push time, the CLI pass's result.
-- **Orchestrator:** records the PR and its monitor in the ledger.
-- **Clears:** yes, monitor off first and back on at the resume.
+- **Orchestrator:** records the PR, and on the desktop host its monitor, in the ledger.
+- **Clears:** desktop, yes, monitor off first and back on at the resume; terminal, never.
 
 ### round
 
@@ -141,8 +141,14 @@ are context the next round needs.
 - **On the terminal host there is no app, so no binding and no monitor.** Wherever this file binds
   the PR or turns the monitor on, skip it; the round's settle timer (§ 0) and a background
   `gh pr checks <N> --watch` are what wake you. A terminal worker never clears (`clear: never`), so skip
-  "monitor off" before a clear; at the merge, stop your own background commands instead. A review that lands after a clean round wakes nobody: the
-  coordinator's own merge-rule check reads the PR before any merge `ANSWER`, which catches it.
+  "monitor off" before a clear; at the merge, stop your own background commands instead. A review
+  that lands after a clean round would wake nobody, so a clean round arms a review watch in the
+  background and ends the turn `waiting: reviews, until <now + 2 h>`. A new review starts the next
+  round at § 0; none → arm it again.
+  ```bash
+  c() { gh pr view <N> --json reviews,comments --jq '.reviews + .comments | length'; }
+  n=$(c); for i in $(seq 60); do sleep 120; [ "$(c)" -gt "$n" ] && break; done
+  ```
 - **After each round's push** the worker reports `DONE`, with `checkpoint` in its first line, to
   the coordinator: round number, commit sha, push time, what was fixed and what was declined, CI
   state, silent reviewers. That is a checkpoint, not an exit: when the next reviews land, the same

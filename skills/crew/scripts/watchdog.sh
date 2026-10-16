@@ -24,10 +24,11 @@
 #                 It outlives the process too, so a relaunch keeps a worker's clock. Keyed by ticket
 #                 AND worktree, and pruned to a non-empty roster every pass, so a worker spawned again
 #                 for the same ticket starts its own clock rather than inheriting the last one's.
-#   waiting.tsv   trigger 3 (--permission-wait only): <ticket> <TAB> <worktree> <TAB> <since>, one
-#                 line per rostered worker last seen on a permission prompt. It outlives the process,
-#                 so a relaunch doesn't report the same wait again; a worker that leaves the prompt
-#                 drops out, so its next wait reports afresh.
+#   waiting.tsv   trigger 3 (--permission-wait only): <ticket> <TAB> <worktree> <TAB> <since> <TAB>
+#                 <what>, one line per rostered worker last seen on a prompt, <what> its waitingFor.
+#                 It outlives the process, so a relaunch doesn't report the same wait again; a worker
+#                 that leaves the prompt drops out, and one on another kind of prompt is a new wait,
+#                 so either reports afresh.
 #   watchdog.pid  lock:   one watchdog per project. NEVER kill by a process-name match (`pkill -f`,
 #                 `pgrep … | xargs kill`, `ps | grep`): every project's watchdog is a watchdog.sh,
 #                 and only the pid in this crew dir's watchdog.pid is yours.
@@ -60,11 +61,14 @@
 #      earlier sessions' sub-agents, and a reused branch name inherits an earlier worker's push.
 #      A worker with no resolvable push baseline is SKIPPED for this trigger and warned about,
 #      never counted from zero — that would be the absolute count again.
-#   3. with --permission-wait (terminal host): the worker sits on a tool-permission prompt, which
-#      no transcript write or idle notice shows. Read from `claude agents --json`: a background
-#      session whose cwd is the worker's worktree, byte for byte, with status "waiting". Only
-#      background sessions count, so the operator's own interactive session in a worktree never
-#      does. Needs claude and jq on the PATH; without them it warns once and skips only this trigger.
+#   3. with --permission-wait (terminal host): the worker sits on a prompt in its own window, which
+#      no transcript write or idle notice shows: a tool permission, or any other wait the CLI names
+#      in waitingFor ("input needed" is a question asked mid-turn, before any NEED-INPUT could go).
+#      Each is the operator's to answer there, so each reports, naming what it waits for. Read from
+#      `claude agents --json`: a background session whose cwd is the worker's worktree, byte for
+#      byte, with status "waiting". Only background sessions count, so the operator's own
+#      interactive session in a worktree never does. Needs claude and jq on the PATH; without them
+#      it warns once and skips only this trigger.
 #
 # It says so on stderr, once, whenever it goes blind on a worker: a roster row whose worktree is
 # missing or is not a git repo, a worker with no transcript directory, a worker with no push
@@ -239,16 +243,20 @@ last_alert() {
   case "$n" in ''|*[!0-9]*) n=0 ;; esac
   printf '%s\n' "$n"
 }
-# waiting_since <ticket> <worktree>: when trigger 3 first saw that worker on a prompt, or nothing
-waiting_since() { K="$1" W="$2" awk -F'\t' "$THIS_ROW"' {print $3}' "$waiting" 2>/dev/null; }
-# waiters: the cwds of background sessions on a permission prompt, one per line. Fails when claude
-# or jq is missing or the listing doesn't parse, so trigger 3 skips the pass rather than reading
-# "nobody is waiting".
+# waiting_since <ticket> <worktree> <what>: when trigger 3 first saw that worker on that kind of
+# prompt, or nothing
+waiting_since() {
+  K="$1" W="$2" F="$3" awk -F'\t' "$THIS_ROW"' && $4"" == ENVIRON["F"]"" {print $3}' "$waiting" 2>/dev/null
+}
+# waiters: <cwd> TAB <what> for each background session on a prompt, one per line, <what> its
+# waitingFor ("unnamed" when the CLI names none). Fails when claude or jq is missing or the listing
+# doesn't parse, so trigger 3 skips the pass rather than reading "nobody is waiting".
 waiters() {
   local list
   command -v claude >/dev/null 2>&1 && command -v jq >/dev/null 2>&1 || return 1
   list=$(claude agents --json 2>/dev/null) || return 1
-  jq -r 'if type == "array" then .[] | select(.kind == "background" and .status == "waiting") | .cwd
+  jq -r 'if type == "array" then .[] | select(.kind == "background" and .status == "waiting")
+         | "\(.cwd)\t\(.waitingFor // "unnamed" | gsub("[\t\n]"; " "))"
          else error("not a session list") end' <<< "$list" 2>/dev/null
 }
 prune_active() {  # prune_active <roster snapshot>: drop the rows of workers no longer on it
@@ -297,16 +305,20 @@ while true; do
       continue
     fi
 
-    # trigger 3: on a permission prompt. Checked before the transcript and git checks, which a
-    # blocked worker passes anyway, and recorded only when reported, so a wait found while another
-    # finding is out reports on the next run.
-    if [ "$waiting_ok" = 1 ] && grep -qxF -- "$wt" <<< "$waiting_now"; then
-      wsince=$(waiting_since "$ticket" "$wt")
+    # trigger 3: on a prompt. Checked before the transcript and git checks, which a blocked worker
+    # passes anyway, and recorded only when reported, so a wait found while another finding is out
+    # reports on the next run.
+    what=""
+    if [ "$waiting_ok" = 1 ]; then
+      what=$(W="$wt" awk -F'\t' '$1"" == ENVIRON["W"]"" {print $2; exit}' <<< "$waiting_now")
+    fi
+    if [ -n "$what" ]; then
+      wsince=$(waiting_since "$ticket" "$wt" "$what")
       if [ -z "$wsince" ] && [ -z "$alert" ]; then
         wsince=$(now)
-        alert="WATCHDOG $ticket: waiting on a tool-permission prompt — the operator answers it in the worker's session"
+        alert="WATCHDOG $ticket: waiting on a prompt ($what) — the operator answers it in the worker's session"
       fi
-      if [ -n "$wsince" ]; then waiting_next+="$ticket"$'\t'"$wt"$'\t'"$wsince"$'\n'; fi
+      if [ -n "$wsince" ]; then waiting_next+="$ticket"$'\t'"$wt"$'\t'"$wsince"$'\t'"$what"$'\n'; fi
     fi
 
     proj="$HOME/.claude/projects/$(printf '%s' "$wt" | sed 's#[/.]#-#g')"

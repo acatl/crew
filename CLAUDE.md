@@ -93,9 +93,11 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
     roster start too: a reused worktree's transcript dir keeps earlier sessions' sub-agents, and a
     reused branch name inherits an earlier worker's push. A resume after a clear keeps the start, or
     the same worker's pre-clear sub-agents would drop out. *Checked*: SKILL.md step 6 and *Watchdog*.
-  - With `--permission-wait` (the terminal host) it also reports a worker on a tool-permission
-    prompt, read from `claude agents --json` (a `background` session whose `cwd` is the worktree,
-    `status` `waiting`), deduped in `waiting.tsv`.
+  - With `--permission-wait` (the terminal host) it also reports a worker on a prompt in its own
+    window, read from `claude agents --json` (a `background` session whose `cwd` is the worktree,
+    `status` `waiting`), naming its `waitingFor` (a tool permission, a question asked mid-turn, …),
+    deduped in `waiting.tsv` per worker and kind of prompt. Every kind reports: each is the
+    operator's to answer in the worker, and none can send a message.
 - **`scripts/overlap.sh` is the parallel-safety check** (orchestrator step 3). It lists files
   in-flight workers have touched that fall under a candidate surface.
 - **Outside the skill:** `test/` holds the suites, so they don't ship with the skill. `scripts/` holds
