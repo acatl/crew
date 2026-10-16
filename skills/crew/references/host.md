@@ -80,9 +80,10 @@ its card didn't show. Write the mode on the card's
   (cross-session messaging › Control inbound messages): with no `crossSessionInbound` set, messages
   between a session in `bypassPermissions` (or `plan`, where bypass is available) and a prompting
   one wait for a manual approval, and an interactive one drops them after `dialogExpiry` (5
-  minutes). So an orchestrator never enters either mode while a worker lives, and a terminal
-  worker sends its plan `NEED-INPUT` before it enters plan mode (`standard` › plan), since where
-  bypass is available to it that mode would hold the message. `crossSessionInbound`
+  minutes). An orchestrator never enters either mode while a worker lives. A worker's own plan
+  stage can hit it where bypass is available to the worker (*inferred*: whether a background session
+  counts as interactive is undocumented): its plan `NEED-INPUT` then waits in your window's approval dialog (approve it within `dialogExpiry`), and the
+  watchdog's `--permission-wait` reports the plan prompt either way. `crossSessionInbound`
   set to `hold` or `refuse` (`/config` › Messages from your other sessions) breaks crew in any mode:
   tell the operator, and spawn nothing.
 - **A stopped worker lingers after a *restart*.** Seen live (2026-10-15, E2E-1, #14): its stale
