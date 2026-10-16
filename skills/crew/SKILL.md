@@ -191,7 +191,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 > | Safety | ✓ clear — 2 workers in flight, no shared paths; main checkout on `main` |
 > | Permission | `auto` · compact at `400k` (terminal host only) |
 >
-> **→ You:** `go`, or override a line or a workflow parameter but `no-commit` or a terminal `clear` (`integration: none`, `plan: skip`, `cleanup: keep`).
+> **→ You:** `go`, or override a line or a workflow parameter except `no-commit` and a terminal `clear` (`integration: none`, `plan: skip`, `cleanup: keep`).
 
 - **Title** default: `CREW.md` › Defaults, else `{TICKET} — {ticket title}`. It becomes the chip label
   and the session title, so lead with the ticket id — the sidebar sorts, and the roster finds it.
@@ -218,7 +218,7 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
    will be sent to `briefs/<row>.md`, before you spawn: a worker with no row is one nobody tracks.
    Save a queued brief's `{SPEC}` to `briefs/<row>-spec.md`.
 4. *spawn* it with the card's title and the saved brief. The worktree name is the ticket slugged
-   plus the row id (`kino-5-r3`). Write what *spawn* returns into the row's `session`.
+   plus the row id (`kino-5-r3`). Write the id *spawn* returns (desktop `task_id`, terminal `<id>`) into the row's `session`.
 5. Tell the operator the chip needs a click (desktop) or the worker is running (terminal, *link*). End your turn.
 
 ### 6. Handle messages

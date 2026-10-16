@@ -82,7 +82,7 @@ takes its Spec from `briefs/<row>-spec.md`, never from memory. Row ids are stabl
 the unit may change, so rows join on `session`, never on a unit or title.
 
 **Status** is one of: `chip` (no `ONLINE` yet — `session` holds `pending <worktree name>`, then
-*spawn*'s result),
+the id *spawn* returns),
 `queued`, `running`, `waiting-on-operator`, `blocked`, `cleared`, `done`, `verified`, `landed`.
 
 **Everything else is an open field.** `counters`, `standing`, `surface`, `verified` are conventions,

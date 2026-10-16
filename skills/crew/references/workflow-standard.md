@@ -25,7 +25,9 @@ Your brief holds the resolved values; never read `CREW.md`.
 ### plan
 
 Read the spec in full, then enter plan mode. Send `NEED-INPUT` marked `answer: in this session only`;
-the operator approves in this session.
+the operator approves in this session. On the terminal host, ask every question and send that
+`NEED-INPUT` ("plan approval pending in this session; the prompt follows") before you enter plan
+mode, and send nothing from inside it: it can hold a message to or from a prompting session (host.md).
 
 - **Ends:** plan approved, and the operator's answers are in your ledger.
 - **Report:** `checkpoint plan`
