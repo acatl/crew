@@ -12,7 +12,7 @@ stop. The brief's `- host:` line tells the worker; a brief with no host line is 
 
 | Verb | Desktop (the app's Code tab) | Terminal (the Claude Code CLI) |
 |---|---|---|
-| *self* | `mcp__ccd_session_mgmt__get_session("self")` → `sessionId`, `title`, `permissionMode` | `$CLAUDE_CODE_SESSION_ID`; name: the `claude agents --json` row with that `sessionId`; mode: `permissionMode` of the last `"type":"permission-mode"` line in your transcript (*tail*'s file); address: `uds:$CLAUDE_CODE_MESSAGING_SOCKET` (`/status` › Peer address) |
+| *self* | `mcp__ccd_session_mgmt__get_session("self")` → `sessionId`, `title`, `permissionMode` | `$CLAUDE_CODE_SESSION_ID`; name: the `claude agents --json` row with that `sessionId`; mode: `permissionMode` of the last `"type":"permission-mode"` line in your transcript (*tail*'s file); address: `uds:` + the path `echo "$CLAUDE_CODE_MESSAGING_SOCKET"` prints, written out (`uds:/tmp/cc-socks/8282.sock`) |
 | *spawn* | `mcp__ccd_session__spawn_task` with `title`, `tldr`, `prompt` = the brief (`cwd` only for another repo) → a `task_id` and a chip the operator clicks | from the main checkout, in a subshell: `(cd <main> && claude --bg -w <ticket-slug>-<row> -n "<title>" --permission-mode <mode> --autocompact <compact> "$(cat <brief file>)")` → `backgrounded · <id> · <title>`; the worker starts at once. `--session-id` is ignored with `--bg` |
 | *identify* | `mcp__ccd_session_mgmt__get_session(<worker sessionId>)` → `parentSessionId` (must be yours), `worktreePath`, `sourceBranch` | `claude agents --json`: the row whose `cwd` is `<main>/.claude/worktrees/<worktree name>` → `sessionId`, `id`, `pid` (its address: `uds:<your socket's directory>/<pid>.sock`), `cwd` (the worktree path, byte-identical); branch: `git -C <cwd> branch --show-current` |
 | *message* | `mcp__ccd_session_mgmt__send_message` to the sessionId | `SendMessage` to the session's address (*self*, *identify*); its title, `[ref]` from `ListAgents`, as a fallback |
@@ -25,10 +25,12 @@ stop. The brief's `- host:` line tells the worker; a brief with no host line is 
 | *pr-state* | `gh pr view <N> --json state` | the same |
 | *link* | `[<title>](#<worker-sessionId>)`, a link the operator clicks | said in full, since a background session has no tab: "it runs in the background; to watch or answer it, open another terminal and run `claude attach <id>`"; `claude logs <id>` shows its recent output without attaching |
 
-**A worker's permission mode** (terminal *spawn* and *restart*) is yours, with `plan` → `default` and
-`bypassPermissions` → `auto`: a worker in `plan` couldn't run its set-up or a workflow with no plan
-stage, its plan stage enters plan mode itself, and `default` asks the operator for every call. Never pass `bypassPermissions` or `--dangerously-skip-permissions`:
-a worker never runs with permissions its card didn't show. Write the mode on the card's
+**A worker's permission mode** (terminal *spawn* and *restart*) is yours: `auto`, `acceptEdits`,
+`default` or `dontAsk`. In `bypassPermissions` or `plan` you spawn and restart nothing until the
+operator switches you to `auto` or `default` (the messages gotcha below); a worker in `plan`
+can't run its own set-up either, and its workflow's plan stage enters plan mode itself. Never
+pass `bypassPermissions` or `--dangerously-skip-permissions`: a worker never runs with permissions
+its card didn't show. Write the mode on the card's
 `Permission` line; the operator can name another, never a bypass.
 
 ## Gotchas on both hosts
@@ -70,16 +72,18 @@ a worker never runs with permissions its card didn't show. Write the mode on the
   Check the pid is gone, then run `git worktree unlock` to prune a kept worktree; don't force it.
 - **Two sessions can share a name; a socket can't.** Seen live: a desktop session and its resume
   (2026-10-14), two orchestrators, and a probe's send and subscribe by socket, which worked
-  (2026-10-15). Claude Code documents a session's own socket (`CLAUDE_CODE_MESSAGING_SOCKET`, in
-  `/tmp/cc-socks/`, else a per-user `/tmp/cc-socks-<uid>/`), not a peer's: `<pid>.sock` beside
-  yours is *seen live*, not documented. A quit and `--resume` change the pid, and a reused pid can
+  (2026-10-15). Claude Code documents a session's own socket (`CLAUDE_CODE_MESSAGING_SOCKET`,
+  falling back to a per-user `/tmp/cc-socks-<uid>/`), not a peer's: `/tmp/cc-socks/` and
+  `<pid>.sock` beside yours are *seen live*, not documented. A quit and `--resume` change the pid, and a reused pid can
   reach another session, so the title must stay the fallback.
 - **A session that bypasses prompts holds a prompting one's messages, both ways.** Documented
-  (cross-session messaging › Control inbound messages): with no `crossSessionInbound` set, a
-  receiver in `bypassPermissions` (or `plan`, where bypass is available) holds a message from a
-  prompting sender for approval, and a prompting receiver holds one from a bypassing sender. A
-  worker never bypasses, so an orchestrator that does would have every report and `RELAY` held:
-  it switches to `auto` or `default` before spawning (step 5).
+  (cross-session messaging › Control inbound messages): with no `crossSessionInbound` set, messages
+  between a session in `bypassPermissions` (or `plan`, where bypass is available) and a prompting
+  one wait for a manual approval, and an interactive one drops them after `dialogExpiry` (5
+  minutes). So an orchestrator never enters either mode while a worker lives, and a worker's own
+  plan stage hits it too where bypass is available to it (*inferred*). `crossSessionInbound`
+  set to `hold` or `refuse` (`/config` › Messages from your other sessions) breaks crew in any mode:
+  tell the operator, and spawn nothing.
 - **A stopped worker lingers after a *restart*.** Seen live (2026-10-15, E2E-1, #14): its stale
   idle notice arrived (don't act on it), a Remote Control copy kept its title, and its exit screen
   offered `claude --resume`. Never resume or `claude attach` it: either reopens it beside its successor, in

@@ -204,12 +204,12 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   `landing: delegated` would run (`git merge --ff-only`, then Post-land); only the operator writes it.
 - **Safety**: the step 3 result. On ⚠ overlap, recommend one of: wait for the overlapping worker,
   narrow this scope to avoid the shared paths, or proceed with those paths listed under `Do not touch`.
-- **Permission** (terminal only): the worker's mode, yours as host.md maps it, and the size it compacts
+- **Permission** (terminal only): the worker's mode, yours (in `bypassPermissions` or `plan` it reads "switch this session to `auto` or `default` first", and `go` spawns nothing until then: host.md), and the size it compacts
   at in place, since it can't clear itself (`400k` unless overridden, 100k–1M, kept under the worker model's window); `go` starts it at once.
 
 ### 5. Spawn
 
-1. *self* → your `sessionId`, title, host and, on the terminal, your address and mode. A mode that bypasses prompts would hold every worker's messages (host.md): ask the operator to switch to `auto` or `default`, and stop.
+1. *self* → your `sessionId`, title, host and, on the terminal, your address and mode (still not `bypassPermissions` or `plan`).
 2. Fill [references/brief-template.md](references/brief-template.md), the ready variant. Every `{…}`
    gets a value or `none`; no placeholder survives.
 3. **Write the ledger row** (status `chip`, `session: pending <worktree name>`, stage, surface,

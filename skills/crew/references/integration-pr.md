@@ -86,11 +86,11 @@ report.
 
 ## Rules
 
-- **Terminal host:** no app monitor and no clears (`clear: never`); "monitor off" stops your background commands. The settle timer
-  and `gh pr checks <N> --watch` wake you. before you merge, run the snippet's first lines and `c` once in the foreground: above your ledger's
-  count, run the round instead, which spends the merge go, and ask "merge?" again after it; no
-  number (`c` failed) → keep the watch and don't merge yet; else
-  stop the review watch. Arm a review watch
+- **Terminal host:** no app monitor and no clears (`clear: never`); "monitor off" stops your
+  background commands. The settle timer and `gh pr checks <N> --watch` wake you.
+  Before you merge, run the snippet's first lines and `c` once in the foreground. Above your ledger's
+  count → run the round instead, which spends the merge go, and ask "merge?" again after it. No
+  number → retry once, then `BLOCKED` with the error, the go unspent. Else stop the review watch. Arm a review watch
   after a clean round, or a late review wakes no one, and end the turn `waiting: reviews, until
   <now + 2 h>`; record `c`'s count in your ledger as each round reads its reviews, so one landing
   during the CI wait still counts. Run the next round on a new review, and re-arm on none from the
