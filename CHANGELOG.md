@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.0](https://github.com/acatl/crew/compare/crew-v1.0.0...crew-v1.1.0) (2026-10-18)
+
+
+### Features
+
+* integrations; ship a built-in PR integration that standard hands off to ([#7](https://github.com/acatl/crew/issues/7)) ([4b01ef3](https://github.com/acatl/crew/commit/4b01ef3b325970401f4aa5bb4aa04b21f34fbcfa))
+* run crew from the terminal CLI as well as the desktop app ([#17](https://github.com/acatl/crew/issues/17)) ([77dfa9c](https://github.com/acatl/crew/commit/77dfa9ca423f4e28d7754f917653b1e980f084c7))
+
+
+### Bug Fixes
+
+* idle notices, silent reviewers and reused-worktree ledgers ([#5](https://github.com/acatl/crew/issues/5)) ([27f0332](https://github.com/acatl/crew/commit/27f0332e3f6f56fc8ac29a55c1e7af468fcb0069))
+* overlap, watchdog, orchestrator cwd and reviewer worktrees ([#13](https://github.com/acatl/crew/issues/13)) ([1673458](https://github.com/acatl/crew/commit/1673458381d004caeb348e3f29ac30b4ee4a3460)), closes [#8](https://github.com/acatl/crew/issues/8) [#9](https://github.com/acatl/crew/issues/9) [#10](https://github.com/acatl/crew/issues/10) [#11](https://github.com/acatl/crew/issues/11)
+
 ## 1.0.0 (2026-09-30)
 
 
