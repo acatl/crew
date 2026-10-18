@@ -298,9 +298,18 @@ fresh; edit "$LG" 's#^  briefs/<row>-spec\.md a queued#  briefs/<row>-spec.md. A
 green "15fj13 a sentence's closing period isn't part of the name" check-invariants
 edit "$LG" 's#^  briefs/<row>-spec\.md\. A queued#  briefs/<row>-spec.md.old A queued#'   # same fixture
 red "15fj14 and the same fixture fails once that copy drifts" check-invariants "the queued unit's spec file reads 'briefs/<row>-spec.md.old'"
+# a resume keeps the roster start: step 6 and the Watchdog roster bullet say so
+fresh; edit "$SK" 's#holds a question, roster start kept\.#holds a question, roster start epoch reset.#'
+red "15fk step 6 resets the roster start at a resume again" check-invariants "a resume keeps the roster start"
+fresh; edit "$SK" 's#neither trigger counts from earlier\. Keep it across resumes\.#neither trigger counts from earlier.#'
+red "15fk2 the Watchdog roster bullet drops the kept start" check-invariants "the roster start survives a resume"
+fresh; edit "$SK" 's#Keep it across resumes\.#Keep it across resumes, clears included.#'
+green "15fk3 the pinned sentence grown by a clause stays green" check-invariants
+edit "$SK" 's#Keep it across resumes, clears included\.#Reset it at resumes, clears included.#'   # same fixture
+red "15fk4 and the same fixture fails once that sentence reverses" check-invariants "the roster start survives a resume"
 fresh; edit "$SK" 's#\*\*Spawn every unit now\*\*, each by step 5 (end your turn after the last):#**Spawn every unit now**:#'
 red "15fi7 step 8 spawns the queue without step 5's row write" check-invariants "the section headed '^#+ 8[.] Sequences"
-fresh; edit "$SK" 's#integration`, mode, scope,#integration`, scope,#'
+fresh; edit "$SK" 's#integration`, mode, permission,#integration`, permission,#'
 red "15fi8 step 5's row write drops the mode" check-invariants "the section headed '^#+ 5[.] Spawn"
 fresh; edit "$LG" 's#^`Do not touch`, any decision#any decision#'
 red "15fi9 the spine drops Do not touch" check-invariants "the section headed '^#+ Shape"
@@ -545,6 +554,54 @@ fresh; edit "$WS" 's#^\#\#\# review$#```text\
 green "42 a heading-like line in a code fence is no stage" check-structure
 edit "$WS" '/^- \*\*Ends:\*\* every valid finding fixed/d'                         # same fixture
 red "42b the same fixture still fails on a stage with no end" check-structure "stage review names no Ends"
+
+# --- check-invariants: the host layer ----------------------------------------------------------------------
+HO=skills/crew/references/host.md
+fresh; edit "$HO" 's#^| \*pr-state\* | `gh pr view <N> --json state` | the same |$#| *pr-state* | `gh pr view <N> --json state` |  |#'
+red "43 a verb with no terminal mechanism" check-invariants "the verb *pr-state* doesn't say how both hosts do it"
+fresh; edit "$HO" 's#^| \*pr-state\* |#| *ghost* | a | b |\
+| *pr-state* |#'
+red "44 a verb no file cites" check-invariants "the verb *ghost* is cited nowhere else"
+fresh; edit "$SK" 's#^\*roster\* before anything else#`get_session` before anything else#'
+red "45 an app tool named outside host.md" check-invariants "$SK:129: names a host's tool outside references/host.md (get_session)"
+fresh; edit "$BT" 's#^(\*spawn\*)\. A field#(spawn_task). A field#'
+red "46 the brief names one outside its fallback section, which alone may" check-invariants "$BT:4: names a host's tool"
+fresh; edit "$BT" '/^- host: `{HOST}`$/d'
+red "47 the brief loses its host line" check-invariants "no '- host: \`{HOST}\`' line"
+fresh; edit "$BT" 's#^| `{HOST}` | \*self\*:#| `{HOST}` | the card:#'
+red "48 the {HOST} row stops sourcing it from self" check-invariants "no placeholder row sourcing {HOST}"
+fresh; edit "$SK" 's#a brief with none is `desktop`#a brief with none is unclear#'
+red "49 the Worker section drops the no-host-line default" check-invariants "a brief with no host line is desktop"
+fresh; edit "$BT" 's#^- Keep your ledger in `{WORKER_LEDGER}`, the one#- Keep your ledger nearby, the one#'
+red "49b the brief's Housekeeping loses the worker ledger" check-invariants "Housekeeping section doesn't name {WORKER_LEDGER}"
+fresh; edit "$BT" 's#^| `{WORKER_LEDGER}` | `~/\.claude/crew/#| `{WORKER_LEDGER}` | `<git dir>/#'
+red "49c the {WORKER_LEDGER} row stops sourcing it from the crew dir" check-invariants "no placeholder row sourcing {WORKER_LEDGER}"
+fresh; edit "$SK" "s#brief's Housekeeping names#brief's Boundaries names#"
+red "49d the Worker section stops reading its ledger from the brief" check-invariants "a worker's ledger is the one its brief names"
+fresh; edit "$BT" '/^- address: `{ORCH_ADDRESS}`$/d'
+red "49e the brief loses the orchestrator's address" check-invariants "no '- address: \`{ORCH_ADDRESS}\`' line"
+fresh; edit "$BT" 's#^| `{ORCH_ADDRESS}` | \*self\*#| `{ORCH_ADDRESS}` | the card#'
+red "49f the {ORCH_ADDRESS} row stops sourcing it from self" check-invariants "no placeholder row sourcing {ORCH_ADDRESS}"
+fresh; edit "$BT" 's#`SendMessage` to `{ORCH_ADDRESS}`, else#`SendMessage` to#'
+red "49g the fallback sends by title alone again" check-invariants "doesn't send to {ORCH_ADDRESS}"
+fresh; edit "$BT" 's#\. On the terminal, `clear` is `never`, whatever the card says |# |#'
+red "49h the {PARAMETERS} row stops resolving clear on the terminal" check-invariants "doesn't resolve \`clear\` to \`never\` on the terminal"
+fresh; edit "$SK" "s#your brief's \`clear\` is \`never\`#your brief's \`clear\` says#"
+red "49i the Worker section stops saying a terminal worker never clears" check-invariants "a terminal worker's clear is never"
+fresh; edit "$HO" 's#--permission-mode <mode> --autocompact <compact> "$(cat <brief file>)"#--permission-mode <mode> "$(cat <brief file>)"#'
+red "49j terminal spawn stops passing --autocompact" check-invariants "doesn't pass --autocompact <compact>"
+fresh; edit "$SK" 's#never the summary; ask again#and the summary; ask again#'
+red "49k consent may come from a compaction summary again" check-invariants "consent after a compaction comes from the ledger"
+fresh; edit "$SK" 's#to its address, with no ids or paths#to its address, with your ids#'
+red "50 a terminal ONLINE may carry ids again" check-invariants "a terminal report carries no ids or paths"
+fresh; edit "$BT" 's#with no ids or paths in a body#with ids in a body#'
+red "50b and so may the fallback's" check-invariants "a terminal report carries no ids or paths"
+fresh; edit "$SK" 's#on the desktop host also its own sessionId#on the desktop host also its own id#'
+red "51 desktop ONLINE loses the worker's sessionId" check-invariants "desktop ONLINE carries the worker's own sessionId"
+fresh; edit "$LG" '/^  waiting.tsv /d'
+red "52 the crew dir listing drops a watchdog state file" check-invariants "$LG: the crew dir listing doesn't name waiting.tsv"
+fresh; edit "$SK" 's#`active.tsv` and `waiting.tsv`, never#`active.tsv`, never#'
+red "53 step 7 stops deleting it" check-invariants "step 7 doesn't delete waiting.tsv"
 
 # --- check-skill-frontmatter ----------------------------------------------------------------------------------
 fresh; edit "$SK" '/^license: MIT$/d'

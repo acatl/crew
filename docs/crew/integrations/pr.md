@@ -35,13 +35,13 @@ Run the CodeRabbit CLI once over the branch and fix what it finds, then `/code-r
 sub-agent over those fixes, and fix with no further local review (§ 6 › The CodeRabbit CLI pass).
 Then `git fetch origin <base>`, `verify` green on a clean tree, the pool check (§ Who runs the rounds),
 push your own branch, and open the PR (`gh pr create --base <base>`) with a Conventional Commits
-title and a body carrying what, why and risk. Bind it and turn on its review monitor (§ Who runs
-the rounds).
+title and a body carrying what, why and risk. On the desktop host, bind it and turn on its review
+monitor (§ Who runs the rounds); the terminal host has neither.
 
-- **Ends:** PR open, bound, monitor on.
+- **Ends:** PR open; on the desktop host also bound, monitor on.
 - **Report:** `checkpoint open`: PR URL, sha, push time, the CLI pass's result.
-- **Orchestrator:** records the PR and its monitor in the ledger.
-- **Clears:** yes, monitor off first and back on at the resume.
+- **Orchestrator:** records the PR, and on the desktop host its monitor, in the ledger.
+- **Clears:** desktop, yes, monitor off first and back on at the resume; terminal, never.
 
 ### round
 
@@ -84,7 +84,8 @@ you, within `rounds`, a late review on an unchanged head included.
 
 ### merge
 
-Merge only on a go to your "merge?" (§ Stopping › Merging). Run
+Merge only on a go to your "merge?" (§ Stopping › Merging). On the terminal, check the review watch
+first (§ Who runs the rounds). Run
 `gh pr merge <N> --squash --match-head-commit <sha>` with the PR's Conventional title and poll in the
 background until `gh pr view <N> --json state,mergeCommit` reads `MERGED`: a merge queue or
 auto-merge only queues it. `CLOSED`, or `OPEN` with neither `isInMergeQueue` nor `autoMergeRequest`
@@ -104,7 +105,7 @@ checkpoints. On top of them:
 
 - **Consent already given:**
   - a crew brief's grant covers a push to the worker's own branch, opening its own PR, and
-    binding that PR in the app with its review monitor on (§ Who runs the rounds);
+    binding that PR in the app with its review monitor on, on the desktop host (§ Who runs the rounds);
   - the merge rule in § Stopping › Merging covers a merge that meets it;
   - `npm ci` from the committed lockfile installs declared dependencies;
   - writes to the PR the work belongs to (replies, comments, the labels this file names) are
@@ -131,13 +132,35 @@ are context the next round needs.
   `set_monitor` with `auto_fix: true` and the PR's URL. The monitor is what wakes the owner for
   each round (§ 0); without it, a worker that reported `DONE` sleeps through the reviews.
   - Any of these calls can raise an approval prompt, which blocks the call, so nothing can be sent
-    from inside it. Unless `get_session("self")` reports `permissionMode` `auto` or
+    from inside it. Unless *self* (crew's `references/host.md`) reports permission mode `auto` or
     `bypassPermissions`, send `NEED-INPUT` marked `answer: in this session only` BEFORE the calls.
   - Before clearing your own context, turn the monitor off (`auto_fix: false`): a cleared worker
     woken by anything but the resume carrying its brief hedges or invents. Turn it back on when
     the resume arrives and the PR is still open.
   - Once `gh pr view` reads `MERGED` after `gh pr merge` (a merge queue only queues it), turn it
     off, and say so in the merge `DONE`.
+- **On the terminal host there is no app, so no binding and no monitor.** Wherever this file binds
+  the PR or turns the monitor on, skip it; the round's settle timer (§ 0) and a background
+  `gh pr checks <N> --watch` are what wake you. A terminal worker never clears (`clear: never`), so skip
+  "monitor off" before a clear. Before you merge, run the snippet's first lines and `c` once in the foreground. Above your ledger's
+  count → run the round instead, which spends the merge go, and ask "merge?" again after it. No
+  number → retry once, then `BLOCKED` with the error, the go unspent. Else stop the review watch, and at `MERGED` your other
+  background commands. A review that lands after a clean round would wake nobody, so a clean round
+  arms a review watch in the background and ends the turn `waiting: reviews, until <now + 2 h>`.
+  Each round records `c`'s count in your ledger as it reads its reviews, so a review landing during
+  the CI wait still counts. A new review starts the next round at § 0; none → arm it again, from
+  the count it printed (the ledger's, if it printed `unknown`).
+  ```bash
+  set -o pipefail; me=$(gh api user --jq .login) || exit 2      # your own posts never count
+  c() {  # others' reviews, PR comments, and inline review comments with their thread replies
+    local a b
+    a=$(gh pr view <N> --json reviews,comments --jq "[.reviews[], .comments[] | select(.author.login != \"$me\")] | length") &&
+    b=$(gh api --paginate "repos/{owner}/{repo}/pulls/<N>/comments?per_page=100" --jq "[.[] | select(.user.login != \"$me\")] | length" | awk '{s += $1} END {print s + 0}') &&
+    echo $((a + b))
+  }
+  n=<c's count recorded when the round read its reviews>
+  for i in $(seq 60); do m=$(c) && [ "$m" -gt "$n" ] && break; sleep 120; done; echo "reviews: ${m:-unknown} (was $n)"
+  ```
 - **After each round's push** the worker reports `DONE`, with `checkpoint` in its first line, to
   the coordinator: round number, commit sha, push time, what was fixed and what was declined, CI
   state, silent reviewers. That is a checkpoint, not an exit: when the next reviews land, the same

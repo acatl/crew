@@ -382,6 +382,14 @@ for f in "$SKILL/SKILL.md" "$SKILL/references/ledger.md" "$SKILL/references/brie
 done
 if [ "$spec_ok" = 1 ]; then held=$((held + 1)); fi
 
+# --- a resume keeps the roster start -----------------------------------------------------------------------
+# Trigger 2 floors its sub-agent baseline at the roster start. A start reset at a resume after a clear would
+# drop the same worker's pre-clear sub-agents since its push: three before plus three after read as three
+# (acatl/crew#14). Step 6's resume sentence says the start is kept, and the Watchdog roster bullet to keep it
+# across resumes.
+section_rule --any "a resume keeps the roster start" 'resume' 'roster start kept' -- '0|^#+ 6[.] Handle messages'
+section_rule --any "the roster start survives a resume" 'Keep it across resumes' -- '0|^#+ Watchdog'
+
 # --- the workflow reaches a worker through its brief ------------------------------------------------------
 # Workers never read CREW.md: the orchestrator resolves the workflow (CREW.md › Workflows) into the
 # brief's {WORKFLOW_PATH} and {PARAMETERS}, and the worker reads the file the brief names. So no Worker
@@ -692,6 +700,140 @@ else
   done
 fi
 if [ "$st_ok" = 1 ]; then held=$((held + 1)); fi
+
+# --- the host layer: every verb has both hosts, and no app tool leaks past it ------------------------------
+# The skill names a verb in italics (*spawn*, *identify*) and references/host.md says how each host does
+# it, so the same skill runs in the desktop app and the terminal CLI. A verb row with an empty column is
+# a host the skill can't run on; a verb no file cites is dead; and an app tool named outside host.md
+# would run on one host only. The brief's fallback section is the one exception: a worker without the
+# skill can't read host.md, so it names both hosts' send mechanisms itself.
+HOST=$SKILL/references/host.md
+h_ok=1
+others=()
+while IFS= read -r f; do others+=("$f"); done < <(printf '%s\n' "${mds[@]}" | grep -vxF "$HOST")
+# shellcheck disable=SC2016  # the backticks and * are literal Markdown
+verbs=$(grep -E '^\| \*[a-z-]+\* \|' "$HOST" | sed -E 's/^\| \*([a-z-]+)\* \|.*/\1/' || true)
+if [ -z "$verbs" ]; then
+  reworded "$HOST" "the verb table's rows ('| *verb* | desktop | terminal |')"; h_ok=0
+else
+  while IFS= read -r row; do
+    v=$(sed -E 's/^\| \*([a-z-]+)\* \|.*/\1/' <<< "$row")
+    cells=$(awk -F' \\| ' '{n = 0; for (i = 2; i <= NF; i++) if ($i ~ /[^ |]/) n++; print n}' <<< "$row")
+    if [ "$cells" -lt 2 ]; then fail "$HOST: the verb *$v* doesn't say how both hosts do it"; h_ok=0; fi
+  done < <(grep -E '^\| \*[a-z-]+\* \|' "$HOST")
+  for v in $verbs; do
+    if ! grep -qF -- "*$v*" "${others[@]}"; then
+      fail "$HOST: the verb *$v* is cited nowhere else in the skill"; h_ok=0
+    fi
+  done
+fi
+app_tools='mcp__ccd_|spawn_task|get_session|list_sessions|list_events|archive_session|clear_session|send_message'
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+fallback_cut() {  # the file's lines, numbered, less the brief's fallback section
+  LC_ALL=C awk '/^## If the `crew` skill is unavailable/ {skip = 1} skip && /^````/ {skip = 0}
+                !skip {print FILENAME ":" FNR ": " $0}' "$1"
+}
+projects=()
+while IFS= read -r f; do projects+=("$f"); done < <(find docs/crew -name '*.md' -type f 2>/dev/null | LC_ALL=C sort)
+for f in "${others[@]}" ${projects[@]+"${projects[@]}"}; do
+  while IFS= read -r hit; do
+    [ -n "$hit" ] || continue
+    fail "${hit%%: *}: names a host's tool outside references/host.md ($(grep -oE "$app_tools" <<< "${hit#*: }" | head -n 1)); name the verb instead"; h_ok=0
+  done < <(fallback_cut "$f" | grep -E "$app_tools" || true)
+done
+if [ "$h_ok" = 1 ]; then held=$((held + 1)); fi
+
+# --- the brief carries its host ----------------------------------------------------------------------------
+# A worker learns its host from the brief, and a brief from before hosts names none: it is desktop. The
+# brief's Orchestrator section carries `- host:`, the {HOST} row sources it from *self*, and the Worker
+# section says a brief with no host line is desktop.
+ho_ok=1
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+if ! section '^## Orchestrator[[:space:]]*$' 1 "$BRIEF" | grep -qF -- '- host: `{HOST}`'; then
+  fail "$BRIEF: the brief's Orchestrator section has no '- host: \`{HOST}\`' line"; ho_ok=0
+fi
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+if ! grep -qE '^\| `\{HOST\}` \| \*self\*' "$BRIEF"; then
+  fail "$BRIEF: no placeholder row sourcing {HOST} from *self*"; ho_ok=0
+fi
+# A title can be shared by two live sessions (two orchestrators, seen live 2026-10-15); a socket can't. On
+# the terminal the brief carries the orchestrator's socket address, and the fallback section sends to it.
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+if ! section '^## Orchestrator[[:space:]]*$' 1 "$BRIEF" | grep -qF -- '- address: `{ORCH_ADDRESS}`'; then
+  fail "$BRIEF: the brief's Orchestrator section has no '- address: \`{ORCH_ADDRESS}\`' line"; ho_ok=0
+fi
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+if ! grep -qE '^\| `\{ORCH_ADDRESS\}` \| \*self\*' "$BRIEF"; then
+  fail "$BRIEF: no placeholder row sourcing {ORCH_ADDRESS} from *self*"; ho_ok=0
+fi
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+if ! section '^#+ If the `crew` skill is unavailable' 1 "$BRIEF" | grep -qF -- '`SendMessage` to `{ORCH_ADDRESS}`'; then
+  fail "$BRIEF: the fallback section doesn't send to {ORCH_ADDRESS} on the terminal"; ho_ok=0
+fi
+if [ "$ho_ok" = 1 ]; then held=$((held + 1)); fi
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+section_rule --any "a brief with no host line is desktop" 'host:' 'none is `desktop`' -- '0|^#+ Worker[[:space:]]*$'
+
+# --- the worker's ledger is the brief's ----------------------------------------------------------------------
+# A terminal worker can't write its git dir (worktree isolation, seen live 2026-10-15), so the brief names
+# the ledger in the crew dir. It holds the consent a resume must never carry, so a brief that lost the line
+# would leave a restarted worker with nothing. The brief's Housekeeping carries {WORKER_LEDGER}, its row
+# sources it from the crew dir, and the Worker section reads its ledger from the brief.
+wl_ok=1
+if ! section '^## Housekeeping[[:space:]]*$' 1 "$BRIEF" | grep -qF -- '{WORKER_LEDGER}'; then
+  fail "$BRIEF: the brief's Housekeeping section doesn't name {WORKER_LEDGER}"; wl_ok=0
+fi
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+if ! grep -qE '^\| `\{WORKER_LEDGER\}` \| `~/\.claude/crew/<slug>/briefs/<row>-worker-ledger\.md`' "$BRIEF"; then
+  fail "$BRIEF: no placeholder row sourcing {WORKER_LEDGER} from the crew dir"; wl_ok=0
+fi
+if [ "$wl_ok" = 1 ]; then held=$((held + 1)); fi
+section_rule --any "a worker's ledger is the one its brief names" 'ledger' "Housekeeping names" -- '0|^#+ Worker[[:space:]]*$'
+
+# --- a terminal worker never clears --------------------------------------------------------------------------
+# A terminal worker can't clear itself, and restarting it at every checkpoint closed the operator's attached
+# view each time (seen live, 2026-10-15). So on the terminal `clear` resolves to `never` and the worker
+# compacts in place; a restart only recovers a crashed or wedged worker. The brief's {PARAMETERS} row and the
+# Worker section each say so.
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+if grep -E '^\| `\{PARAMETERS\}` \|' "$BRIEF" | grep -qF 'On the terminal, `clear` is `never`'; then held=$((held + 1))
+else fail "$BRIEF: the {PARAMETERS} row doesn't resolve \`clear\` to \`never\` on the terminal"; fi
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+section_rule --any "a terminal worker's clear is never" 'terminal' '`clear` is `never`' -- '0|^#+ Worker[[:space:]]*$'
+# It compacts at the card's size instead, so terminal *spawn* passes --autocompact; and a compaction summary
+# is never the source of consent, which only the worker's ledger holds.
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+if grep -E '^\| \*spawn\* \|' "$HOST" | grep -qF -- '--autocompact <compact>'; then held=$((held + 1))
+else fail "$HOST: terminal *spawn* doesn't pass --autocompact <compact>"; fi
+section_rule --any "consent after a compaction comes from the ledger" 'ledger' 'consent' 'never the summary' -- '0|^#+ Worker[[:space:]]*$'
+
+# --- a terminal report carries no ids or paths -------------------------------------------------------------
+# Auto mode's classifier refused an ONLINE carrying a session id, a worktree path and the peer list as data
+# exfiltration (seen live, 2026-10-14), so on the terminal the orchestrator reads those itself. Desktop
+# ONLINE keeps the worker's sessionId: spawn_task returns only a task_id, so it is how the orchestrator
+# learns the worker. Both copies of the contract say each.
+# shellcheck disable=SC2016  # the backticks are literal Markdown
+section_rule --any "a terminal report carries no ids or paths" 'terminal' 'no ids or paths' -- \
+  '0|^#+ Worker[[:space:]]*$' '1|^#+ If the `crew` skill is unavailable'
+section_rule --any "desktop ONLINE carries the worker's own sessionId" 'desktop host' 'sessionId' -- \
+  '0|^#+ Messages[[:space:]]*$'
+
+# --- the watchdog's state files are listed and cleaned up --------------------------------------------------
+# Each file the watchdog keeps across runs (its dedupe and clocks) is listed in ledger.md's crew dir, and
+# step 7 deletes it when the last worker goes: one left behind dedupes or clocks a later worker reusing a
+# ticket id. The watchdog header is the source.
+sf_ok=1
+state_files=$(sed -n '/^# State, all in/,/^# Triggers/p' "$WATCHDOG" | grep -oE '^#   [a-z]+\.(txt|tsv)' | sed 's/^#   //' || true)
+if [ -z "$state_files" ]; then
+  reworded "$WATCHDOG" "the header's state-file list"; sf_ok=0
+fi
+cleanup_text=$(section '^#+ 7\. Cleanup' 0 "$SKILL/SKILL.md")
+for f in $state_files; do
+  [ "$f" = roster.tsv ] && continue      # the orchestrator's input, rewritten, never deleted
+  if ! grep -qF -- "$f" "$LEDGER"; then fail "$LEDGER: the crew dir listing doesn't name $f, which $WATCHDOG keeps"; sf_ok=0; fi
+  if ! grep -qF -- "$f" <<< "$cleanup_text"; then fail "$SKILL/SKILL.md: step 7 doesn't delete $f, which $WATCHDOG keeps"; sf_ok=0; fi
+done
+if [ "$sf_ok" = 1 ]; then held=$((held + 1)); fi
 
 if [ "$fails" -gt 0 ]; then
   printf '✖ %d restated value(s) drifted; CLAUDE.md › Invariants that span files lists every copy\n' "$fails" >&2

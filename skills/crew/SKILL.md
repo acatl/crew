@@ -15,8 +15,8 @@ description: >-
 argument-hint: "[<workflow>] <ticket-id>[ → <ticket-id>…] [mode]  |  status"
 license: MIT
 compatibility: >-
-  Needs the Claude desktop app's Code tab, whose session tools (spawn_task, send_message, get_session,
-  archive_session) the Claude Code CLI does not provide; bash and git; and a BSD or GNU stat(1), so
+  Runs in the Claude desktop app's Code tab or in the Claude Code CLI 2.1.300 or later (background
+  sessions: claude --bg, claude agents --json); needs bash, git and jq, and a BSD or GNU stat(1), so
   macOS or Linux.
 metadata:
   author: Acatl Pacheco
@@ -26,9 +26,11 @@ metadata:
 # crew — orchestrator ↔ worker sessions
 
 One orchestrator session. One fresh worker session per unit of work (a ticket or a slice of one). The
-orchestrator writes the brief, the operator clicks the chip, the worker works its **workflow** and
-reports back. This file is the contract; a workflow file says how a worker works, an integration
-file how its work lands; `docs/CREW.md` holds the per-project answers.
+orchestrator writes the brief and spawns the worker, the worker works its **workflow** and reports
+back. This file is the contract; a workflow file says how a worker works, an integration file how
+its work lands; `docs/CREW.md` holds the per-project answers. crew runs on a **host**, the desktop
+app or the terminal CLI: a verb in *italics* (*spawn*, *message*) is done the host's way, as
+[references/host.md](references/host.md) says.
 
 **Which role are you?**
 - Your first message starts with `<!-- crew:brief` → **worker**. Read *The contract*, then *Worker*.
@@ -41,17 +43,18 @@ file how its work lands; `docs/CREW.md` holds the per-project answers.
 
 ### Messages
 
-Worker → orchestrator, always with `mcp__ccd_session_mgmt__send_message` to the orchestrator's
-**sessionId**. First line is self-contained: `[crew] <KIND> · <TICKET> · <one-line summary>`.
+Worker → orchestrator, always by *message* to the orchestrator the brief names. First line is
+self-contained: `[crew] <KIND> · <TICKET> · <one-line summary>`. Use a session's title and *link* when
+either role names it to the operator, never a socket, an address or a bare sessionId.
 
 | Kind | Sent when | Body carries | Then the worker |
 |---|---|---|---|
-| `ONLINE` | first action after reading the brief, unless it's a resume | own sessionId, branch, mode, and `state: ready` (with its workflow and first stage) or `state: queued` | ready → proceeds · queued → ends its turn |
+| `ONLINE` | first action after reading the brief, unless it's a resume | mode, and `state: ready` (with its workflow and first stage) or `state: queued`; on the desktop host also its own sessionId and branch, which a terminal orchestrator reads itself (*identify*) | ready → proceeds · queued → ends its turn |
 | `NEED-INPUT` | **before ending any turn that waits on the operator** — a gate, a fork card, a question, a plan approval | the question verbatim, the options, and `answer: here or relay` or `answer: in this session only` | ends its turn and waits |
 | `BLOCKED` | can't proceed and no answer to a question fixes it — a failure, missing setup, something the brief doesn't cover | what blocked it, where, what the fix likely needs | ends its turn and waits |
 | `DONE` | a workflow stage that reports ends | first line `checkpoint <stage>` or `stop <stage>`; branch, commit sha, verify result | checkpoint → goes on · stop → stops |
 
-Orchestrator → worker, same tool, to the worker's sessionId:
+Orchestrator → worker, by *message* to the worker:
 
 | Kind | Sent when | Body carries |
 |---|---|---|
@@ -82,7 +85,8 @@ A queued worker waiting for `START` waits on the orchestrator, not the operator:
 ### Authority
 
 - **The trigger** authorizes its card and the spawns that card lists: one worker, or one sequence. Not
-  a push, a branch deletion, or a spawn the card didn't list. Each of those is a separate ask.
+  a push, a branch deletion, or a spawn the card didn't list. Each of those is a separate ask. A
+  *restart* continues its unit's spawn; it is not a new one.
 - **Landing** (bringing a worker's branch into the base) happens only on delegation that
   `docs/CREW.md` › Integration allows: the card's `landing: delegated`, or, under Integration mode
   `pr`, its written merge rule for a PR-merging unit, unless the card says `landing: operator`.
@@ -122,7 +126,7 @@ The roster lives in your conversation, which a compaction or a `/clear` destroys
 survives. See [references/ledger.md](references/ledger.md).
 
 If the roster isn't already in this conversation, read `ledger.md` and reconcile it against
-`list_sessions` / `get_session` before anything else. Report drift; never silently patch it. Then keep
+*roster* before anything else. Report drift; never silently patch it. Then keep
 it written: every transition below names its write.
 
 ### 1. Resolve config, workflow and integration
@@ -156,7 +160,7 @@ against workers outside it: they run one at a time.
    ```bash
    <skill-dir>/scripts/overlap.sh --base <base> --paths <p1,p2,...> <worker-cwd>...
    ```
-   Worker cwds are the roster's `worktreePath`s. Exit 0 = clear, 1 = overlap (TSV lines:
+   Worker cwds are the roster's worktree paths. Exit 0 = clear, 1 = overlap (TSV lines:
    branch, file, matched path), 2 = usage or git error.
 2. **Declared overlap** — the candidate surface against each in-flight worker's `Surface you own`.
    This catches a worker that hasn't written anything yet.
@@ -164,7 +168,7 @@ against workers outside it: they run one at a time.
    surface needs something that exists only on an in-flight branch)?
 4. **Base** — pick this unit's starting commit (the line it integrates into, the default branch for a
    PR cut from it, a specific sha for an audit), and write it in the brief as **a branch plus a sha**.
-   Never assume the app cut the worktree from it (see *Gotchas*); the worker re-points to that sha first.
+   Never assume the host cut the worktree from it (see *Gotchas*); the worker re-points to that sha first.
 
 Result: `✓ clear` · `⚠ overlap` (which worker, which paths) · `⚠ main checkout on <branch>, not <base>` ·
 `⛔ blocked on unmerged <X>`. On ⛔, don't show the card and don't spawn: say what the ticket waits on
@@ -185,8 +189,9 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 > | Cleanup | Archive when merged |
 > | Landing | Operator decides |
 > | Safety | ✓ clear — 2 workers in flight, no shared paths; main checkout on `main` |
+> | Permission | `auto` · compact at `400k` (terminal host only) |
 >
-> **→ You:** `go`, or override a line or a workflow parameter but `no-commit` (`integration: none`, `plan: skip`, `cleanup: keep`).
+> **→ You:** `go`, or override a line or a workflow parameter except `no-commit` and a terminal `clear` (`integration: none`, `plan: skip`, `cleanup: keep`).
 
 - **Title** default: `CREW.md` › Defaults, else `{TICKET} — {ticket title}`. It becomes the chip label
   and the session title, so lead with the ticket id — the sidebar sorts, and the roster finds it.
@@ -199,36 +204,38 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
   `landing: delegated` would run (`git merge --ff-only`, then Post-land); only the operator writes it.
 - **Safety**: the step 3 result. On ⚠ overlap, recommend one of: wait for the overlapping worker,
   narrow this scope to avoid the shared paths, or proceed with those paths listed under `Do not touch`.
+- **Permission** (terminal only): the worker's mode, yours (in `bypassPermissions` or `plan` it reads "switch this session to `auto` or `default` first", and `go` spawns nothing until then: host.md), and the size it compacts
+  at in place, since it can't clear itself (`400k` unless overridden, 100k–1M, kept under the worker model's window); `go` starts it at once.
 
 ### 5. Spawn
 
-1. `mcp__ccd_session_mgmt__get_session("self")` → your `sessionId` and `title`.
+1. *self* → your `sessionId`, title, host and, on the terminal, your address and mode (still not `bypassPermissions` or `plan`).
 2. Fill [references/brief-template.md](references/brief-template.md), the ready variant. Every `{…}`
    gets a value or `none`; no placeholder survives.
-3. `mcp__ccd_session__spawn_task` with `title` = the card's title, `tldr` = one plain sentence, `prompt`
-   = the filled brief. Pass `cwd` only when the worker belongs to a different repo than yours.
-4. **Write the ledger row** (status `chip`, the `task_id` in place of a session id, stage, surface,
-   and the card's lines: `workflow` and its overrides, `integration`, mode, scope, cleanup, landing,
-   `Do not touch`, any decision only in your memory, not the spec) and save the brief exactly as sent to
-   `briefs/<row>.md`. Save a queued brief's `{SPEC}` to `briefs/<row>-spec.md`.
-5. Tell the operator the chip is up and needs a click. End your turn.
+3. **Write the ledger row** (status `chip`, `session: pending <worktree name>`, stage, surface,
+   and the card's lines: `workflow` and its overrides, `integration`, mode, permission, compact, scope, cleanup, landing,
+   `Do not touch`, any decision only in your memory, not the spec) and save the brief exactly as it
+   will be sent to `briefs/<row>.md`, before you spawn: a worker with no row is one nobody tracks.
+   Save a queued brief's `{SPEC}` to `briefs/<row>-spec.md`.
+4. *spawn* it with the card's title and the saved brief. The worktree name is the ticket slugged
+   plus the row id (`kino-5-r3`). Write the id *spawn* returns (desktop `task_id`, terminal `<id>`) into the row's `session`.
+5. Tell the operator the chip needs a click (desktop) or the worker is running (terminal, *link*). End your turn.
 
 ### 6. Handle messages
 
-- **ONLINE** → `get_session(<worker sessionId>)`: confirm `parentSessionId` is yours, and record
-  `worktreePath` (the worker's cwd for `overlap.sh` and verify) and `sourceBranch`. Then:
+- **ONLINE** → *identify* the worker: confirm it is the one you spawned, and record its worktree
+  path (the worker's cwd for `overlap.sh` and verify) and branch. Then:
   `state: ready` → status `running`, add its roster line, subscribe to its idle notice (*Subscribing*).
   `state: queued` → status `queued`. **Don't subscribe yet:** it goes idle at once, so the notice means
   nothing. Subscribe when you send its `START`. Either way, write the session id and worktree to the row.
 - **NEED-INPUT** → never send `ANSWER` or `RELAY` for `answer: in this session only`: nudge without
   "answer here", and say why. Otherwise, a standing delegation covers the question within the
   `ANSWER` row's limits → no nudge; send `ANSWER`, write it to the ledger row, and tell the operator,
-  whose `RELAY` overrides it. Right before sending any `ANSWER` or `RELAY`, read the worker's tail
-  (`list_events`, limit 4): answered there already → say so, send nothing. Else nudge:
+  whose `RELAY` overrides it. Right before sending any `ANSWER` or `RELAY`, read the worker's
+  *tail* (limit 4): answered there already → say so, send nothing. Else nudge:
   > ⏸ **KINO-5 needs you** — <question, one line>
   > <options>
-  > <!-- markdownlint-disable-next-line MD051 -->
-  > Answer here and I'll relay, or in [KINO-5 — Add export command](#<worker-sessionId>).
+  > Answer here and I'll relay, or in the worker (its *link*).
 
   The operator answers here → `RELAY` their words verbatim. Ledger: `owed` holds the question
   verbatim while pending, then its decision.
@@ -242,33 +249,33 @@ Every field has a default; `go` accepts them all. Render it as live Markdown:
 - **A worker reports it cleared (or is clearing) its own context** → status `cleared`,
   `owed: resume not sent`. Send the resume **immediately**, even when the next step is only waiting: a
   worker woken by anything else, without its brief, hedges or invents (seen repeatedly). First confirm
-  the clear (`list_events`: idle, no messages; a resume sent earlier queues behind it). The resume is
+  the clear (*tail*: idle, no messages; a resume sent earlier queues behind it). On the terminal a
+  worker never clears (`clear: never`). The resume is
   the saved brief with its marker line set to `state=resume` and any queued Job block swapped for its
   START (`briefs/<row>-start.md`) whole, then a `## Resume` section: where to pick up, the approved
   plan's path, the worker's ledger path, facts learned since the brief (an environment quirk, a
   throttle, an operator call), and any message still pending. A resume never carries consent for a
   gated action or a plan approval, not even as an operator call: the worker's own ledger holds those,
   and a worker whose ledger lacks one re-asks in its own session. Once it's sent: drop `resume not
-  sent` from `owed`, status `running` unless `owed` still holds a question, roster start epoch reset.
+  sent` from `owed`, status `running` unless `owed` still holds a question, roster start kept.
 - **Idle notice** → ignore it for a worker that's queued, landed or archived, or verified with nothing
   sent to it since (exits fire notices too). One busy now (`ListAgents`), yet to start on your last message, or for a turn that
-  ended before you sent it (`list_events` times) is stale (*Gotchas*): see *Subscribing*. Check its
-  tail on any other notice (`list_events`, limit 6), in order:
+  ended before you sent it (*tail* times) is stale (*Gotchas*): see *Subscribing*. Check its
+  *tail* on any other notice (limit 6), in order:
   - a final `waiting: <what>[, until <time>]` line → **waiting**: no nudge; arm or keep its wake (*Wakes*).
   - a report in its last turn → not yet here: in flight (the notice can beat it); wait, then judge it
     as here. Here: its kind's handling covers the notice. Check it didn't idle after a `checkpoint`
     with no clear: tell the operator.
-  - else → it stopped without reporting: tell the operator what it's sitting on.
+  - else → it stopped without reporting: tell the operator what it's sitting on. Use *restart* on a crashed or wedged terminal worker only on their word (status `cleared`, `owed: resume not sent`).
 
 **Subscribing.** Subscribe at a ready `ONLINE`, after each message you send a worker, at each report
 (idle by then → treat it as an idle notice), and at a stale notice, only while `ListAgents` shows it
 busy: an idle one fires at once (a stale "busy", seen live, costs one such notice: accept it). For one
 yet to start on your message, run a background `sleep 60` (*Monitors*); at its end, still so → tell the
-operator, busy → subscribe, idle → treat it as an idle notice. Resolve its title fresh; never reuse
-one. Call `get_session(<worker sessionId>)`, then
-`SendMessage(to: "<title> [ref]", notify_when_idle: true)` with no message, `[ref]` from `ListAgents`.
-"Not reachable" → resolve again; still so (seen after a clear) → retry when anything next wakes you (a
-report, a `sleep`, the watchdog). Use the title, never the id.
+operator, busy → subscribe, idle → treat it as an idle notice. Resolve its title fresh with
+*identify*; never reuse one. Then *subscribe*, `[ref]` from `ListAgents`. "Not reachable" → resolve
+again; still so (seen after a clear) → retry when anything next wakes you (a report, a `sleep`, the
+watchdog). Use the title, never the id; on the terminal, its address.
 
 **Wakes.** Keep one background `sleep` (*Monitors*) per worker whose last report or turn ends in a
 `waiting: <what>[, until <time>]` line, since the watchdog can't see an idle one: to the `until` plus
@@ -288,17 +295,18 @@ to me, not to it"), write it to that row. It exists nowhere else.
 
 Execute only what the card agreed, and name it as you do it.
 
-- `archive when verified` → `mcp__ccd_session_mgmt__archive_session` once DONE verifies.
+- `archive when verified` → *stop* it once DONE verifies.
 - `archive when merged` → once the branch is on `<base>` (landed by you or the operator, `git branch
-  --merged <base>` lists it, or `list_sessions` shows `prState: MERGED`), archive.
+  --merged <base>` lists it, or *pr-state* reads `MERGED`), *stop* it.
 - `keep` → leave it running; follow-up work goes to it by `RELAY`.
 - **Roster and watchdog** → drop the worker's line from `roster.tsv`, and stop its wake, as it stops.
   When the last one goes, stop the watchdog by the pid in `watchdog.pid`, clear its `Monitors` line,
-  then delete `reported.txt` and `active.tsv`, never under a live watchdog. Both serve only the sequence
-  that just ended: nothing truncates them, and a later worker reusing a ticket id would be deduped or clocked against them.
+  then delete `reported.txt`, `active.tsv` and `waiting.tsv`, never under a live watchdog. They serve
+  only the sequence that just ended: nothing truncates them, and a later worker reusing a ticket id
+  would be deduped or clocked against them.
 
-Archiving detaches the worktree into the app's reuse pool, branch kept, reversibly (`unarchive_session`);
-the app may show its own approval card. Cleanup never deletes a branch or runs `git worktree remove`.
+*stop* keeps the worker's worktree and branch, reversibly.
+Cleanup never deletes a branch or runs `git worktree remove` (nor `claude rm`, which does both).
 
 ### 8. Sequences and landing
 
@@ -319,7 +327,8 @@ the app may show its own approval card. Cleanup never deletes a branch or runs `
 
 Follow step 4 for each Landing. **Spawn every unit now**, each by step 5 (end your turn after the last):
 unit 1 with a ready brief, the rest with the **queued variant** (no Job section; spec on disk). Their
-landed state waits for START: earlier units will move the base under them.
+landed state waits for START: earlier units will move the base under them. On the terminal, spawn
+only unit 1 now (an idle background session isn't known to last hours), but write every unit's row (status `queued`, `session: none`) and spec.
 
 **When unit N's DONE verifies:**
 
@@ -336,7 +345,7 @@ landed state waits for START: earlier units will move the base under them.
    new overlap goes to the operator). Include what earlier units changed and handed on, and each
    finding unit N carried as a "Carried from N" line (also a checklist line on N+1's ticket). Save it
    as `briefs/<row>-start.md`. Then set it `running`, add its roster line, and subscribe to its idle
-   notice.
+   notice. On the terminal send no `START`: spawn it by step 5 on its existing row, a ready brief carrying START's Job and *Since you were queued* sections.
 
 **Hold the base still.** While a sequence is in flight, nothing commits to `<base>` except landings.
 That includes you; tell the operator the same. One stray commit and the next ff-only landing is refused.
@@ -344,10 +353,9 @@ That includes you; tell the operator the same. One stray commit and the next ff-
 ### Roster
 
 The roster is every worker this orchestrator spawned that isn't archived. It lives in the ledger
-(step 0), joined to live state from the app: `list_sessions`, then `get_session` on each candidate,
-keeping those whose `parentSessionId` is your sessionId (`list_sessions` rows don't carry it). If you
-also spawned non-crew chips, confirm with the `crew:brief` marker in the worker's first message
-(`list_events`). A live session with no ledger row is only an orphan if the archive doesn't know it.
+(step 0), joined to live state by *roster*. If you also spawned non-crew sessions,
+confirm with the `crew:brief` marker in the worker's first message (*tail*). A live session with no
+ledger row is only an orphan if the archive doesn't know it.
 
 ### Watchdog — a looping worker never goes idle
 
@@ -360,9 +368,11 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   mechanism.
   ```bash
   <skill-dir>/scripts/watchdog.sh --base <base> \
-    [--interval <s>] [--no-commit <s>] [--subagent-step <n>] \
+    [--interval <s>] [--no-commit <s>] [--subagent-step <n>] [--permission-wait] \
     ~/.claude/crew/<slug>/ 2>> ~/.claude/crew/<slug>/watchdog.log
   ```
+  On the terminal add `--permission-wait`: it reports a worker on a prompt in its window (a tool permission, a question).
+  Nudge the operator to answer it in the worker (*link*), unless `owed` already holds that question.
   Thresholds come from `CREW.md` › Ledger; its defaults are the values hg proved (1200 / 3600 / 3).
   **Confirm it is still alive before you record it** in the ledger's `Monitors` with its pid. A launch
   that fails exits at once — `2` bad usage, missing crew dir or roster, state not writable · `3` a live
@@ -380,18 +390,18 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
   turns.
 - **Its roster is `~/.claude/crew/<slug>/roster.tsv`** — `<ticket>` TAB `<worktree-path>` TAB
   `<start epoch>`, one line per `running` worker, and yours to maintain. Set the start to `date +%s`
-  as the worker goes `running`; neither trigger counts from earlier. Write the ledger row and the
-  roster line in the same step: a missing line is a worker nobody is watching, and nothing will tell
-  you. Rewrite it write-to-temp-then-`mv`, never in place. It is re-read every pass, so an edit lands
-  with no restart. The worktree path must be **byte-identical to the one the app reports** — the
-  transcript directory is derived from it by substitution, so a trailing slash or a `/private/var` vs
+  as the worker goes `running`; neither trigger counts from earlier. Keep it across resumes. Write the
+  ledger row and the roster line in the same step: a missing line is a worker nobody is watching, and
+  nothing will tell you. Rewrite it write-to-temp-then-`mv`, never in place. It is re-read every pass, so
+  an edit needs no restart. The worktree path must be **byte-identical to the one *identify* reports** —
+  the transcript directory is derived from it by substitution, so a trailing slash or a `/private/var` vs
   `/var` spelling silently yields an unwatched worker. One `--base`, used only as the baseline before a
   worker's first push, covers the whole roster; on a mixed-base roster, pass the most common one.
 - **Stop it by the pid** in `~/.claude/crew/<slug>/watchdog.pid` once the last worker stops, and clear
   its `Monitors` line. **Never kill by process name** (*Gotchas*).
-- **Also check on every orchestrator turn**, cheaply: `list_events` tail (limit ~40) and, per running
-  worker, `git -C <worktreePath> log -1 --format=%cr` plus
-  `git -C <worktreePath> status --porcelain | wc -l`. Count review→fix iterations since its last
+- **Also check on every orchestrator turn**, cheaply: its *tail* (limit ~40) and, per running
+  worker, `git -C <worktree> log -1 --format=%cr` plus
+  `git -C <worktree> status --porcelain | wc -l`. Count review→fix iterations since its last
   report. The watchdog covers the stretches between your turns; this covers the turn you are in.
 - **Surface to the operator** — don't wait for the worker to ask — when any loop-budget trigger in
   the worker's workflow shows, whether the watchdog or your own turn found it. Between your turns the
@@ -403,7 +413,7 @@ hand-growing a Markdown parser 519 → 779 lines, and the orchestrator didn't lo
 
 **Status** (`crew status`, "what are my workers doing"): one row per roster worker — ticket, title,
 status (`chip` / `queued` / `running` / `waiting on you` / `blocked` / `cleared` / `done` /
-`verified` / `landed`), branch, and the pending question if any. Pull live state from `list_sessions`;
+`verified` / `landed`), branch, and the pending question if any. Pull live state from *roster*;
 don't message workers to ask.
 
 ---
@@ -411,24 +421,28 @@ don't message workers to ask.
 ## Worker
 
 You were spawned by an orchestrator. Your brief is your first message. You remember nothing else.
-A brief marked `state=resume` is a resume: you cleared earlier. Send no `ONLINE`, skip step 2 and the
-*START steps* (a START in it is your job), and continue at step 3 where `## Resume` says.
+Your host is your brief's `- host:` line; a brief with none is `desktop`.
+A brief marked `state=resume` is a resume: you cleared earlier. Send no `ONLINE`, skip step 2 and
+the *START steps* (a START in it is your job), and continue at step 3 where `## Resume` says.
 
-1. **ONLINE.** `mcp__ccd_session_mgmt__get_session("self")` → your sessionId. Send `ONLINE` to the
-   orchestrator's sessionId with `state: ready` if your brief has a Job section, or `state: queued` if
-   it says the job is deferred. If the send isn't `delivered` or `queued`: `list_sessions`, find exactly
-   one session whose title matches the brief's orchestrator title, ignoring a leading `🌳 `, and send to
-   that. Zero or several matches, or still failing → tell the operator in this session that you can't
-   reach the orchestrator, and wait. Don't start the work; nobody would hear about it.
+1. **ONLINE.** *self* → your sessionId. Send `ONLINE` by *message* with `state: ready` if your brief
+   has a Job section, or `state: queued` if it says the job is deferred: on the desktop host to the
+   orchestrator's sessionId, with your own; on the terminal host to its address, with no ids or paths.
+   If the send isn't `delivered` or `queued`: find exactly one session whose title matches the brief's
+   orchestrator title (`ListAgents`), ignoring a leading `🌳 `, and send to that. Zero or several
+   matches, or still failing → tell the operator in this session that you can't reach the
+   orchestrator, and wait. Don't start the work; nobody would hear about it.
 
    **Queued → end your turn now.** Don't set up, read the repo's docs, or look at the code: all of it
    will be stale by the time you start. When `START` arrives, run the *START steps* below.
-2. **Set up.** First the base, guarded: if `git status --porcelain` is empty and your branch carries no
-   work of yours, run `git switch -C "$(git branch --show-current)" <brief's base sha>`; if it carries
-   work, `BLOCKED`. Confirm `git rev-parse HEAD` is that sha. Then apply the brief's branch rule
-   (`git branch -m <name>`) and worktree setup; never create another worktree but a reviewer's. Move a
-   ledger already at `$(git rev-parse --git-dir)/crew-ledger.md` onto `mktemp <that dir>/crew-ledger.XXXXXX`:
-   the app reuses worktree dirs, so it's an earlier worker's. Never read it.
+2. **Set up.** Run one git command per Bash call: a terminal worktree refuses several.
+   First the base, guarded: run `git status --porcelain` and `git branch --show-current` (your
+   branch). If the status is empty and your branch carries no work of yours, run
+   `git switch -C <your branch> <brief's base sha>`; if it carries work, `BLOCKED`. Confirm
+   `git rev-parse HEAD` is that sha. Then apply the brief's branch rule (`git branch -m <name>`) and
+   worktree setup; never create another worktree but a reviewer's. Keep your ledger in the file your
+   brief's Housekeeping names, else `<that dir>/crew-ledger.md` from `git rev-parse --git-dir`: move
+   one already there onto `mktemp <that dir>/crew-ledger.XXXXXX` (an earlier worker's). Never read it.
 3. **Work your workflow.** Read the files your brief names, in full, and follow them with your parameters;
    a resume names where to pick up. No workflow named in your
    brief → your brief's Job/Spec, Boundaries and Checkpoints are the workflow; follow them as written.
@@ -450,13 +464,17 @@ A brief marked `state=resume` is a resume: you cleared earlier. Send no `ONLINE`
    stage** → `DONE` with `stop <stage>`, then stop. The orchestrator verifies, lands if delegated, and
    cleans up.
 9. **Clear your context** only where your workflow says so, by yourself, as your last action: the
-   orchestrator can't clear a chip-started worker. You wake with only its resume.
+   orchestrator can't clear a chip-started worker. You wake with only its resume. On the terminal you
+   can't, and your brief's `clear` is `never`. Keep working in this session: Claude Code compacts your
+   context in place at the card's size. Read your brief (its Housekeeping path) and your ledger again
+   after a compaction, before your next step: the summary paraphrases them. Use only your ledger for consent to
+   a gated action or a plan approval, never the summary; ask again for one it lacks.
 
 **START steps (queued workers only).** `<base>` is the brief's base branch; `<sha>` is from START's
 first line.
 
 1. Confirm you're still fresh: `git status --porcelain` prints nothing and you've committed nothing.
-   Otherwise → `BLOCKED`. (Commits from where the app cut you aren't yours.)
+   Otherwise → `BLOCKED`. (Commits from where you were cut aren't yours.)
 2. Check the sha is on the base: `git merge-base --is-ancestor <sha> <base>`. If not → `BLOCKED`.
 3. START's Job section and sha replace the brief's Job section and base sha. Continue at *Worker*
    step 2, which re-points you to that sha.
@@ -470,28 +488,16 @@ anything besides the four kinds.
 
 ## Gotchas
 
-- **Address by sessionId, not name.** Name-based `SendMessage` breaks when a session is renamed, and
-  Remote Control copies show up as duplicate names. Seen live: the app prefixed `🌳 ` to a worktree
-  session mid-turn (`DEMO-1 — …` → `🌳 DEMO-1 — …`), and a `SendMessage` to the old name failed as "not
-  reachable" while `send_message` by id kept working. Names only as a fallback, resolved just in time.
+- **Read your host's gotchas** in [references/host.md](references/host.md).
 - **Idle notices are one-shot and local, and they fire on exit too.** `notify_when_idle` fires once when
   the session is next idle *or exits*, only for sessions on this machine, and only from a main
   conversation, and at once on a session that's idle already. Seen live (crew LIVE1, 2026-09-28; hg
   PR #63, 2026-09-30): a worker parked on its own timer drew a notice per re-subscribe all wait, and
   was reported stopped. Across permission modes the notice is only logged, not delivered, unless you
   spawned that session; crew workers always qualify.
-- **Subscribe by title; an id is refused.** Verified 2026-10-01: `SendMessage(to: "local_…",
-  notify_when_idle: true)` returns "Nothing was subscribed: notify_when_idle is only supported for
-  Claude sessions on this machine…". Seen live in hg (2026-09-30): right after a clear, the by-title
-  subscribe was "not reachable" three times while `get_session` showed that title.
 - **The idle notice can beat the report, or trail a resume.** Seen live twice out of two: a worker's
   `NEED-INPUT` (later `DONE`) queued behind the orchestrator's turn, its notice first. Seen live (crew
   FIX2, 2026-10-01): a notice for the clearing turn came after the resume had started it. Check first.
-- **Never assume which commit the app cut a worker from.** In hg (2026-09-22) five spawns out of five
-  were cut from the default branch `main` while the main checkout sat on `graph-port`; `get_session`
-  reported `sourceBranch: main` each time. Another repo was seen cutting from the checkout's branch.
-  The brief states the base as a sha and the worker re-points itself (*Worker* step 2). Queued workers
-  start stale too (seen live in hg, after an earlier unit landed): START re-points them.
 - **A message drains after the worker has moved — write re-points GUARDED, never unconditional.** Seen
   live in hg: a START's `git switch -C <branch> <sha>`, harmless when written, drained after the worker
   had re-pointed itself and committed a round, and would have discarded two commits; the worker refused
@@ -502,27 +508,21 @@ anything besides the four kinds.
   `~/.claude/projects/`, with no `memory/` in it (verified), so it most likely can't see memory the
   orchestrator saved (inferred). Put every decision a unit needs in its brief or START.
 - **Global installs from a worktree dangle** (seen in hg, its skill installer): run them in the main checkout.
-- **You can't clear a worker's context for it.** `clear_session` accepts "a session this session
-  started", but a chip-started worker counts as started by the *operator's click*, so it's refused.
-  The worker clears itself last, and you re-send its brief. *(Reported live 2026-09-23; not reproduced.)*
 - **A worker's own files live in git metadata that pruning deletes.** A worktree's `.git` dir is
   `<main>/.git/worktrees/<name>/`, which `git worktree prune` removes. Copy anything you'll still need
   into the archive when you evict the row; don't reference it.
-- **`send_message` doesn't work in unattended sessions** (scheduled-task runs, remote-dispatched
-  sessions), in either direction. A worker there has no report channel. Don't spawn one there.
-- **Permission prompts can't be relayed and don't make a session idle.** A worker blocked on a tool
-  approval mid-call can't send a message, and no idle notice fires. The app's own attention badge on the
-  worker is the only signal. *(Inferred from the tool docs; not yet observed.)*
+- **Never assume which commit a worker was cut from.** The brief states the base as a sha and the
+  worker re-points itself (*Worker* step 2). Queued workers start stale too (seen live in hg, after
+  an earlier unit landed): START re-points them.
+- **Permission prompts can't be relayed.** A worker blocked on a tool approval mid-call can't send a
+  message; the operator answers it in the worker's own session (*permission-wait*).
 - **Relayed consent is refused, correctly.** Workers refuse relayed approvals for gated actions. Seen in
   practice: a worker declined a relayed request to clear its own context, and a classifier-blocked edit
   had to be approved by the operator inside the worker session.
-- **An archived worker's worktree stays on disk.** Seen live: after `archive_session`, `git worktree
-  list` still showed it, at a detached HEAD, with the branch intact. `get_storage_usage` counts it as
-  "kept ready for new sessions", the app's reuse pool, not as a leak. Pooled worktrees are not workers:
-  build the roster from `parentSessionId`, never from `git worktree list`.
 - **Your shell acts only on your own state.** A persisting `cd` into a worker's worktree moves your
-  cwd, and bare `git` follows it: use `git -C <path>` or `(cd <path> && …)`. Seen live: crew INT1
-  (acatl/crew#7, 2026-10-03); twice more downstream (per-turn check). Never kill by process name
+  cwd; bare `git` follows: use `git -C <path>` or `(cd <path> && …)`. Seen live: crew INT1
+  (acatl/crew#7, 2026-10-03); twice more downstream (per-turn check); once on the terminal
+  (2026-10-14, a `cd` before `claude --bg`). Never kill by process name
   (`pkill -f`, `pgrep … | xargs kill`, `ps | grep`), only by your `watchdog.pid`: seen live 2026-10-02,
   hg's `pgrep -f 'bash .*watchdog.sh' | head -1` killed crew's.
 - **Uncommitted config doesn't reach workers.** A worktree is cut from committed state, so an

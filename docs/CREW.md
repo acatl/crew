@@ -42,22 +42,22 @@ Run in the worker's worktree after DONE, in a subshell (`(cd <worktree> && …)`
 
 ## Branch naming
 
-Keep the app's `claude/…` branch unless the brief names one (a PR worker's branch is named by
-its PR).
+Keep the branch the host cut (the app's `claude/…`, or the terminal's `worktree-<name>`) unless the
+brief names one (a PR worker's branch is named by its PR).
 
 ## Integration
 
 - mode: pr
 - file: `docs/crew/integrations/pr.md`
 - **Pull request** (this repo's integration, which holds the merge rule in § Stopping › Merging).
-  The brief grants a push to the worker's OWN branch, opening its own PR, and binding that PR in the
-  app with its review monitor on (the integration's `open`), nothing else. The worker merges only on
+  The brief grants a push to the worker's OWN branch, opening its own PR, and, on the desktop host,
+  binding that PR in the app with its review monitor on (the integration's `open`), nothing else. The worker merges only on
   the orchestrator's go, given under the operator's standing merge rule, unless the card says
   `landing: operator`; then the operator merges, by hand or in the worker's session, never by a
   relayed go. The orchestrator's go is the written rule being applied, not consent relayed from
   another session, so the worker acts on it.
 - **A card's `integration: none`** gives a unit that pushes nothing; the operator lands it.
-- **A worker's PR review monitor** goes in the ledger's Monitors at its `checkpoint open`
+- **A worker's PR review monitor** (desktop) goes in the ledger's Monitors at its `checkpoint open`
   (stop: the worker turns `auto_fix` off after merging); drop the line at cleanup.
 - **One PR in flight here at a time.** The CodeRabbit review pool is account-wide (about 5
   reviews an hour, shared with `acatl/hg` and `acatl/kino`), so a worker opens its PR only
