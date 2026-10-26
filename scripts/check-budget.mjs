@@ -45,11 +45,12 @@ export function checkBudget(tree, args = []) {
     return r;
   }
   // the baseline's rows, a last line with no newline included (the bash's `while read` skipped it, so a
-  // gone file in that row went unreported while its budget still counted)
-  const rows = lines(baseline ?? '');
+  // gone file in that row went unreported while its budget still counted). Both passes read a row's
+  // cells the same way, leading tabs dropped.
+  const rows = lines(baseline ?? '').map((l) => l.replace(/^\t+/, '').split('\t'));
   const budgetOf = (f) => {
-    const row = rows.find((l) => !l.startsWith('#') && l.split('\t')[0] === f);
-    return row === undefined ? '' : (row.split('\t')[1] ?? '');
+    const row = rows.find(([name]) => !name.startsWith('#') && name === f);
+    return row === undefined ? '' : (row[1] ?? '');
   };
 
   const files = [
@@ -109,8 +110,7 @@ export function checkBudget(tree, args = []) {
   }
 
   // budgets for files that no longer exist
-  for (const row of rows) {
-    const f = row.replace(/^\t+/, '').split('\t')[0];
+  for (const [f] of rows) {
     if (f === '' || f.startsWith('#')) continue;
     if (tree.has(f)) continue;
     // Not a pass: a budgeted file that can't be found is either deleted (say so with --update) or

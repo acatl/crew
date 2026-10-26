@@ -68,8 +68,21 @@ test('scan numbers each of several matches in one file by its own line', () => {
   );
 });
 
-test('ere refuses a POSIX class it has no translation for', () => {
+test('ere refuses a POSIX class it has no translation for, and an unclosed bracket or class', () => {
   assert.throws(() => ere('[[:punct:]]'), /no translation/);
+  assert.throws(() => ere('a[b'), /unclosed \[/);
+  assert.throws(() => ere('[[:space'), /unclosed \[:/);
+});
+
+test('ere leaves [:x:] outside a bracket a set of letters, as POSIX reads it', () => {
+  assert.ok(ere('^x[:space:]y$').test('xsy'));
+  assert.ok(!ere('^x[:space:]y$').test('x y'));
+  assert.ok(ere('^\\[[[:space:]]\\]$').test('[ ]'));
+});
+
+test('ere takes ] first in a bracket as a member', () => {
+  assert.ok(ere('^[]a]+$').test(']a]'));
+  assert.ok(ere('^[^]a]$').test('b'));
 });
 
 test('scan reads each file on its own, with its own line numbers', () => {

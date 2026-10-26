@@ -18,12 +18,50 @@ const CLASSES = {
   '[:lower:]': 'a-z',
 };
 
-// posixClasses <pattern source>: each [:class:] inside a bracket as JavaScript writes it
-export const posixClasses = (src) =>
-  src.replace(/\[:[a-z]+:\]/g, (c) => {
-    if (!(c in CLASSES)) throw new Error(`no translation for the POSIX class ${c}`);
-    return CLASSES[c];
-  });
+// bracket <pattern source> <index of its [>: {js, end}, the bracket expression starting there as
+// JavaScript writes it, and the index of its closing ]. Its classes are translated, a ] right after
+// the [ or [^ is a member, and a backslash is a member (POSIX has no escapes in a bracket). An unclosed
+// bracket or class, or a class with no translation, throws: a pattern that quietly meant something else
+// would leave a check finding nothing.
+export function bracket(src, start) {
+  let js = '[';
+  let j = start + 1;
+  if (src[j] === '^') js += src[j++];
+  if (src[j] === ']') js += `\\${src[j++]}`;
+  for (; j < src.length && src[j] !== ']'; j++) {
+    if (src[j] === '[' && src[j + 1] === ':') {
+      const end = src.indexOf(':]', j + 2);
+      if (end < 0) throw new Error(`an unclosed [: in ${src}`);
+      const cls = src.slice(j, end + 2);
+      if (!(cls in CLASSES)) throw new Error(`no translation for the POSIX class ${cls} in ${src}`);
+      js += CLASSES[cls];
+      j = end + 1;
+    } else {
+      js += src[j] === '\\' ? '\\\\' : src[j];
+    }
+  }
+  if (j >= src.length) throw new Error(`an unclosed [ in ${src}`);
+  return { js: `${js}]`, end: j };
+}
+
+// posixClasses <ERE source>: the same pattern with each bracket expression as JavaScript writes it.
+// Outside a bracket, a backslash escapes the next character, as in JavaScript.
+export function posixClasses(src) {
+  let out = '';
+  for (let i = 0; i < src.length; i++) {
+    if (src[i] === '\\') {
+      out += src.slice(i, i + 2);
+      i++;
+    } else if (src[i] === '[') {
+      const { js, end } = bracket(src, i);
+      out += js;
+      i = end;
+    } else {
+      out += src[i];
+    }
+  }
+  return out;
+}
 
 // ere <POSIX ERE> [flags]: the same pattern as a RegExp. The checks' patterns are written as EREs, so
 // they read as they did in the bash; only the bracket classes need translating. A RegExp passes

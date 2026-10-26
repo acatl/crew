@@ -37,8 +37,8 @@ loads, in order, so cases that share a fixture keep their chain; a name filter o
 
 The hooks: `commit-msg` runs commitlint (Conventional Commits); `pre-commit` runs lint-staged
 (markdownlint and cspell on staged `*.md`, shellcheck on staged `*.sh`, `node --check` on each staged
-`*.mjs`); `pre-push` refuses a dirty
-tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
+`*.mjs`); `pre-push` refuses a dirty tree or a pushed ref that isn't the checked-out commit, then runs
+`verify.sh`.
 
 ## Architecture
 

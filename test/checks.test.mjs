@@ -15,7 +15,18 @@
 // fixture ("same fixture") run in order on it, as written.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  closeSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, test } from 'node:test';
@@ -24,7 +35,7 @@ import { checkBudget } from '../scripts/check-budget.mjs';
 import { checkInvariants } from '../scripts/check-invariants.mjs';
 import { checkSectionRefs } from '../scripts/check-section-refs.mjs';
 import { checkSkillFrontmatter } from '../scripts/check-skill-frontmatter.mjs';
-import { lines, posixClasses } from '../scripts/lib/md.mjs';
+import { bracket, lines } from '../scripts/lib/md.mjs';
 import { readTree } from '../scripts/lib/tree.mjs';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -74,7 +85,9 @@ const execIn = (cwd, cmd, args = []) => {
   const fd = openSync(out, 'w');
   const r = spawnSync(cmd, args, { cwd, env: ENV, stdio: ['ignore', fd, fd], timeout: 120_000 });
   closeSync(fd);
-  return { rc: r.status ?? 1, out: readFileSync(out, 'utf8') };
+  // killed (the timeout, a signal) is not an exit code: red() never counts it as a check that fired
+  const rc = r.status ?? `killed (${r.signal ?? r.error?.code ?? 'no status'})`;
+  return { rc, out: readFileSync(out, 'utf8') };
 };
 
 // run <check> <tree> [args]: a Node check in-process (a rewritten baseline lands in the tree, as it
@@ -114,21 +127,19 @@ const red = (label, c, t, pat, ...args) => {
 // after it would test an untouched fixture, and a green case would pass blind.
 
 // bre <BRE>: the same pattern as a RegExp. In a BRE, ( ) { } | + ? are literal, ^ and $ anchor only at
-// the ends, and \ makes the next character literal.
+// the ends, and \ makes the next character literal. A malformed pattern throws, and its edit fails.
 const bre = (src) => {
   let re = '';
   for (let i = 0; i < src.length; i++) {
     const c = src[i];
     if (c === '\\') {
       const n = src[++i];
+      if (n === undefined) throw new Error(`a trailing backslash in ${src}`);
       re += /[A-Za-z0-9]/.test(n) ? n : `\\${n}`;
     } else if (c === '[') {
-      let j = i + 1;
-      if (src[j] === '^') j++;
-      if (src[j] === ']') j++;
-      while (j < src.length && src[j] !== ']') j += src[j] === '[' && src[j + 1] === ':' ? src.indexOf(':]', j) - j + 2 : 1;
-      re += posixClasses(src.slice(i, j + 1).replace(/\\/g, '\\\\'));
-      i = j;
+      const { js, end } = bracket(src, i);
+      re += js;
+      i = end;
     } else if ((c === '^' && i === 0) || (c === '$' && i === src.length - 1) || c === '.' || c === '*') {
       re += c;
     } else {
@@ -145,7 +156,12 @@ const change = (t, p, fn, what) => {
   if (before === undefined) return bad(`edit ${p}`, `no such file: ${what}`);
   const nl = before.endsWith('\n') ? '\n' : '';
   const ls = lines(before);
-  const after = fn(ls).join('\n') + (ls.length ? nl : '');
+  let after;
+  try {
+    after = fn(ls).join('\n') + (ls.length ? nl : '');
+  } catch (e) {
+    return bad(`edit ${p}`, `${e.message}: ${what}`);
+  }
   if (after === before) bad(`edit ${p}`, `changed nothing: ${what}`);
   t.set(p, after);
 };
@@ -193,15 +209,16 @@ const del = (t, p, pat, opts = {}) =>
     return ls.filter((l, j) => !(inRange(j) && matches(re, l)));
   }, `/${pat}/d`);
 const delLast = (t, p) => change(t, p, (ls) => ls.slice(0, -1), '$d');
-const dup = (t, p, pat) => {
-  const re = bre(pat);
-  change(t, p, (ls) => ls.flatMap((l) => (matches(re, l) ? [l, l] : [l])), `/${pat}/p`);
-};
+const dup = (t, p, pat) =>
+  change(t, p, (ls) => {
+    const re = bre(pat);
+    return ls.flatMap((l) => (matches(re, l) ? [l, l] : [l]));
+  }, `/${pat}/p`);
 // /re/,+1d: a matching line and the one after it go; the line after a range is tested afresh, the one
 // inside it never is
-const delWithNext = (t, p, pat) => {
-  const re = bre(pat);
+const delWithNext = (t, p, pat) =>
   change(t, p, (ls) => {
+    const re = bre(pat);
     const kept = [];
     for (let j = 0; j < ls.length; j++) {
       if (matches(re, ls[j])) j++;
@@ -209,7 +226,6 @@ const delWithNext = (t, p, pat) => {
     }
     return kept;
   }, `/${pat}/,+1d`);
-};
 const append = (t, p, text) => t.set(p, (t.get(p) ?? '') + text);
 const rmTree = (t, prefix) => {
   for (const k of [...t.keys()]) if (k === prefix || k.startsWith(`${prefix}/`)) t.delete(k);
@@ -258,13 +274,20 @@ for (const c of [
   const w = write(fresh(), temp());
   const u = execIn(w, process.execPath, ['scripts/check-budget.mjs', '--update']);
   const written = readFileSync(join(w, 'baselines/budget.tsv'), 'utf8');
-  const imp = execIn(w, process.execPath, ['--input-type=module', '-e', "await import('./scripts/check-budget.mjs')", 'not-a-file']);
-  ok('0f a check imported where argv[1] is no file neither throws nor runs', imp.rc === 0 && imp.out === '', `rc=${imp.rc} ${imp.out}`);
   ok(
     '0e check-budget.mjs --update rewrites the baseline on disk, with its header',
     u.rc === 0 && written.startsWith('# Word budgets') && written.includes(`\n${LG}\t`),
     `rc=${u.rc} ${u.out}\n${written}`,
   );
+  const imp = (...extra) =>
+    execIn(w, process.execPath, ['--input-type=module', '-e', "await import('./scripts/check-budget.mjs')", ...extra]);
+  let i = imp('not-a-file');
+  ok('0f a check imported where argv[1] names no file neither throws nor runs', i.rc === 0 && i.out === '', `rc=${i.rc} ${i.out}`);
+  i = imp();
+  ok('0g nor where there is no argv[1] at all', i.rc === 0 && i.out === '', `rc=${i.rc} ${i.out}`);
+  symlinkSync('loop', join(w, 'loop')); // a path that fails for a reason other than being absent
+  i = imp('loop');
+  ok('0h but one whose argv[1] fails to resolve for any other reason fails loudly', i.rc !== 0 && i.out.includes('ELOOP'), `rc=${i.rc} ${i.out}`);
 }
 
 // --- check-invariants -----------------------------------------------------------------------------------
@@ -922,6 +945,12 @@ red('26h no SKILL.md fails before counting it as 0 words', 'check-budget', t, `$
   red('26i and --update leaves its budget alone', 'check-budget', t, `${SK}: not found`, '--update');
   ok('26j the baseline is unchanged', t.get('baselines/budget.tsv') === before, t.get('baselines/budget.tsv'));
 }
+
+t = fresh();
+s(t, 'baselines/budget.tsv', '^skills/crew/references/ledger\\.md', '\t&');
+green('26k a budget row with a leading tab is read the same by the lookup and the gone pass', 'check-budget', t);
+t.delete(LG); // same fixture
+red('26l and its file gone is reported, from that same row', 'check-budget', t, `${LG}: budgeted but gone`);
 
 // --- check-content -------------------------------------------------------------------------------------------
 t = fresh();

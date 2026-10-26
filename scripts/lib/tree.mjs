@@ -62,11 +62,13 @@ export class Report {
 // stderr keep their order when both go to one pipe.
 export function main(url, check) {
   const self = fileURLToPath(url);
+  if (!process.argv[1]) return; // no script path (node -e, a REPL): imported, not run
   let given;
   try {
     given = realpathSync(process.argv[1]);
-  } catch {
-    return; // no script path (node -e, a REPL), or not a file: imported, not run
+  } catch (e) {
+    if (e.code === 'ENOENT') return; // an argument, not a script (node -e … <arg>): imported, not run
+    throw e;
   }
   if (given !== realpathSync(self)) return;
   const root = resolve(dirname(self), '..');
