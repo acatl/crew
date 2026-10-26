@@ -89,7 +89,9 @@ test/                       sandboxed suites for both scripts and for the repo's
 scripts/
   link-skills.sh            symlink skills/* into ~/.claude/skills (idempotent, never clobbers)
   verify.sh                 every CI check, in CI's order; the pre-push hook runs it
-  check-*.sh                the repo's checks: structure, content metrics, word budget, invariants, references
+  check-*.mjs               the repo's checks in Node: invariants, references, word budget, frontmatter
+  check-*.sh                the ones that wrap a tool: structure and content metrics, links
+  lib/                      what the Node checks share: the repo as a tree, the Markdown text matching
 baselines/                  the word budget and content metrics the checks compare against
 ```
 

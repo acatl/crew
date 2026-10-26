@@ -1,7 +1,7 @@
 // Unit tests for scripts/lib/md.mjs, the text primitives every skill check stands on. Each pins one
 // behaviour the checks' messages depend on, on a few lines of synthetic text:
 //
-//   node --test test/
+//   node --test test/*.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {

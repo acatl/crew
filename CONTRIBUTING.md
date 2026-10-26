@@ -12,7 +12,7 @@ test suites, and checks that keep the prose consistent.
 - **Work on a branch and land through a squashed PR to `main`.**
 - **Read [CLAUDE.md](CLAUDE.md) before you edit the skill.** Its *Invariants that span files* section
   lists the values that are restated in more than one file. Change one copy and you must change the
-  rest; `scripts/check-invariants.sh` catches most misses.
+  rest; `scripts/check-invariants.mjs` catches most misses.
 
 ## Working on the skill
 
@@ -71,7 +71,7 @@ A word cspell flags that is spelled right goes in `project-words.txt`.
 
 **Pair every silence with a positive control.** Every `silent` assertion in `test/watchdog.test.sh`,
 and every exit-0 assertion in `test/overlap.test.sh`, needs a case on the same fixture that must fire.
-Every check in `scripts/` gets a seeded drift in `test/checks.test.sh`. A blind watchdog or check is
+Every check in `scripts/` gets a seeded drift in `test/checks.test.mjs`. A blind watchdog or check is
 silent too.
 
 ### The skill checks and their baselines
@@ -80,9 +80,9 @@ silent too.
 shape), then three checks that compare the skill
 against itself or against a committed baseline:
 
-- the restated values agree (`check-invariants.sh`);
-- the cross-references resolve (`check-section-refs.sh`);
-- the word budget and the content metrics hold (`check-budget.sh`, `check-content.sh`).
+- the restated values agree (`check-invariants.mjs`);
+- the cross-references resolve (`check-section-refs.mjs`);
+- the word budget and the content metrics hold (`check-budget.mjs`, `check-content.sh`).
 
 **Baselines are the operator's.** A skill file's word count may hold or fall. Instruction specificity
 and the imperative ratio may hold or rise. When yours moves the wrong way, fix the text. Raising a

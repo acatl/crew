@@ -1,7 +1,7 @@
 // The text primitives the skill checks share. Prose wraps, so a value restated in a sentence can
 // straddle a line break; a line-by-line grep would miss that copy and call it gone.
 //
-// Each function keeps the semantics of the bash it replaced (scripts/lib/scan.sh and the awk, sed
+// Each function keeps the semantics of the bash it replaced (scripts/lib/scan.sh, now gone, and the awk, sed
 // and tr in the checks), case for case, because test/checks.test.mjs pins the checks' messages and
 // those messages quote what these functions return. A "doc" is a [name, text] pair: a file's
 // repo-relative path and its contents, or a slice of one.

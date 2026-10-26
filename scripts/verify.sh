@@ -47,11 +47,11 @@ step npm run lint:sh
 # job: skill
 step ./scripts/check-structure.sh
 step ./scripts/check-content.sh
-step ./scripts/check-budget.sh
-step ./scripts/check-invariants.sh
-step ./scripts/check-section-refs.sh
-step ./scripts/check-skill-frontmatter.sh
-step ./test/checks.test.sh
+step node scripts/check-budget.mjs
+step node scripts/check-invariants.mjs
+step node scripts/check-section-refs.mjs
+step node scripts/check-skill-frontmatter.mjs
+step node --test test/*.test.mjs
 # job: test
 step ./test/watchdog.test.sh
 step ./test/overlap.test.sh

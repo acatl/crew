@@ -19,19 +19,21 @@ Keep this checkout on `main`. To try a risky change, use a worktree and repoint 
 
 ```bash
 npm ci                          # the toolchain and the git hooks (husky); needs Node >= 22.12
-./scripts/verify.sh             # every CI check in CI's order, stopping at the first failure (~40 min: test/checks.test.sh, #15)
-npm run check                   # markdownlint, cspell, links, shellcheck, skill checks; the last runs test/checks.test.sh (~35 min)
-npm test                        # both test suites: test/watchdog.test.sh (~75 s), test/overlap.test.sh
+./scripts/verify.sh             # every CI check in CI's order, stopping at the first failure (~5 min, most of it watchdog.test.sh)
+npm run check                   # markdownlint, cspell, links, shellcheck, skill checks and their suites (~20 s)
+node --test test/*.test.mjs     # the skill checks' suites alone: test/checks.test.mjs, test/md.test.mjs (~7 s)
+npm test                        # the shell suites: test/watchdog.test.sh (~4 min), test/overlap.test.sh
 scripts/link-skills.sh          # (re)create ~/.claude/skills/crew -> skills/crew; never clobbers
 scripts/link-skills.sh check    # exit 0 only if linked
 ```
 
 `verify.sh` also needs `lychee`, `shellcheck`, `jq` and `skill-validator` v1.6.2 on the PATH.
 
-There is no single-test runner. Each suite in `test/` is one sequential script whose numbered cases
-share fixture state, so always run the whole thing. On failure it keeps its sandbox and prints
+The shell suites have no single-test runner. Each is one sequential script whose numbered cases share
+fixture state, so always run the whole thing. On failure it keeps its sandbox and prints
 `sandbox kept: <path>`. `watchdog.test.sh` sets `HOME` to a temp directory, so it never touches real
-crew state.
+crew state. The Node suites run under `node --test`. `checks.test.mjs` runs every case as the file
+loads, in order, so cases that share a fixture keep their chain; a name filter only hides results.
 
 The hooks: `commit-msg` runs commitlint (Conventional Commits); `pre-commit` runs lint-staged
 (markdownlint and cspell on staged `*.md`, shellcheck on staged `*.sh`); `pre-push` refuses a dirty
@@ -100,14 +102,24 @@ tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
     operator's to answer in the worker, and none can send a message.
 - **`scripts/overlap.sh` is the parallel-safety check** (orchestrator step 3). It lists files
   in-flight workers have touched that fall under a candidate surface.
-- **Outside the skill:** `test/` holds the suites, so they don't ship with the skill. `scripts/` holds
-  the repo's checks, `baselines/` their committed baselines, and `scripts/lib/scan.sh` the matcher the
-  checks share, which reads a file with its line breaks as spaces so a wrapped copy still matches.
+- **Outside the skill:** `test/` holds the suites, so they don't ship with the skill. `baselines/`
+  holds the checks' committed baselines. `scripts/` holds the repo's checks, in two kinds:
+  - Four in Node: `check-invariants.mjs`, `check-section-refs.mjs`, `check-budget.mjs`,
+    `check-skill-frontmatter.mjs`. Each exports a function of the repo read as a tree (a Map of path
+    to text, `scripts/lib/tree.mjs`) and runs as a script too, with the same exit codes. They share
+    `scripts/lib/md.mjs`: `scan` reads a file with its line breaks as spaces so a wrapped copy still
+    matches, `section` finds a section by heading and is fence-aware, and the sentence splitters.
+    Plain JavaScript run by `node`: no build step, no dependency, Node 22.12's APIs (CI pins 22.12).
+  - Three in bash, which wrap a tool: `check-structure.sh` and `check-content.sh` (skill-validator),
+    `check-links.sh` (lychee).
+
+  `test/checks.test.mjs` calls the Node checks in-process on an edited copy of the tree, and runs the
+  bash ones from a temp copy written to disk.
 
 ## Invariants that span files
 
-Changing one side without the other breaks the skill silently. `scripts/check-invariants.sh` and
-`scripts/check-section-refs.sh` enforce most of these in CI; the entries say which.
+Changing one side without the other breaks the skill silently. `scripts/check-invariants.mjs` and
+`scripts/check-section-refs.mjs` enforce most of these in CI; the entries say which.
 
 - **The base-directory rule.** SKILL.md runs its scripts as `<skill-dir>/scripts/<name>.sh`, where
   `<skill-dir>` is the "Base directory for this skill" path Claude Code prints when it loads the
@@ -280,7 +292,7 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
 - **Baselines are the operator's.** `baselines/budget.tsv` holds each skill file's word budget: a
   count may hold or fall, never rise. `baselines/content.tsv` holds instruction specificity and the
   imperative ratio, totalled over SKILL.md and `references/`: they may hold or rise, never fall. Only
-  the operator raises a budget (`scripts/check-budget.sh --update --allow-raise`) or accepts a lower
+  the operator raises a budget (`scripts/check-budget.mjs --update --allow-raise`) or accepts a lower
   content metric (a hand edit of the baseline). A worker fixes the new text instead. `--update` alone
   only ratchets: budgets down, metrics up.
 - **Two exemptions, until PR 3:** `scripts/check-structure.sh` lets through skill-validator's
@@ -294,7 +306,7 @@ Changing one side without the other breaks the skill silently. `scripts/check-in
   CI's `test` job runs the suites on macOS and Linux, which is the only place both branches run.
 - **Tests pair every silence with a positive control.** Every `silent` assertion in
   `watchdog.test.sh`, every exit-0 assertion in `overlap.test.sh`, and every check in
-  `checks.test.sh` is paired with a case on the same fixture that must fire, because a blind watchdog
+  `checks.test.mjs` is paired with a case on the same fixture that must fire, because a blind watchdog
   or check is silent too.
 - **After editing `watchdog.sh`, restart any running watchdog**, because bash reads a running script
   from disk. Stop it by its pid (`kill "$(cat ~/.claude/crew/<slug>/watchdog.pid)"`), never by a

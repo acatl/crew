@@ -4,7 +4,7 @@
 // ones (structure, content, links) on a temp copy written to disk. Nothing real is touched. The bash
 // checks need skill-validator and jq. Run it after changing a check:
 //
-//   node --test test/
+//   node --test test/*.test.mjs
 //
 // A check that passes proves nothing on its own: a check blind for a mechanical reason passes too.
 // So every check is first run green on an untouched copy, the control for each drift case after it
