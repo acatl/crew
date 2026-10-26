@@ -446,6 +446,8 @@ red("15t a guard section's heading renamed is reported, not passed", 'check-inva
 t = fresh();
 s(t, SK, '^\\#\\#\\# 6\\. Handle messages', '```bash\\\n\\# a comment, not a heading\\\n```\\\n\\\n&');
 green('15u a heading-like comment in a code fence ends no section', 'check-invariants', t);
+s(t, SK, 'its overrides, `integration`, mode,', 'its overrides, mode,'); // same fixture
+red('15u2 and the section the fence sits in is still checked', 'check-invariants', t, "the section headed '^#+ 5[.] Spawn");
 t = fresh();
 s(t, SK, "the operator's words, never consent for a tool-permission prompt or a gated", "the operator's words, even for a tool-permission prompt or a gated");
 red("15v the worker's RELAY rule stops refusing tool-permission consent", 'check-invariants', t, 'that a relayed answer is never consent for a tool-permission prompt');
@@ -576,6 +578,8 @@ red("15fi5 the contract's START row computes the card afresh", 'check-invariants
 t = fresh();
 s(t, SK, '^   START) with the new base sha', '   ) with the new base sha');
 green("15fi6 a link cleanup in step 8's START line stays green", 'check-invariants', t);
+s(t, SK, 'card lines, its Spec from `briefs/<row>-spec.md`, after', 'card lines, after'); // same fixture
+red('15fi6b and the same fixture fails once step 8 drops the saved spec', 'check-invariants', t, "the section headed '^#+ 8[.] Sequences");
 // a queued unit's spec lives in briefs/<row>-spec.md: step 5 saves it, step 8, the spine and START read it
 t = fresh();
 s(t, SK, 'Save a queued brief.s `{SPEC}` to `briefs/<row>-spec.md`\\.', 'A queued brief drops its spec.');
@@ -651,6 +655,8 @@ red('15fi9 the spine drops Do not touch', 'check-invariants', t, "the section he
 t = fresh();
 s(t, SK, 'Job section, written now from the landed state and its row.s', "Job section, written from the landed state and the row's");
 green("15fi10 a same-meaning reword of step 8's START line stays green", 'check-invariants', t);
+s(t, SK, "landed state and the row's$", 'landed state and the'); // same fixture
+red("15fi10b and the same fixture fails once it drops the row's card lines", 'check-invariants', t, "the section headed '^#+ 8[.] Sequences");
 
 // a PR opens against the brief's base: every `gh pr create`/`new` reads `gh pr create --base <base>` (the
 // controls cover green; no case pins a line number, so a re-wrap alone never turns one red)
@@ -952,7 +958,13 @@ green('26k a budget row with a leading tab is read the same by the lookup and th
 t.delete(LG); // same fixture
 red('26l and its file gone is reported, from that same row', 'check-budget', t, `${LG}: budgeted but gone`);
 
-// --- check-content -------------------------------------------------------------------------------------------
+t = fresh();
+s(t, 'baselines/budget.tsv', '^skills/crew/references/ledger\\.md\t[0-9]*$', 'skills/crew/references/ledger.md\tmany');
+red('26m a budget that is not a whole number fails, naming it', 'check-budget', t, `${LG}: its budget 'many'`);
+red('26n and --update keeps that row as it is', 'check-budget', t, `${LG}: its budget 'many'`, '--update');
+ok('26o the row is unchanged', t.get('baselines/budget.tsv').includes(`${LG}\tmany\n`), t.get('baselines/budget.tsv'));
+
+// --- check-content ----------------------------------------------------------------------------------------
 t = fresh();
 append(t, SK, '\nYou may skip this. It may help. You might try it. It could matter.\n');
 red('27 weak markers lower instruction specificity', 'check-content', t, 'instruction_specificity fell');
@@ -1035,10 +1047,12 @@ s(t, HO, '^| \\*pr-state\\* |', '| *ghost* | a | b |\\\n| *pr-state* |');
 red('44 a verb no file cites', 'check-invariants', t, 'the verb *ghost* is cited nowhere else');
 t = fresh();
 s(t, SK, '^\\*roster\\* before anything else', '`get_session` before anything else');
-red('45 an app tool named outside host.md', 'check-invariants', t, `${SK}:129: names a host's tool outside references/host.md (get_session)`);
+// the line the edit landed on, read from the fixture, so a re-wrap above it never turns the case red
+const lineOf = (t2, p, start) => lines(t2.get(p)).findIndex((l) => l.startsWith(start)) + 1;
+red('45 an app tool named outside host.md', 'check-invariants', t, `${SK}:${lineOf(t, SK, '`get_session` before')}: names a host's tool outside references/host.md (get_session)`);
 t = fresh();
 s(t, BT, '^(\\*spawn\\*)\\. A field', '(spawn_task). A field');
-red('46 the brief names one outside its fallback section, which alone may', 'check-invariants', t, `${BT}:4: names a host's tool`);
+red('46 the brief names one outside its fallback section, which alone may', 'check-invariants', t, `${BT}:${lineOf(t, BT, '(spawn_task). A field')}: names a host's tool`);
 t = fresh();
 del(t, BT, '^- host: `{HOST}`$');
 red('47 the brief loses its host line', 'check-invariants', t, "no '- host: `{HOST}`' line");

@@ -90,6 +90,14 @@ export function checkBudget(tree, args = []) {
       fails++;
       continue;
     }
+    // a budget that isn't a whole number compares as nothing and would be written back as it is:
+    // the bash's integer test aborted on one
+    if (!/^[0-9]+$/.test(budget)) {
+      r.err(`✖ ${f}: its budget '${budget}' in ${BASELINE} is not a whole number — fix that row`);
+      fails++;
+      next += `${f}\t${budget}\n`;
+      continue;
+    }
     const b = Number(budget);
     if (have > b) {
       if (raise) {
