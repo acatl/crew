@@ -116,6 +116,12 @@ jobs:
           tar -xzf "$archive" -C "$RUNNER_TEMP/bin" skill-validator
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
+      # The Node checks need no npm ci: plain .mjs, no dependency. 22.12 is the floor package.json's
+      # engines names, so an API newer than it fails here.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.12'
+
       - name: Structure
         run: scripts/check-structure.sh
 
@@ -123,19 +129,19 @@ jobs:
         run: scripts/check-content.sh
 
       - name: Word budget (may hold or fall)
-        run: scripts/check-budget.sh
+        run: node scripts/check-budget.mjs
 
       - name: Restated values agree
-        run: scripts/check-invariants.sh
+        run: node scripts/check-invariants.mjs
 
       - name: Section and file references resolve
-        run: scripts/check-section-refs.sh
+        run: node scripts/check-section-refs.mjs
 
       - name: Frontmatter
-        run: scripts/check-skill-frontmatter.sh
+        run: node scripts/check-skill-frontmatter.mjs
 
       - name: The checks' own tests
-        run: test/checks.test.sh
+        run: node --test test/*.test.mjs
 
   # BSD (macOS) and GNU (Linux) userlands both: watchdog.sh probes stat(1) for either,
   # and each leg is the only place its branch runs.
