@@ -24,7 +24,7 @@ import { checkBudget } from '../scripts/check-budget.mjs';
 import { checkInvariants } from '../scripts/check-invariants.mjs';
 import { checkSectionRefs } from '../scripts/check-section-refs.mjs';
 import { checkSkillFrontmatter } from '../scripts/check-skill-frontmatter.mjs';
-import { lines } from '../scripts/lib/md.mjs';
+import { lines, posixClasses } from '../scripts/lib/md.mjs';
 import { readTree } from '../scripts/lib/tree.mjs';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -80,11 +80,16 @@ const execIn = (cwd, cmd, args = []) => {
 // run <check> <tree> [args]: a Node check in-process (a rewritten baseline lands in the tree, as it
 // would on disk), a bash one from a temp copy
 let last = { rc: 0, out: '' };
+// A check that throws fails its own case with the stack, not the whole file at load.
 const run = (c, t, args = []) => {
   if (NODE[c]) {
-    const r = NODE[c](t, args);
-    for (const [p, text] of r.writes) t.set(p, text);
-    last = { rc: r.rc, out: r.text };
+    try {
+      const r = NODE[c](t, args);
+      for (const [p, text] of r.writes) t.set(p, text);
+      last = { rc: r.rc, out: r.text };
+    } catch (e) {
+      last = { rc: 'threw', out: e.stack };
+    }
   } else {
     const dir = write(t, temp());
     last = execIn(dir, join(dir, 'scripts', `${c}.sh`), args);
@@ -100,7 +105,7 @@ const green = (label, c, t) => {
 };
 const red = (label, c, t, pat, ...args) => {
   const { rc, out } = run(c, t, args);
-  ok(label, rc !== 0 && out.includes(pat), `rc=${rc}, want '${pat}' in: ${out}`);
+  ok(label, typeof rc === 'number' && rc !== 0 && out.includes(pat), `rc=${rc}, want '${pat}' in: ${out}`);
 };
 
 // --- edits: sed's, on a tree ---------------------------------------------------------------------------
@@ -122,10 +127,7 @@ const bre = (src) => {
       if (src[j] === '^') j++;
       if (src[j] === ']') j++;
       while (j < src.length && src[j] !== ']') j += src[j] === '[' && src[j + 1] === ':' ? src.indexOf(':]', j) - j + 2 : 1;
-      re += src
-        .slice(i, j + 1)
-        .replace(/\\/g, '\\\\')
-        .replace('[:space:]', ' \\t\\n\\v\\f\\r');
+      re += posixClasses(src.slice(i, j + 1).replace(/\\/g, '\\\\'));
       i = j;
     } else if ((c === '^' && i === 0) || (c === '$' && i === src.length - 1) || c === '.' || c === '*') {
       re += c;
@@ -150,11 +152,13 @@ const change = (t, p, fn, what) => {
 // range <lines> <opts>: the indexes an address covers: from (/re/,$), upto (1,/re/), or every line
 const range = (ls, { from, upto } = {}) => {
   if (from) {
-    const i = ls.findIndex((l) => bre(from).test(l));
+    const re = bre(from);
+    const i = ls.findIndex((l) => matches(re, l));
     return (j) => i >= 0 && j >= i;
   }
   if (upto) {
-    const i = ls.findIndex((l, j) => j > 0 && bre(upto).test(l));
+    const re = bre(upto);
+    const i = ls.findIndex((l, j) => j > 0 && matches(re, l));
     return (j) => i < 0 || j <= i;
   }
   return () => true;
@@ -166,25 +170,46 @@ const s = (t, p, pat, to, opts = {}) =>
     p,
     (ls) => {
       const inRange = range(ls, opts);
+      const re = bre(pat);
+      const replace = rep(to);
       return ls.map((l, j) => {
         if (!inRange(j)) return l;
-        const re = bre(pat);
         let n = 0;
-        return l.replace(re, (m) => (opts.g || n++ === 0 ? rep(to)(m) : m));
+        return l.replace(re, (m) => (opts.g || n++ === 0 ? replace(m) : m));
       });
     },
     `s#${pat}#${to}#`,
   );
 // del: /re/d (in the range, if one is given) · delLast: $d · dup: /re/p · delWithNext: /re/,+1d
+// A bre is global, so .test() keeps a lastIndex: each test resets it.
+const matches = (re, l) => {
+  re.lastIndex = 0;
+  return re.test(l);
+};
 const del = (t, p, pat, opts = {}) =>
   change(t, p, (ls) => {
     const inRange = range(ls, opts);
-    return ls.filter((l, j) => !(inRange(j) && bre(pat).test(l)));
+    const re = bre(pat);
+    return ls.filter((l, j) => !(inRange(j) && matches(re, l)));
   }, `/${pat}/d`);
 const delLast = (t, p) => change(t, p, (ls) => ls.slice(0, -1), '$d');
-const dup = (t, p, pat) => change(t, p, (ls) => ls.flatMap((l) => (bre(pat).test(l) ? [l, l] : [l])), `/${pat}/p`);
-const delWithNext = (t, p, pat) =>
-  change(t, p, (ls) => ls.filter((l, j) => !(bre(pat).test(l) || (j > 0 && bre(pat).test(ls[j - 1])))), `/${pat}/,+1d`);
+const dup = (t, p, pat) => {
+  const re = bre(pat);
+  change(t, p, (ls) => ls.flatMap((l) => (matches(re, l) ? [l, l] : [l])), `/${pat}/p`);
+};
+// /re/,+1d: a matching line and the one after it go; the line after a range is tested afresh, the one
+// inside it never is
+const delWithNext = (t, p, pat) => {
+  const re = bre(pat);
+  change(t, p, (ls) => {
+    const kept = [];
+    for (let j = 0; j < ls.length; j++) {
+      if (matches(re, ls[j])) j++;
+      else kept.push(ls[j]);
+    }
+    return kept;
+  }, `/${pat}/,+1d`);
+};
 const append = (t, p, text) => t.set(p, (t.get(p) ?? '') + text);
 const rmTree = (t, prefix) => {
   for (const k of [...t.keys()]) if (k === prefix || k.startsWith(`${prefix}/`)) t.delete(k);
@@ -215,7 +240,7 @@ for (const c of [
 
 // --- the Node checks as scripts: each a black box, green on the repo, red with its exit code on a drift --
 {
-  const cli = (c, t2, ...args) => execIn(write(t2, temp()), 'node', [`scripts/${c}.mjs`, ...args]);
+  const cli = (c, t2, ...args) => execIn(write(t2, temp()), process.execPath, [`scripts/${c}.mjs`, ...args]);
   const pair = (c, drift, pat) => {
     let r = cli(c, fresh());
     ok(`0b ${c}.mjs run as a script is green on an untouched copy`, r.rc === 0 && r.out.startsWith('✓'), `rc=${r.rc} ${r.out}`);
@@ -231,8 +256,10 @@ for (const c of [
   const r = cli('check-budget', fresh(), '--nope');
   ok('0d check-budget.mjs exits 2 on a usage error', r.rc === 2 && r.out.includes('usage:'), `rc=${r.rc} ${r.out}`);
   const w = write(fresh(), temp());
-  const u = execIn(w, 'node', ['scripts/check-budget.mjs', '--update']);
+  const u = execIn(w, process.execPath, ['scripts/check-budget.mjs', '--update']);
   const written = readFileSync(join(w, 'baselines/budget.tsv'), 'utf8');
+  const imp = execIn(w, process.execPath, ['--input-type=module', '-e', "await import('./scripts/check-budget.mjs')", 'not-a-file']);
+  ok('0f a check imported where argv[1] is no file neither throws nor runs', imp.rc === 0 && imp.out === '', `rc=${imp.rc} ${imp.out}`);
   ok(
     '0e check-budget.mjs --update rewrites the baseline on disk, with its header',
     u.rc === 0 && written.startsWith('# Word budgets') && written.includes(`\n${LG}\t`),
@@ -882,6 +909,18 @@ run('check-budget', t, ['--update']); // positive control for 26b: --update drop
   const dropped = last.out.includes(`- ${LG}: gone, budget dropped`);
   const detail = last.out;
   ok("26c --update drops a gone file's budget, then green", dropped && run('check-budget', t).rc === 0, detail);
+}
+
+t = fresh();
+t.set('baselines/budget.tsv', `${t.get('baselines/budget.tsv')}skills/crew/references/gone.md\t10`);
+red("26g a gone file's budget on a last line with no newline still fails", 'check-budget', t, 'skills/crew/references/gone.md: budgeted but gone');
+t = fresh();
+t.delete(SK);
+red('26h no SKILL.md fails before counting it as 0 words', 'check-budget', t, `${SK}: not found`);
+{
+  const before = t.get('baselines/budget.tsv');
+  red('26i and --update leaves its budget alone', 'check-budget', t, `${SK}: not found`, '--update');
+  ok('26j the baseline is unchanged', t.get('baselines/budget.tsv') === before, t.get('baselines/budget.tsv'));
 }
 
 // --- check-content -------------------------------------------------------------------------------------------

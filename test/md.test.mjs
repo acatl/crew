@@ -60,6 +60,18 @@ test('scan restarts after each match, so ^ anchors on the rest of the text', () 
   assert.equal(hits.length, 2);
 });
 
+test('scan numbers each of several matches in one file by its own line', () => {
+  const hits = scan('k', [['f.md', 'k\n\nk k\n\nk\n']]);
+  assert.deepEqual(
+    hits.map(({ loc }) => loc),
+    ['f.md:1', 'f.md:3', 'f.md:3', 'f.md:5'],
+  );
+});
+
+test('ere refuses a POSIX class it has no translation for', () => {
+  assert.throws(() => ere('[[:punct:]]'), /no translation/);
+});
+
 test('scan reads each file on its own, with its own line numbers', () => {
   const hits = scan('k', [
     ['a.md', 'k\n'],

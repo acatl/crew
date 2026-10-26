@@ -18,12 +18,19 @@ const CLASSES = {
   '[:lower:]': 'a-z',
 };
 
+// posixClasses <pattern source>: each [:class:] inside a bracket as JavaScript writes it
+export const posixClasses = (src) =>
+  src.replace(/\[:[a-z]+:\]/g, (c) => {
+    if (!(c in CLASSES)) throw new Error(`no translation for the POSIX class ${c}`);
+    return CLASSES[c];
+  });
+
 // ere <POSIX ERE> [flags]: the same pattern as a RegExp. The checks' patterns are written as EREs, so
 // they read as they did in the bash; only the bracket classes need translating. A RegExp passes
 // through unchanged.
 export function ere(src, flags = '') {
   if (src instanceof RegExp) return src;
-  return new RegExp(src.replace(/\[:[a-z]+:\]/g, (c) => CLASSES[c] ?? c), flags);
+  return new RegExp(posixClasses(src), flags);
 }
 
 // ws <words>: an ERE for <words> with every space widened to any whitespace run, so the words can
@@ -68,11 +75,11 @@ export function scan(re, ds) {
       ends.push(text.length);
     }
     let pos = 0;
+    let i = 0; // matches only move forward, so the line search does too
     while (pos < text.length) {
       const m = rx.exec(text.slice(pos));
       if (!m) break;
       const s = pos + m.index;
-      let i = 0;
       while (i < ends.length - 1 && ends[i] <= s) i++;
       const match = m[0].replace(/[ \t]+/g, ' ').replace(/ $/, '');
       hits.push({ file, line: i + 1, match, loc: `${file}:${i + 1}` });

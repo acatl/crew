@@ -19,7 +19,7 @@ Keep this checkout on `main`. To try a risky change, use a worktree and repoint 
 
 ```bash
 npm ci                          # the toolchain and the git hooks (husky); needs Node >= 22.12
-./scripts/verify.sh             # every CI check in CI's order, stopping at the first failure (~5 min, most of it watchdog.test.sh)
+./scripts/verify.sh             # every CI check in CI's order, stopping at the first failure (~4 min, most of it watchdog.test.sh)
 npm run check                   # markdownlint, cspell, links, shellcheck, skill checks and their suites (~20 s)
 node --test test/*.test.mjs     # the skill checks' suites alone: test/checks.test.mjs, test/md.test.mjs (~7 s)
 npm test                        # the shell suites: test/watchdog.test.sh (~4 min), test/overlap.test.sh
@@ -36,7 +36,8 @@ crew state. The Node suites run under `node --test`. `checks.test.mjs` runs ever
 loads, in order, so cases that share a fixture keep their chain; a name filter only hides results.
 
 The hooks: `commit-msg` runs commitlint (Conventional Commits); `pre-commit` runs lint-staged
-(markdownlint and cspell on staged `*.md`, shellcheck on staged `*.sh`); `pre-push` refuses a dirty
+(markdownlint and cspell on staged `*.md`, shellcheck on staged `*.sh`, `node --check` on each staged
+`*.mjs`); `pre-push` refuses a dirty
 tree or a pushed ref that isn't the checked-out commit, then runs `verify.sh`.
 
 ## Architecture

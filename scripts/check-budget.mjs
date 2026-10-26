@@ -44,10 +44,11 @@ export function checkBudget(tree, args = []) {
     r.rc = 1;
     return r;
   }
-  // the baseline's rows, as `while read` sees them: a last line with no newline is never read
-  const rows = (baseline ?? '').split('\n').slice(0, -1);
+  // the baseline's rows, a last line with no newline included (the bash's `while read` skipped it, so a
+  // gone file in that row went unreported while its budget still counted)
+  const rows = lines(baseline ?? '');
   const budgetOf = (f) => {
-    const row = lines(baseline ?? '').find((l) => !l.startsWith('#') && l.split('\t')[0] === f);
+    const row = rows.find((l) => !l.startsWith('#') && l.split('\t')[0] === f);
     return row === undefined ? '' : (row.split('\t')[1] ?? '');
   };
 
@@ -63,10 +64,18 @@ export function checkBudget(tree, args = []) {
     return r;
   }
 
+  // SKILL.md is always counted, so its absence is the lookup broken or the skill moved, never 0 words:
+  // --update would budget it at 0, and drop it as gone in the same run.
+  if (!tree.has(files[0])) {
+    r.err(`✖ ${files[0]}: not found — the skill moved, or the lookup broke; update scripts/check-budget.mjs`);
+    r.rc = 1;
+    return r;
+  }
+
   let fails = 0;
   let next = '';
   for (const f of files) {
-    const have = words(tree.get(f) ?? '');
+    const have = words(tree.get(f));
     const budget = budgetOf(f);
     if (budget === '') {
       if (raise) {
