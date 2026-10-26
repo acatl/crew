@@ -55,7 +55,7 @@ brew install lychee shellcheck jq agent-ecosystem/tap/skill-validator
 Elsewhere, see each tool's releases; skill-validator publishes Linux binaries with checksums.
 
 ```bash
-./scripts/verify.sh        # every CI check, in CI's order, stopping at the first failure (~95 s)
+./scripts/verify.sh        # every CI check, in CI's order, stopping at the first failure (~4 min, most of it the watchdog suite)
 npm run check              # the fast ones: markdownlint, cspell, links, shellcheck, skill checks
 npm test                   # the watchdog and overlap suites; sandboxed, they touch nothing real
 ```
