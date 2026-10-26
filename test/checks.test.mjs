@@ -227,6 +227,13 @@ const delWithNext = (t, p, pat) =>
     return kept;
   }, `/${pat}/,+1d`);
 const append = (t, p, text) => t.set(p, (t.get(p) ?? '') + text);
+// lineOf: the line an edit landed on, read from the fixture, so a re-wrap above it never turns a case
+// red; a start no line has fails as the fixture's, never reads as the check's line 0
+const lineOf = (t, p, start) => {
+  const i = lines(t.get(p) ?? '').findIndex((l) => l.startsWith(start));
+  if (i < 0) bad(`lineOf ${p}`, `no line starts with: ${start}`);
+  return i + 1;
+};
 const rmTree = (t, prefix) => {
   for (const k of [...t.keys()]) if (k === prefix || k.startsWith(`${prefix}/`)) t.delete(k);
 };
@@ -446,8 +453,13 @@ red("15t a guard section's heading renamed is reported, not passed", 'check-inva
 t = fresh();
 s(t, SK, '^\\#\\#\\# 6\\. Handle messages', '```bash\\\n\\# a comment, not a heading\\\n```\\\n\\\n&');
 green('15u a heading-like comment in a code fence ends no section', 'check-invariants', t);
-s(t, SK, 'its overrides, `integration`, mode,', 'its overrides, mode,'); // same fixture
-red('15u2 and the section the fence sits in is still checked', 'check-invariants', t, "the section headed '^#+ 5[.] Spawn");
+s(
+  t,
+  SK,
+  'never send `ANSWER` or `RELAY` for `answer: in this session only`: nudge without',
+  'send `ANSWER` or `RELAY` for `answer: in this session only` as usual: nudge without',
+); // same fixture, below the fence
+red('15u2 and the section is still read past the fence', 'check-invariants', t, "'^#+ Orchestrator[[:space:]]*$' no longer says, in one sentence, that ANSWER never answers");
 t = fresh();
 s(t, SK, "the operator's words, never consent for a tool-permission prompt or a gated", "the operator's words, even for a tool-permission prompt or a gated");
 red("15v the worker's RELAY rule stops refusing tool-permission consent", 'check-invariants', t, 'that a relayed answer is never consent for a tool-permission prompt');
@@ -579,7 +591,7 @@ t = fresh();
 s(t, SK, '^   START) with the new base sha', '   ) with the new base sha');
 green("15fi6 a link cleanup in step 8's START line stays green", 'check-invariants', t);
 s(t, SK, 'card lines, its Spec from `briefs/<row>-spec.md`, after', 'card lines, after'); // same fixture
-red('15fi6b and the same fixture fails once step 8 drops the saved spec', 'check-invariants', t, "the section headed '^#+ 8[.] Sequences");
+red('15fi6b and the same fixture fails once step 8 drops the saved spec', 'check-invariants', t, "'^#+ 8[.] Sequences' no longer says, in one sentence, that START takes its Spec from briefs/<row>-spec.md");
 // a queued unit's spec lives in briefs/<row>-spec.md: step 5 saves it, step 8, the spine and START read it
 t = fresh();
 s(t, SK, 'Save a queued brief.s `{SPEC}` to `briefs/<row>-spec.md`\\.', 'A queued brief drops its spec.');
@@ -656,7 +668,7 @@ t = fresh();
 s(t, SK, 'Job section, written now from the landed state and its row.s', "Job section, written from the landed state and the row's");
 green("15fi10 a same-meaning reword of step 8's START line stays green", 'check-invariants', t);
 s(t, SK, "landed state and the row's$", 'landed state and the'); // same fixture
-red("15fi10b and the same fixture fails once it drops the row's card lines", 'check-invariants', t, "the section headed '^#+ 8[.] Sequences");
+red("15fi10b and the same fixture fails once it drops the row's card lines", 'check-invariants', t, "'^#+ 8[.] Sequences' no longer says, in one sentence, that START is written from the row's card lines");
 
 // a PR opens against the brief's base: every `gh pr create`/`new` reads `gh pr create --base <base>` (the
 // controls cover green; no case pins a line number, so a re-wrap alone never turns one red)
@@ -963,6 +975,17 @@ s(t, 'baselines/budget.tsv', '^skills/crew/references/ledger\\.md\t[0-9]*$', 'sk
 red('26m a budget that is not a whole number fails, naming it', 'check-budget', t, `${LG}: its budget 'many'`);
 red('26n and --update keeps that row as it is', 'check-budget', t, `${LG}: its budget 'many'`, '--update');
 ok('26o the row is unchanged', t.get('baselines/budget.tsv').includes(`${LG}\tmany\n`), t.get('baselines/budget.tsv'));
+run('check-budget', t, ['--update', '--allow-raise']); // same fixture: the repair the message names
+ok(
+  '26p --update --allow-raise re-budgets it at today\'s count, then green',
+  last.rc === 0 && /\nskills\/crew\/references\/ledger\.md\t[0-9]+\n/.test(t.get('baselines/budget.tsv')) && run('check-budget', t).rc === 0,
+  `${last.out}\n${t.get('baselines/budget.tsv')}`,
+);
+t = fresh();
+s(t, 'baselines/budget.tsv', '^skills/crew/references/ledger\\.md\t[0-9]*$', '& \r');
+green('26q a budget with a stray blank or \\r around its number still reads as that number', 'check-budget', t);
+append(t, LG, '\nfive more words right here\n'); // same fixture
+red('26r and that number still holds the line', 'check-budget', t, `${LG}: `);
 
 // --- check-content ----------------------------------------------------------------------------------------
 t = fresh();
@@ -1047,8 +1070,6 @@ s(t, HO, '^| \\*pr-state\\* |', '| *ghost* | a | b |\\\n| *pr-state* |');
 red('44 a verb no file cites', 'check-invariants', t, 'the verb *ghost* is cited nowhere else');
 t = fresh();
 s(t, SK, '^\\*roster\\* before anything else', '`get_session` before anything else');
-// the line the edit landed on, read from the fixture, so a re-wrap above it never turns the case red
-const lineOf = (t2, p, start) => lines(t2.get(p)).findIndex((l) => l.startsWith(start)) + 1;
 red('45 an app tool named outside host.md', 'check-invariants', t, `${SK}:${lineOf(t, SK, '`get_session` before')}: names a host's tool outside references/host.md (get_session)`);
 t = fresh();
 s(t, BT, '^(\\*spawn\\*)\\. A field', '(spawn_task). A field');

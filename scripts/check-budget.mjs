@@ -2,11 +2,13 @@
 // Word budget: SKILL.md and each references/*.md, per file, against baselines/budget.tsv. Every word
 // is context a session loads, so a count may hold or fall, and a rise fails.
 //
-//   scripts/check-budget.mjs                         check; exit 1 on a rise, an unbudgeted file, or a
-//                                                    budgeted file that's gone
+//   scripts/check-budget.mjs                         check; exit 1 on a rise, an unbudgeted file, a
+//                                                    budgeted file that's gone, or a budget that isn't
+//                                                    a whole number
 //   scripts/check-budget.mjs --update                lower budgets to today's counts and drop a deleted
 //                                                    file's budget; never raises
-//   scripts/check-budget.mjs --update --allow-raise  set budgets to today's counts, rises included
+//   scripts/check-budget.mjs --update --allow-raise  set budgets to today's counts, rises and malformed
+//                                                    budgets included
 //
 // --allow-raise is the operator's alone: a worker never raises a budget to get green.
 //
@@ -50,7 +52,8 @@ export function checkBudget(tree, args = []) {
   const rows = lines(baseline ?? '').map((l) => l.replace(/^\t+/, '').split('\t'));
   const budgetOf = (f) => {
     const row = rows.find(([name]) => !name.startsWith('#') && name === f);
-    return row === undefined ? '' : (row[1] ?? '');
+    // a hand edit's stray blank or \r around the number is not part of it
+    return row === undefined ? '' : (row[1] ?? '').trim();
   };
 
   const files = [
@@ -90,10 +93,18 @@ export function checkBudget(tree, args = []) {
       fails++;
       continue;
     }
-    // a budget that isn't a whole number compares as nothing and would be written back as it is:
-    // the bash's integer test aborted on one
+    // A budget that isn't a whole number: Number() reads 'many' as NaN, which compares false both ways
+    // and --update wrote back as NaN, and reads '0x10' as 16 and '1e3' as 1000. The bash's integer test
+    // aborted on each. --allow-raise re-budgets it at today's count, as it budgets a row with none.
     if (!/^[0-9]+$/.test(budget)) {
-      r.err(`✖ ${f}: its budget '${budget}' in ${BASELINE} is not a whole number — fix that row`);
+      if (raise) {
+        next += `${f}\t${have}\n`;
+        r.out(`+ ${f}: ${have} words, budgeted (was '${budget}')`);
+        continue;
+      }
+      r.err(
+        `✖ ${f}: its budget '${budget}' in ${BASELINE} is not a whole number — fix that row, or re-budget it with scripts/check-budget.mjs --update --allow-raise`,
+      );
       fails++;
       next += `${f}\t${budget}\n`;
       continue;
@@ -140,7 +151,7 @@ export function checkBudget(tree, args = []) {
   }
 
   if (fails > 0) {
-    r.err(`✖ ${fails} file(s) over budget, unbudgeted or gone (${BASELINE})`);
+    r.err(`✖ ${fails} file(s) over budget, unbudgeted, gone or with a malformed budget (${BASELINE})`);
     r.rc = 1;
     return r;
   }
