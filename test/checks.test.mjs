@@ -23,6 +23,7 @@ import {
   openSync,
   readFileSync,
   readdirSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -1150,3 +1151,162 @@ s(t, SK, '^metadata:$', 'metadata:\\\n    # a comment, indented deeper than the 
 green("34 a comment opening metadata doesn't set the child indent", 'check-skill-frontmatter', t);
 del(t, SK, '^  version: '); // positive control for 34: the same fixture, a key removed
 red('34b the same fixture still fails on a missing version', 'check-skill-frontmatter', t, 'missing frontmatter: version');
+
+// --- bash compatibility: inputs where the port once parted from the bash checks --------------------------------
+// The compatibility audit of 2026-11-03 ran each bash check at 77dfa9c and its port on the same trees. These
+// are the inputs where the port got it wrong, each kept to the bash's result: a CRLF file (awk's and grep's .
+// takes the \r, JavaScript's needs the s flag), a › at a line's end, the heading list's commas, a duplicated
+// fallback section, Unicode spaces where the bash's grep ran in CI's UTF-8 locale, and symlinks.
+const crlf = (t2, p) => t2.set(p, t2.get(p).replaceAll('\n', '\r\n'));
+
+t = fresh();
+crlf(t, HO);
+green("54 a CRLF host.md's verbs are each cited elsewhere, as they are", 'check-invariants', t);
+append(t, HO, '| *bogus* | a | b |\r\n'); // the same fixture, a verb nothing cites
+red('54b and the same fixture names an uncited verb without its \\r', 'check-invariants', t, 'the verb *bogus* is cited nowhere else');
+t = fresh();
+crlf(t, SK);
+run('check-invariants', t);
+ok("55 a CRLF SKILL.md's message kinds carry no \\r into the fallback comparison", !last.out.includes('the fallback section'), last.out);
+s(t, BT, 'A `RELAY` carries', 'A relay carries'); // the same fixture, a kind dropped
+red('55b and the same fixture still finds a kind the fallback drops', 'check-invariants', t, "doesn't name `RELAY`");
+t = fresh();
+append(t, PR, '\nIt never relays\na go for the merge.\n'); // a refusal that wraps before its go
+crlf(t, PR);
+green("56 a CRLF integration's refusal, wrapped before its go, still refuses it", 'check-invariants', t);
+s(t, PR, 'who merges by hand or in the', "who merges by hand or answers here, and it relays the operator's go, or in the");
+red('56b and the same fixture catches one that relays a go', 'check-invariants', t, `${PR}: accepts a relayed go for the merge`);
+
+t = fresh();
+append(t, 'skills/crew/references/host.md', 'See `CREW.md` ›\r\nDefaults for it.\n');
+red(
+  "57 a › that ends a CRLF line keeps the whole match in the message, as ${hit#*› } did",
+  'check-section-refs',
+  t,
+  "'CREW.md › CREW.md` ›\r Defaults for it' names no section",
+);
+t = fresh();
+s(t, CM, '^## Defaults$', '## Defaults, more');
+red("58 the heading list widens a heading's own comma, as the bash's sed did", 'check-section-refs', t, 'Ledger, Defaults,  more)');
+t = fresh();
+append(t, CM, '## \n## \n');
+append(t, SK, '\nSee `CREW.md` › Nosuch for it.\n');
+red('58b trailing empty headings are dropped, as $(…) dropped them', 'check-section-refs', t, 'Ledger, Defaults)');
+t = fresh();
+change(t, CM, (ls) => [...ls.slice(0, ls.findIndex((l) => l.startsWith('## Template')) + 1), '## '], 'cut the template to one empty heading');
+red("58c a template whose only heading is empty has none", 'check-section-refs', t, "no '## ' headings after '## Template'");
+
+t = fresh();
+dup(t, BT, '^## If the `crew` skill is unavailable');
+red('59 a duplicated fallback section fails, as the bash did', 'check-invariants', t, "two '## If the `crew` skill is unavailable' sections");
+
+t = fresh();
+s(t, SK, '^license: MIT$', 'license: ');
+green("60 a license of one no-break space isn't blank to CI's grep (glibc's space class leaves it out)", 'check-skill-frontmatter', t);
+s(t, SK, '^license: $', 'license: '); // the same fixture, an em space
+red('60b but one of an em space is', 'check-skill-frontmatter', t, 'missing frontmatter: license');
+t = fresh();
+s(t, WD, '^    proj=', '    proj=');
+green("61 watchdog.sh's proj= line indented with a Unicode space is still found, as CI's grep found it", 'check-invariants', t);
+s(t, WD, "sed 's#\\[/\\.\\]#-#g'", "sed 's#/#-#g'"); // the same fixture, the slug drifted
+red('61b and the same fixture still reads its slug', 'check-invariants', t, 'the transcript-dir slug is');
+
+// symlinks, on disk: the bash read a file by its path through a link, but find -type f and grep -r never
+// listed or entered one
+{
+  const script = (dir, c) => execIn(dir, process.execPath, [`scripts/${c}.mjs`]);
+  const outside = (dir, p) => {
+    const away = join(temp(), p.split('/').at(-1));
+    writeFileSync(away, readFileSync(join(dir, p), 'utf8'));
+    rmSync(join(dir, p));
+    symlinkSync(away, join(dir, p));
+    return away;
+  };
+  let dir = write(fresh(), temp());
+  let away = outside(dir, HO);
+  let r = script(dir, 'check-invariants');
+  ok('62 a host.md linked from outside the repo is read through its link', r.rc === 0, `rc=${r.rc} ${r.out}`);
+  writeFileSync(away, readFileSync(away, 'utf8').replace(/^\| \*[a-z-]+\* \|.*$/gm, ''));
+  r = script(dir, 'check-invariants');
+  ok('62b and its target losing the verb rows fails', r.rc === 1 && r.out.includes("the verb table's rows"), `rc=${r.rc} ${r.out}`);
+  r = script(dir, 'check-budget');
+  ok('62c a linked reference file is not gone: [ -f ] followed its link', r.rc === 0, `rc=${r.rc} ${r.out}`);
+  rmSync(away);
+  r = script(dir, 'check-budget');
+  ok('62d but once its link dangles, its budget is gone', r.rc === 1 && r.out.includes(`${HO}: budgeted but gone`), `rc=${r.rc} ${r.out}`);
+
+  dir = write(fresh(), temp());
+  away = outside(dir, SK);
+  r = script(dir, 'check-skill-frontmatter');
+  ok('62e a SKILL.md linked from outside is globbed and read', r.rc === 0, `rc=${r.rc} ${r.out}`);
+  writeFileSync(away, readFileSync(away, 'utf8').replace(/^license: MIT\n/m, ''));
+  r = script(dir, 'check-skill-frontmatter');
+  ok("62f and its target's missing license fails", r.rc === 1 && r.out.includes('missing frontmatter: license'), `rc=${r.rc} ${r.out}`);
+
+  dir = write(fresh(), temp());
+  symlinkSync('..', join(dir, 'skills/crew/references/up'));
+  r = script(dir, 'check-invariants');
+  ok('62g a link back up the skill neither loops nor adds files', r.rc === 0, `rc=${r.rc} ${r.out}`);
+  writeFileSync(join(dir, SK), readFileSync(join(dir, SK), 'utf8').replace('(1200 / 3600 / 3)', '(1200 / 1800 / 3)'));
+  r = script(dir, 'check-invariants');
+  ok('62h and the same tree still fails on a drift', r.rc === 1 && r.out.includes(SK), `rc=${r.rc} ${r.out}`);
+
+  // find and grep -r skip a link they meet below their start, but resolve one above it like any path
+  const linkOut = (dir, p) => {
+    const away = join(temp(), 'target');
+    renameSync(join(dir, p), away);
+    symlinkSync(away, join(dir, p));
+  };
+  const marker = 'Stray crew:breef here.\n';
+  dir = write(fresh(), temp());
+  away = join(temp(), 'm.md');
+  writeFileSync(away, marker);
+  symlinkSync(away, join(dir, 'skills/crew/references/m.md'));
+  r = script(dir, 'check-invariants');
+  ok("62i a linked .md under skills/crew isn't searched, as grep -r and find skipped it", r.rc === 0, `rc=${r.rc} ${r.out}`);
+  dir = write(fresh(), temp());
+  writeFileSync(join(dir, 'skills/crew/references/m.md'), marker);
+  r = script(dir, 'check-invariants');
+  ok('62j while the same file, not linked, is', r.rc === 1 && r.out.includes("'crew:breef'"), `rc=${r.rc} ${r.out}`);
+  dir = write(fresh(), temp());
+  away = join(temp(), 'ledger.md');
+  writeFileSync(away, readFileSync(join(dir, LG), 'utf8').replace(/$/gm, ' more words here'));
+  rmSync(join(dir, LG));
+  symlinkSync(away, join(dir, LG));
+  r = script(dir, 'check-budget');
+  ok("62k a linked reference file isn't counted, as find skipped it", r.rc === 0, `rc=${r.rc} ${r.out}`);
+  rmSync(join(dir, LG)); // the same fixture, the link replaced by its target's words
+  writeFileSync(join(dir, LG), readFileSync(away, 'utf8'));
+  r = script(dir, 'check-budget');
+  ok('62l while the same words, not linked, are over budget', r.rc === 1 && r.out.includes(`${LG}: `), `rc=${r.rc} ${r.out}`);
+  const prFix = (dir2) =>
+    writeFileSync(join(dir2, PR), `${readFileSync(join(dir2, PR), 'utf8')}\nOpen it with gh pr create --fill now.\n`);
+  dir = write(fresh(), temp());
+  linkOut(dir, 'docs/crew/integrations');
+  prFix(dir);
+  r = script(dir, 'check-invariants');
+  ok("62m a linked docs/crew/integrations isn't entered: find's start may not be a link", r.rc === 0, `rc=${r.rc} ${r.out}`);
+  dir = write(fresh(), temp());
+  linkOut(dir, 'docs/crew');
+  prFix(dir);
+  r = script(dir, 'check-invariants');
+  ok('62n while a link above the start, docs/crew, is resolved', r.rc === 1 && r.out.includes(`${PR}:`) && r.out.includes('gh pr create --fill'), `rc=${r.rc} ${r.out}`);
+  dir = write(fresh(), temp());
+  linkOut(dir, 'skills');
+  r = script(dir, 'check-budget');
+  ok('62o a linked skills/ is resolved for every check', r.rc === 0 && script(dir, 'check-invariants').rc === 0 && script(dir, 'check-section-refs').rc === 0, `rc=${r.rc} ${r.out}`);
+  writeFileSync(join(dir, LG), `${readFileSync(join(dir, LG), 'utf8')}${marker}`);
+  r = script(dir, 'check-invariants');
+  ok('62p and the same tree finds a stray marker there', r.rc === 1 && r.out.includes("'crew:breef'"), `rc=${r.rc} ${r.out}`);
+}
+
+// a check finds the repo from its own path, not the working directory
+{
+  const dir = write(fresh(), temp());
+  const elsewhere = temp();
+  let r = execIn(elsewhere, process.execPath, [join(dir, 'scripts/check-invariants.mjs')]);
+  ok('63 a check run from another directory reads the repo beside it', r.rc === 0 && r.out.startsWith('✓'), `rc=${r.rc} ${r.out}`);
+  writeFileSync(join(dir, SK), readFileSync(join(dir, SK), 'utf8').replace('(1200 / 3600 / 3)', '(1200 / 1800 / 3)'));
+  r = execIn(elsewhere, process.execPath, [join(dir, 'scripts/check-invariants.mjs')]);
+  ok('63b and fails on a drift there', r.rc === 1 && r.out.includes(SK), `rc=${r.rc} ${r.out}`);
+}

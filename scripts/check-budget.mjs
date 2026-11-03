@@ -15,8 +15,8 @@
 // Words are runs of anything but spaces, tabs and line breaks, as awk's default field splitting counts
 // them in the C locale, not wc -w: BSD and GNU wc can disagree on non-ASCII text, and the baseline is
 // written on macOS but checked on Linux in CI.
-import { lines, sortC } from './lib/md.mjs';
-import { Report, main } from './lib/tree.mjs';
+import { lines } from './lib/md.mjs';
+import { Report, found, main } from './lib/tree.mjs';
 
 const BASELINE = 'baselines/budget.tsv';
 
@@ -58,7 +58,7 @@ export function checkBudget(tree, args = []) {
 
   const files = [
     'skills/crew/SKILL.md',
-    ...sortC(tree.keys()).filter((k) => k.startsWith('skills/crew/references/') && k.endsWith('.md')),
+    ...found(tree, 'skills/crew/references').filter((k) => k.endsWith('.md')),
   ];
   // The skill always has reference files, so none means the lookup broke. Stop before either mode:
   // --update would otherwise drop every reference budget as "gone".

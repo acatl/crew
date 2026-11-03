@@ -5,17 +5,15 @@
 //     references/crew-md.md. Only the first level is checked: "Ledger › watchdog" checks "Ledger".
 //   - every references/<name>.md mentioned under skills/crew exists;
 //   - every <skill-dir>/scripts/<name> the skill runs exists under skills/crew/scripts/.
-import { docs, lines, scan, sortC } from './lib/md.mjs';
-import { Report, main } from './lib/tree.mjs';
+import { docs, lines, scan } from './lib/md.mjs';
+import { Report, found, main } from './lib/tree.mjs';
 
 const SKILL = 'skills/crew';
 const TEMPLATE = `${SKILL}/references/crew-md.md`;
 
 export function checkSectionRefs(tree) {
   const r = new Report();
-  const files = sortC(tree.keys()).filter(
-    (k) => k.startsWith(`${SKILL}/`) && (k.endsWith('.md') || k.endsWith('.sh')),
-  );
+  const files = found(tree, SKILL).filter((k) => k.endsWith('.md') || k.endsWith('.sh'));
   const D = docs(tree, files);
 
   let fails = 0;
@@ -32,7 +30,9 @@ export function checkSectionRefs(tree) {
     }
   };
 
-  const headings = [];
+  // the headings as the bash held them, one string from $(…): trailing empty headings dropped, so none
+  // but empty ones is none at all
+  const raw = [];
   {
     let f = false;
     for (const l of lines(tree.get(TEMPLATE) ?? '')) {
@@ -40,10 +40,15 @@ export function checkSectionRefs(tree) {
         f = true;
         continue;
       }
-      if (f && /^## /.test(l)) headings.push(l.replace(/^## /, ''));
+      if (f && /^## /.test(l)) raw.push(l.replace(/^## /, ''));
     }
   }
-  if (!headings.length) {
+  const held = raw.join('\n').replace(/\n+$/, '');
+  const headings = held.split('\n');
+  // the list a failure quotes, as tr '\n' ',' | sed 's/,$//; s/,/, /g' wrote it: a comma inside a
+  // heading is widened too
+  const listed = held.replaceAll('\n', ',').replaceAll(',', ', ');
+  if (!held) {
     fail(`${TEMPLATE}: no '## ' headings after '## Template' — reworded? update scripts/check-section-refs.mjs`);
     r.rc = 1;
     return r;
@@ -54,10 +59,13 @@ export function checkSectionRefs(tree) {
   // must be a heading, alone or followed by a space and more words ("Integration allows it").
   for (const { loc, match } of scan('CREW\\.md`?[[:space:]]+›[[:space:]]+[A-Za-z][A-Za-z -]*', D)) {
     refs++;
-    const name = match.slice(match.indexOf('› ') + 2);
+    // ${hit#*› }: what follows the first '› ', or the whole match when a line break, not a space,
+    // follows the › (a CRLF line's \r)
+    const at = match.indexOf('› ');
+    const name = at < 0 ? match : match.slice(at + 2);
     if (!headings.some((h) => name === h || name.startsWith(`${h} `))) {
       fail(
-        `${loc}: 'CREW.md › ${name}' names no section of the CREW.md template in ${TEMPLATE} (${headings.join(', ')})`,
+        `${loc}: 'CREW.md › ${name}' names no section of the CREW.md template in ${TEMPLATE} (${listed})`,
       );
     }
   }

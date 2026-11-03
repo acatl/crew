@@ -18,12 +18,20 @@ const CLASSES = {
   '[:lower:]': 'a-z',
 };
 
-// bracket <pattern source> <index of its [>: {js, end}, the bracket expression starting there as
-// JavaScript writes it, and the index of its closing ]. Its classes are translated, a ] right after
-// the [ or [^ is a member, and a backslash is a member (POSIX has no escapes in a bracket). An unclosed
-// bracket or class, or a class with no translation, throws: a pattern that quietly meant something else
-// would leave a check finding nothing.
-export function bracket(src, start) {
+// The classes as GNU grep and sed read them in CI's C.UTF-8 locale, for the bash's greps and seds that
+// never set LC_ALL=C: glibc's space class takes the Unicode spaces but the no-break ones (U+00A0,
+// U+2007, U+202F). Only the classes those sites use are here, so any other one throws.
+const UTF8 = {
+  '[:space:]': `${CLASSES['[:space:]']}\\u1680\\u2000-\\u2006\\u2008-\\u200a\\u2028\\u2029\\u205f\\u3000`,
+  '[:digit:]': '0-9',
+};
+
+// bracket <pattern source> <index of its [> [classes]: {js, end}, the bracket expression starting
+// there as JavaScript writes it, and the index of its closing ]. Its classes are translated, a ] right
+// after the [ or [^ is a member, and a backslash is a member (POSIX has no escapes in a bracket). An
+// unclosed bracket or class, or a class with no translation, throws: a pattern that quietly meant
+// something else would leave a check finding nothing.
+export function bracket(src, start, classes = CLASSES) {
   let js = '[';
   let j = start + 1;
   if (src[j] === '^') js += src[j++];
@@ -33,8 +41,8 @@ export function bracket(src, start) {
       const end = src.indexOf(':]', j + 2);
       if (end < 0) throw new Error(`an unclosed [: in ${src}`);
       const cls = src.slice(j, end + 2);
-      if (!(cls in CLASSES)) throw new Error(`no translation for the POSIX class ${cls} in ${src}`);
-      js += CLASSES[cls];
+      if (!Object.hasOwn(classes, cls)) throw new Error(`no translation for the POSIX class ${cls} in ${src}`);
+      js += classes[cls];
       j = end + 1;
     } else {
       js += src[j] === '\\' ? '\\\\' : src[j];
@@ -44,16 +52,16 @@ export function bracket(src, start) {
   return { js: `${js}]`, end: j };
 }
 
-// posixClasses <ERE source>: the same pattern with each bracket expression as JavaScript writes it.
-// Outside a bracket, a backslash escapes the next character, as in JavaScript.
-export function posixClasses(src) {
+// posixClasses <ERE source> [classes]: the same pattern with each bracket expression as JavaScript
+// writes it. Outside a bracket, a backslash escapes the next character, as in JavaScript.
+export function posixClasses(src, classes = CLASSES) {
   let out = '';
   for (let i = 0; i < src.length; i++) {
     if (src[i] === '\\') {
       out += src.slice(i, i + 2);
       i++;
     } else if (src[i] === '[') {
-      const { js, end } = bracket(src, i);
+      const { js, end } = bracket(src, i, classes);
       out += js;
       i = end;
     } else {
@@ -63,13 +71,18 @@ export function posixClasses(src) {
   return out;
 }
 
-// ere <POSIX ERE> [flags]: the same pattern as a RegExp. The checks' patterns are written as EREs, so
-// they read as they did in the bash; only the bracket classes need translating. A RegExp passes
-// through unchanged.
-export function ere(src, flags = '') {
+// ere <POSIX ERE> [flags] [classes]: the same pattern as a RegExp. The checks' patterns are written as
+// EREs, so they read as they did in the bash; only the bracket classes need translating. It is always
+// dotAll (s): awk's and grep's . takes a \r (a CRLF file's line end) and U+2028/U+2029, JavaScript's
+// doesn't. Every text it runs on is a line, or lines joined by spaces, so no . can cross a line. Each
+// regex literal in the checks carries the s flag for the same reason. A RegExp passes through unchanged.
+export function ere(src, flags = '', classes = CLASSES) {
   if (src instanceof RegExp) return src;
-  return new RegExp(posixClasses(src), flags);
+  return new RegExp(posixClasses(src, classes), flags.includes('s') ? flags : `${flags}s`);
 }
+
+// ereU <POSIX ERE>: ere for a bash grep or sed that ran in the caller's locale, as CI's was (C.UTF-8)
+export const ereU = (src) => ere(src, '', UTF8);
 
 // ws <words>: an ERE for <words> with every space widened to any whitespace run, so the words can
 // wrap across lines. <words> is itself an ERE, so the caller escapes what it means literally.

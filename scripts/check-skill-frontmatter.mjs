@@ -4,7 +4,7 @@
 // sharing / vercel-labs/skills consumption; the version is release-managed
 // (release-please stamps it, so a new skill must ship the field). Exit 1 on any
 // violation.
-import { ere, frontmatter, sortC } from './lib/md.mjs';
+import { ere, ereU, frontmatter, sortC } from './lib/md.mjs';
 import { Report, main } from './lib/tree.mjs';
 
 export function checkSkillFrontmatter(tree) {
@@ -21,7 +21,9 @@ export function checkSkillFrontmatter(tree) {
   for (const f of skills) {
     // Frontmatter = lines between the first two '---' markers.
     const { fm } = frontmatter(tree.get(f));
-    const has = (ls, re) => (ls.length ? ls : ['']).some((l) => ere(re).test(l));
+    // The bash's greps and its sed never set LC_ALL=C, so they read [[:space:]] in CI's UTF-8 locale
+    // (ereU), where a line of Unicode spaces is blank; its awks are byte-wise (ere).
+    const has = (ls, re) => (ls.length ? ls : ['']).some((l) => ereU(re).test(l));
 
     const miss = [];
     if (!has(fm, '^name:[[:space:]]*[^[:space:]]')) miss.push('name');
@@ -62,7 +64,7 @@ export function checkSkillFrontmatter(tree) {
     // machine.
     const dir = f.split('/').at(-2);
     const nameLine = fm.find((l) => l.startsWith('name:'));
-    const declared = nameLine === undefined ? '' : nameLine.replace(ere('^name:[[:space:]]*'), '').replace(/["' \r]/g, '');
+    const declared = nameLine === undefined ? '' : nameLine.replace(ereU('^name:[[:space:]]*'), '').replace(/["' \r]/g, '');
     if (declared && declared !== dir) {
       r.err(`✗ ${f} — frontmatter name '${declared}' != directory '${dir}'`);
       failed = true;

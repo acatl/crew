@@ -1,33 +1,75 @@
 // The repo as the skill checks see it, and how each check reports. A check is a function of a tree
 // (a Map of repo-relative path to text) that returns a Report, so the suite (test/checks.test.mjs)
 // calls it in-process on an edited copy of the tree; run as a script, it reads the real repo.
-import { readFileSync, readdirSync, realpathSync, renameSync, writeFileSync, writeSync } from 'node:fs';
+import {
+  lstatSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  renameSync,
+  statSync,
+  writeFileSync,
+  writeSync,
+} from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { sortC } from './md.mjs';
 
 // What the checks read: the skill, the baselines, this repo's workflows and integrations, and the
 // watchdog suite (the slug check reads its slug()).
 export const ROOTS = ['skills', 'baselines', 'docs/crew'];
 export const FILES = ['test/watchdog.test.sh'];
 
-// readTree <repo root>: every regular file under ROOTS, and FILES, as {path → text}. Symlinks are
-// skipped, as find -type f skipped them; a root that's missing is simply absent.
+// readTree <repo root>: every file under ROOTS, and FILES, as {path → text}; a root that's missing is
+// simply absent. A symlink is followed, as the bash followed one when it read a file by its path. The
+// tree's `links` maps each file reached through one to the links on its path (each a path of its own),
+// for found(). A dangling link is no file, as [ -f ] said.
 export function readTree(root) {
   const tree = new Map();
-  const walk = (rel) => {
+  tree.links = new Map();
+  const isLink = (p) => {
+    try {
+      return lstatSync(join(root, p)).isSymbolicLink();
+    } catch {
+      return false;
+    }
+  };
+  // `up` holds the real paths of the directories above, so a link back up the walk ends there
+  const walk = (rel, via, up) => {
+    let real;
     let entries;
     try {
+      real = realpathSync(join(root, rel));
       entries = readdirSync(join(root, rel), { withFileTypes: true });
     } catch {
       return;
     }
+    if (up.has(real)) return;
+    const below = new Set(up).add(real);
     for (const e of entries) {
       const p = `${rel}/${e.name}`;
-      if (e.isDirectory()) walk(p);
-      else if (e.isFile()) tree.set(p, readFileSync(join(root, p), 'utf8'));
+      let kind = e;
+      let links = via;
+      if (e.isSymbolicLink()) {
+        links = [...via, p];
+        try {
+          kind = statSync(join(root, p));
+        } catch {
+          continue;
+        }
+      }
+      if (kind.isDirectory()) walk(p, links, below);
+      else if (kind.isFile()) {
+        tree.set(p, readFileSync(join(root, p), 'utf8'));
+        if (links.length) tree.links.set(p, links);
+      }
     }
   };
-  for (const r of ROOTS) walk(r);
+  for (const r of ROOTS) {
+    const parts = r.split('/');
+    const via = parts.map((_, i) => parts.slice(0, i + 1).join('/')).filter(isLink);
+    walk(r, via, new Set());
+  }
   for (const f of FILES) {
     try {
       tree.set(f, readFileSync(join(root, f), 'utf8'));
@@ -37,6 +79,20 @@ export function readTree(root) {
   }
   return tree;
 }
+
+// found <tree> <start> [follow]: the paths under <start>, sorted, as `find <start> -type f` lists them.
+// find never lists or enters a link it meets below <start>, nor <start> itself when that is a link;
+// a link above it is resolved like any path. With follow, <start> may be a link, as for GNU grep -r,
+// which follows one named on its command line. A path the bash named or globbed (SKILL.md,
+// references/workflow-*.md) is read from the whole tree instead.
+export const found = (tree, start, follow = false) =>
+  sortC(
+    [...tree.keys()].filter(
+      (k) =>
+        k.startsWith(`${start}/`) &&
+        !(tree.links?.get(k) ?? []).some((l) => l.length > start.length || (l === start && !follow)),
+    ),
+  );
 
 // What a check printed, in order and by stream, its exit code, and any file it rewrote.
 export class Report {

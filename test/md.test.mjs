@@ -3,10 +3,14 @@
 //
 //   node --test test/*.test.mjs
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import {
   clauses,
   ere,
+  ereU,
   fallbackCut,
   flat,
   frontmatter,
@@ -161,4 +165,58 @@ test("fallbackCut drops the brief's fallback section up to the fence that closes
 
 test('sortC orders by code unit, as LC_ALL=C sort does', () => {
   assert.deepEqual(sortC(['b', 'B', 'a', '_']), ['B', '_', 'a', 'b']);
+});
+
+test("ere's . takes a \\r and U+2028, as awk's and grep's did", () => {
+  assert.ok(ere('a.b').test('a\rb'));
+  assert.ok(ere('a.b').test('a\u2028b'));
+  assert.equal('ONLINE` |\r'.replace(ere('`.*'), ''), 'ONLINE');
+});
+
+test("ereU reads [[:space:]] as CI's UTF-8 grep did: Unicode spaces, but not the no-break ones", () => {
+  assert.ok(ereU('^a[[:space:]]$').test('a\u2003'));
+  assert.ok(ereU('^a[[:space:]]$').test('a\u3000'));
+  assert.ok(!ereU('^a[[:space:]]$').test('a\u00a0'));
+  assert.ok(!ereU('^a[[:space:]]$').test('a\u202f'));
+  assert.ok(!ere('^a[[:space:]]$').test('a\u2003'), 'ere stays byte-wise, as LC_ALL=C');
+  assert.throws(() => ereU('[[:alpha:]]'), /no translation/);
+});
+
+// A regex literal in a check whose . must stand for awk's or grep's needs the s flag (ere adds it to the
+// patterns it builds). This reads the checks' own source, so a new literal without it fails here.
+test('every regex literal in the checks with a . outside a bracket is dotAll', () => {
+  const dotOutside = (src) => {
+    for (let i = 0, inB = false; i < src.length; i++) {
+      const c = src[i];
+      if (c === '\\') i++;
+      else if (inB) inB = c !== ']';
+      else if (c === '[') {
+        inB = true;
+        if (src[i + 1] === '^') i++;
+        if (src[i + 1] === ']') i++;
+      } else if (c === '.') return true;
+    }
+    return false;
+  };
+  const scripts = join(dirname(fileURLToPath(import.meta.url)), '..', 'scripts');
+  const files = [
+    ...readdirSync(scripts).filter((f) => /^check-.*\.mjs$/.test(f)).map((f) => join(scripts, f)),
+    ...readdirSync(join(scripts, 'lib')).filter((f) => f.endsWith('.mjs')).map((f) => join(scripts, 'lib', f)),
+  ];
+  const literal = /(?:^|[=(,:[!&|?{;>]|return)\s*\/((?:\\.|\[(?:\\.|[^\]\\])*\]|[^/\\[\n])+)\/([a-z]*)/g;
+  const bare = [];
+  let seen = 0;
+  for (const f of files) {
+    readFileSync(f, 'utf8')
+      .split('\n')
+      .forEach((l, n) => {
+        if (/^\s*\/\//.test(l)) return;
+        for (const [, src, flags] of l.matchAll(literal)) {
+          seen++;
+          if (dotOutside(src) && !flags.includes('s')) bare.push(`${f}:${n + 1}: /${src}/${flags}`);
+        }
+      });
+  }
+  assert.ok(seen > 50, `found only ${seen} regex literals: the scan broke`);
+  assert.deepEqual(bare, []);
 });

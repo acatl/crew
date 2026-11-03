@@ -12,6 +12,7 @@ import {
   clauses,
   docs,
   ere,
+  ereU,
   fallbackCut,
   flat,
   frontmatter,
@@ -25,7 +26,7 @@ import {
   uniqC,
   ws,
 } from './lib/md.mjs';
-import { Report, main } from './lib/tree.mjs';
+import { Report, found, main } from './lib/tree.mjs';
 
 const SKILL = 'skills/crew';
 const SKILLMD = `${SKILL}/SKILL.md`;
@@ -53,8 +54,10 @@ const minus = (a, b) => {
 
 export function checkInvariants(tree) {
   const r = new Report();
-  const keys = sortC(tree.keys());
-  const mds = keys.filter((k) => k.startsWith(`${SKILL}/`) && k.endsWith('.md'));
+  // all: every file the bash could read by path or glob; the files it found with find or grep -r come
+  // from found(), each from the start point the bash gave it
+  const all = sortC(tree.keys());
+  const mds = found(tree, SKILL).filter((k) => k.endsWith('.md'));
   const read = (p) => tree.get(p) ?? '';
   const D = (paths) => docs(tree, paths);
   const fileLines = (p) => lines(read(p));
@@ -136,7 +139,7 @@ export function checkInvariants(tree) {
   }
   const wdCode = (code, headerWords, skillWords) => {
     // wd_code <code> <header words> <skill words>
-    const header = ere(`^#[[:space:]]+(Exit:[[:space:]]+)?${code}[[:space:]].*${headerWords}`);
+    const header = ereU(`^#[[:space:]]+(Exit:[[:space:]]+)?${code}[[:space:]].*${headerWords}`);
     if (!here(wdExit.join('\n')).some((l) => header.test(l))) {
       return reworded(WATCHDOG, `exit ${code} ('${headerWords}') in the Exit header`);
     }
@@ -154,7 +157,7 @@ export function checkInvariants(tree) {
   const ovExit = fileLines(OVERLAP).filter((l) => /^# Exit:/.test(l));
   const ovCode = (code, headerWords, skillWords) => {
     // ov_code <code> <header words> <skill words>
-    const header = ere(`(^|[^0-9])${code}[[:space:]]+${headerWords}`);
+    const header = ereU(`(^|[^0-9])${code}[[:space:]]+${headerWords}`);
     if (!here(ovExit.join('\n')).some((l) => header.test(l))) {
       return reworded(OVERLAP, `exit ${code} ('${headerWords}') in the Exit line`);
     }
@@ -196,7 +199,7 @@ export function checkInvariants(tree) {
     }
     // any other spelling of the marker's name, anywhere under skills/crew
     const own = new RegExp(`:${name}$`);
-    for (const f of keys.filter((k) => k.startsWith(`${SKILL}/`))) {
+    for (const f of found(tree, SKILL, true)) {
       lines(read(f)).forEach((l, i) => {
         for (const [m] of l.matchAll(/crew:[a-z]+/g)) {
           const hit = `${f}:${i + 1}:${m}`;
@@ -223,7 +226,7 @@ export function checkInvariants(tree) {
       if (f && /^##/.test(l)) break;
       if (f && /^Worker → orchestrator/.test(l)) d = 'worker';
       if (f && /^Orchestrator → worker/.test(l)) d = 'orchestrator';
-      if (f && d && /^\| `[A-Z][A-Z-]*` \|/.test(l)) kinds.push([d, l.replace(/^\| `/, '').replace(/`.*/, '')]);
+      if (f && d && /^\| `[A-Z][A-Z-]*` \|/.test(l)) kinds.push([d, l.replace(/^\| `/, '').replace(/`.*/s, '')]);
     }
   }
   const wk = sortC(kinds.filter(([d]) => d === 'worker').map(([, k]) => k));
@@ -242,6 +245,13 @@ export function checkInvariants(tree) {
     });
     if (!fbLines.length) {
       reworded(BRIEF, "the '## If the `crew` skill is unavailable' section");
+      kindsOk = false;
+    } else if (fbLines.length > 1) {
+      // The bash failed here too, on its awk's error: the checks read the first section only, and the
+      // other would drift unchecked.
+      fail(
+        `${BRIEF}:${fbLines.join(',')}: two '## If the \`crew\` skill is unavailable' sections; the checks read only the first, so keep one`,
+      );
       kindsOk = false;
     } else {
       const fbLine = fbLines.join('\n');
@@ -262,8 +272,8 @@ export function checkInvariants(tree) {
     }
 
     // the frontmatter description: "the worker's four reports (…), the orchestrator's X, Y and Z"
-    const dw = fm.match(/^.*the worker's ([a-z]+) reports \(([^)]*)\).*$/);
-    const dor = fm.match(/^.*the orchestrator's (([A-Z-]+, )*[A-Z-]+) and ([A-Z-]+).*$/);
+    const dw = fm.match(/^.*the worker's ([a-z]+) reports \(([^)]*)\).*$/s);
+    const dor = fm.match(/^.*the orchestrator's (([A-Z-]+, )*[A-Z-]+) and ([A-Z-]+).*$/s);
     if (!dw || !dor) {
       reworded(SKILLMD, `the description's "the worker's N reports (…), the orchestrator's X, Y and Z"`);
       kindsOk = false;
@@ -309,7 +319,7 @@ export function checkInvariants(tree) {
     }
     return '';
   };
-  const tSlug = sedOf(fileLines(WATCHDOG).filter((l) => ere('^[[:space:]]*proj=').test(l)));
+  const tSlug = sedOf(fileLines(WATCHDOG).filter((l) => ereU('^[[:space:]]*proj=').test(l)));
   const testSlug = sedOf(fileLines(WDTEST).filter((l) => /^slug\(\)/.test(l)));
   const crewFn = [];
   {
@@ -350,8 +360,8 @@ export function checkInvariants(tree) {
   const cols = (s) => (s.match(/<[a-z][a-z -]*>/g) ?? []).join(' ');
   const want = cols(
     fileLines(WATCHDOG)
-      .filter((l) => ere('^#[[:space:]]+roster\\.tsv[[:space:]]+input:').test(l))
-      .map((l) => l.replace(/,.*/, ''))
+      .filter((l) => ereU('^#[[:space:]]+roster\\.tsv[[:space:]]+input:').test(l))
+      .map((l) => l.replace(/,.*/s, ''))
       .join('\n'),
   );
   if (!want) {
@@ -646,13 +656,13 @@ export function checkInvariants(tree) {
   const stageFiles = [];
   for (const kind of ['workflow', 'integration']) {
     const glob = new RegExp(`^${SKILL}/references/${kind}-[^/]*\\.md$`);
-    const found = keys.filter((k) => glob.test(k));
-    if (!found.length) reworded(`${SKILL}/references/${kind}-*.md`, 'the built-in file');
-    stageFiles.push(...found);
+    const hits = all.filter((k) => glob.test(k));
+    if (!hits.length) reworded(`${SKILL}/references/${kind}-*.md`, 'the built-in file');
+    stageFiles.push(...hits);
   }
   stageFiles.push(
-    ...keys.filter(
-      (k) => (k.startsWith('docs/crew/workflows/') || k.startsWith('docs/crew/integrations/')) && k.endsWith('.md'),
+    ...sortC(['docs/crew/workflows', 'docs/crew/integrations'].flatMap((d) => found(tree, d))).filter((k) =>
+      k.endsWith('.md'),
     ),
   );
 
@@ -691,7 +701,7 @@ export function checkInvariants(tree) {
   let relayOk = true;
   let relaySeen = false;
   const goRefused =
-    /(^|[^A-Za-z])([Nn]ever|[Nn]either|[Nn]o|[Nn]ot|[Rr]efuse)([^A-Za-z].*)?[^A-Za-z][Gg]o([^A-Za-z]|$)/;
+    /(^|[^A-Za-z])([Nn]ever|[Nn]either|[Nn]o|[Nn]ot|[Rr]efuse)([^A-Za-z].*)?[^A-Za-z][Gg]o([^A-Za-z]|$)/s;
   for (const f of stageFiles) {
     const sentences = sentencesOf(read(f));
     if (!sentences.some((s) => /merge\?/i.test(s))) continue;
@@ -928,7 +938,7 @@ export function checkInvariants(tree) {
   let hOk = true;
   const others = mds.filter((f) => f !== HOST);
   const verbRows = fileLines(HOST).filter((l) => /^\| \*[a-z-]+\* \|/.test(l));
-  const verbOf = (row) => row.replace(/^\| \*([a-z-]+)\* \|.*/, '$1');
+  const verbOf = (row) => row.replace(/^\| \*([a-z-]+)\* \|.*/s, '$1');
   if (!verbRows.length) {
     reworded(HOST, "the verb table's rows ('| *verb* | desktop | terminal |')");
     hOk = false;
@@ -951,7 +961,7 @@ export function checkInvariants(tree) {
     }
   }
   const appTools = /mcp__ccd_|spawn_task|get_session|list_sessions|list_events|archive_session|clear_session|send_message/;
-  const projects = keys.filter((k) => k.startsWith('docs/crew/') && k.endsWith('.md'));
+  const projects = found(tree, 'docs/crew').filter((k) => k.endsWith('.md'));
   for (const doc of D([...others, ...projects])) {
     for (const hit of fallbackCut(doc).filter((l) => appTools.test(l))) {
       const at = hit.indexOf(': ');
