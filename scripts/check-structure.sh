@@ -7,7 +7,7 @@
 # TWO warnings are exempt, and every run prints them: SKILL.md's body is over the spec's recommended
 # token count, and over its recommended line count (500; the base sat exactly there when FIX3 added
 # to it, operator 2026-10-14) up to max_lines below. Splitting SKILL.md into references/ is the next
-# PR (PR 3), which deletes both. Until then scripts/check-budget.sh keeps SKILL.md's words from
+# PR (PR 3), which deletes both. Until then scripts/check-budget.mjs keeps SKILL.md's words from
 # growing, and max_lines its lines: the word budget can't see a rewrap. Raising it is the operator's.
 #
 # Then every workflow and integration file (the built-ins skills/crew/references/workflow-*.md and

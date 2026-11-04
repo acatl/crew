@@ -3,4 +3,6 @@
 export default {
   '*.md': ['markdownlint-cli2 --no-globs', 'cspell --no-progress --no-summary --no-must-find-files'],
   '*.sh': ['shellcheck -x'],
+  // node --check reads one file per call; a list would check only the first
+  '*.mjs': (files) => files.map((f) => `node --check "${f}"`),
 };
