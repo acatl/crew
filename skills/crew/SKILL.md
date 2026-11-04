@@ -20,7 +20,7 @@ compatibility: >-
   macOS or Linux.
 metadata:
   author: Acatl Pacheco
-  version: "1.0.0" # x-release-please-version
+  version: "1.1.0" # x-release-please-version
 ---
 
 # crew — orchestrator ↔ worker sessions
